@@ -2174,7 +2174,7 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
     >
       {showLowCallout && (
         <div style={{ position: 'absolute', top: 2, left: padding.left, background: 'rgba(239,68,68,0.16)', border: '1px solid #ef4444', borderRadius: 6, padding: '2px 10px', fontSize: 13, fontWeight: 700, color: '#fff', pointerEvents: 'none', zIndex: 1 }}>
-          Lowest: {formatDate(coords[lowestIdx].date)} · {coords[lowestIdx].value < 0 ? '-' : ''}${Math.abs(coords[lowestIdx].value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          Lowest: {formatDate(coords[lowestIdx].date)} | {coords[lowestIdx].value < 0 ? '-' : ''}${Math.abs(coords[lowestIdx].value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
       )}
       <div style={{ position: 'absolute', top: 4, right: 12, display: 'flex', gap: 16, fontSize: 12, color: '#facc15', pointerEvents: 'none', zIndex: 1 }}>
