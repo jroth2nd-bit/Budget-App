@@ -2072,7 +2072,7 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
     };
   const [containerWidth, setContainerWidth] = useState(900);
   const height = 380;
-  const padding = { top: 20, right: 20, bottom: 50, left: 60 };
+  const padding = { top: 36, right: 20, bottom: 50, left: 60 };
   const chartWidth = containerWidth - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2172,7 +2172,12 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
       onMouseLeave={() => setHoveredPoint(null)}
       // Remove drag/zoom handlers
     >
-      <div style={{ position: 'absolute', top: 0, right: 12, display: 'flex', gap: 16, fontSize: 12, color: '#facc15', pointerEvents: 'none', zIndex: 1 }}>
+      {showLowCallout && (
+        <div style={{ position: 'absolute', top: 2, left: padding.left, background: 'rgba(239,68,68,0.16)', border: '1px solid #ef4444', borderRadius: 6, padding: '2px 10px', fontSize: 13, fontWeight: 700, color: '#fff', pointerEvents: 'none', zIndex: 1 }}>
+          Lowest: {formatDate(coords[lowestIdx].date)} · {coords[lowestIdx].value < 0 ? '-' : ''}${Math.abs(coords[lowestIdx].value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </div>
+      )}
+      <div style={{ position: 'absolute', top: 4, right: 12, display: 'flex', gap: 16, fontSize: 12, color: '#facc15', pointerEvents: 'none', zIndex: 1 }}>
         {[
           { label: 'Income', color: '#10b981', posted: false },
           { label: 'Expense (not posted)', color: '#ef4444', posted: false },
@@ -2282,21 +2287,25 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
             {negPath && <path d={negPath} fill="#ef4444" opacity="0.22" />}
           </>;
         })()}
-        {/* Low point callout: small ring plus a labeled box kept inside the chart */}
+        {/* Rings where the balance drops below the threshold; the lowest point also gets a guide and axis date */}
+        {coords.map((c, i) => {
+          const crosses = c.value < lowFlagLevel && (i === 0 || coords[i - 1].value >= lowFlagLevel);
+          return crosses && i !== lowestIdx ? (
+            <circle key={`cross-${i}`} cx={c.x} cy={c.y} r={8} fill="none" stroke="#ef4444" strokeWidth={2} style={{ pointerEvents: 'none' }} />
+          ) : null;
+        })}
         {showLowCallout && (() => {
           const p = coords[lowestIdx];
-          const label = `Low ${formatDate(p.date)}: ${p.value < 0 ? '-' : ''}$${Math.abs(p.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-          const boxW = label.length * 7.2 + 16;
-          const boxH = 24;
-          const boxX = Math.min(Math.max(p.x - boxW / 2, padding.left + 2), containerWidth - padding.right - boxW - 2);
-          const above = p.y - boxH - 16 >= padding.top;
-          const boxY = above ? p.y - boxH - 14 : p.y + 14;
+          const axisY = height - padding.bottom;
+          const dateLabel = formatDate(p.date);
+          const pillW = dateLabel.length * 7 + 14;
+          const pillX = Math.min(Math.max(p.x - pillW / 2, padding.left), containerWidth - padding.right - pillW);
           return (
             <g style={{ pointerEvents: 'none' }}>
-              <line x1={p.x} y1={above ? p.y - 8 : p.y + 8} x2={p.x} y2={above ? boxY + boxH : boxY} stroke="#ef4444" strokeWidth={1.5} />
+              <line x1={p.x} y1={p.y} x2={p.x} y2={axisY} stroke="#ef4444" strokeWidth={1.5} strokeDasharray="4,3" />
               <circle cx={p.x} cy={p.y} r={9} fill="none" stroke="#ef4444" strokeWidth={2.5} />
-              <rect x={boxX} y={boxY} width={boxW} height={boxH} rx={5} fill="rgba(20,25,30,0.95)" stroke="#ef4444" strokeWidth={1.5} />
-              <text x={boxX + boxW / 2} y={boxY + boxH / 2 + 4.5} textAnchor="middle" fontSize="13" fontWeight="700" fill="#fff">{label}</text>
+              <rect x={pillX} y={axisY + 24} width={pillW} height={20} rx={4} fill="#ef4444" />
+              <text x={pillX + pillW / 2} y={axisY + 38} textAnchor="middle" fontSize="12" fontWeight="700" fill="#fff">{dateLabel}</text>
             </g>
           );
         })()}
