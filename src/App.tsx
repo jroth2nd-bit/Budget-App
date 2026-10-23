@@ -365,7 +365,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
 }) {
     // postedMap and onPostedChange are provided by props from App
     // Tab state for dashboard sections
-    const [tab, setTab] = useState<'table' | 'charts'>('table');
+    const [tab, setTab] = useState<'table' | 'charts'>('charts');
     // Date filter state for running balance table
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
@@ -502,7 +502,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
     });
     const rows = filteredRows;
     // Use onPostedChange from props
-  const [timeline, setTimeline] = useState<'30d' | '3m' | '6m' | '12m'>('12m')
+  const [timeline, setTimeline] = useState<'30d' | '3m' | '6m' | '12m'>('30d')
 
 
 
@@ -564,9 +564,23 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
   }
 
   // Use all transactions for the projection graph (not just unposted)
-  const projStart = new Date()
-  projStart.setHours(0, 0, 0, 0)
-  const projEnd = new Date(projStart)
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const pad2 = (n: number) => String(n).padStart(2, '0')
+  const todayKey = `${todayStart.getFullYear()}-${pad2(todayStart.getMonth() + 1)}-${pad2(todayStart.getDate())}`
+
+  // Most recent income occurrence on or before today; the timeline starts there
+  let lastPaycheck: Date | null = null
+  for (const item of incomes) {
+    const current = new Date(item.startDate)
+    while (dateKey(current) <= todayKey && (!item.endDate || dateKey(current) <= item.endDate)) {
+      if (!isSkipped(item, current) && (!lastPaycheck || current > lastPaycheck)) lastPaycheck = new Date(current)
+      if (!item.isRecurring) break
+      stepDate(current, item.frequency)
+    }
+  }
+  const projStart = lastPaycheck ?? todayStart
+  const projEnd = new Date(todayStart)
   if (timeline === '30d') projEnd.setDate(projEnd.getDate() + 30)
   else projEnd.setMonth(projEnd.getMonth() + (timeline === '3m' ? 3 : timeline === '6m' ? 6 : 12))
   projEnd.setHours(23, 59, 59, 999)
@@ -582,6 +596,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
         })
         .map(row => ({
           date: row.date,
+          posted: !!postedMap[row.id],
           value: row.runningBalance,
           type: row.income > 0 ? 'income' : row.expense > 0 ? 'expense' : undefined,
           amount: row.income > 0 ? row.income : row.expense > 0 ? row.expense : undefined,
@@ -589,6 +604,11 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
           category: row.category,
           icon: row.icon || '',
         }));
+
+  // Rows backing the summary cards: selected timeline window only
+  const timelineLabel = timeline === '30d' ? '30 Days' : timeline === '3m' ? '3 Months' : timeline === '6m' ? '6 Months' : '12 Months'
+  const windowRows = projectionRows.filter(row => row.date >= projStart && row.date <= projEnd)
+  const upcomingRows = windowRows.filter(row => dateKey(row.date) >= todayKey)
 
   return (
     <div>
@@ -677,15 +697,10 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
           <div style={{ display: 'flex', gap: 32, flex: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
             {/* Biggest Expense This Month */}
             <div className="card" style={{ minWidth: 220, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(37,44,51,0.48)' }}>
-              <span style={{ fontSize: 15, opacity: 0.85 }}>Biggest Expense This Month</span>
+              <span style={{ fontSize: 15, opacity: 0.85 }}>Biggest Expense ({timelineLabel})</span>
               <span style={{ fontSize: 19, fontWeight: 700, color: '#ef4444', marginTop: 2 }}>
                 {(() => {
-                  const thisMonth = new Date().getMonth();
-                  const thisYear = new Date().getFullYear();
-                  const monthlyRows = transactionsWithBalance.filter(row => {
-                    const d = row.date;
-                    return d.getMonth() === thisMonth && d.getFullYear() === thisYear && row.expense > 0;
-                  });
+                  const monthlyRows = windowRows.filter(row => row.expense > 0);
                   if (monthlyRows.length === 0) return <span style={{ color: '#aaa' }}>—</span>;
                   const max = monthlyRows.reduce((a, b) => (a.expense > b.expense ? a : b));
                   return <>{max.name} <span style={{ color: '#fff', fontWeight: 500 }}>-${max.expense.toFixed(2)}</span></>;
@@ -694,15 +709,10 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
             </div>
             {/* Top Category This Month */}
             <div className="card" style={{ minWidth: 220, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(37,44,51,0.48)' }}>
-              <span style={{ fontSize: 15, opacity: 0.85 }}>Top Category This Month</span>
+              <span style={{ fontSize: 15, opacity: 0.85 }}>Top Category ({timelineLabel})</span>
               <span style={{ fontSize: 19, fontWeight: 700, color: '#facc15', marginTop: 2 }}>
                 {(() => {
-                  const thisMonth = new Date().getMonth();
-                  const thisYear = new Date().getFullYear();
-                  const monthlyRows = transactionsWithBalance.filter(row => {
-                    const d = row.date;
-                    return d.getMonth() === thisMonth && d.getFullYear() === thisYear && row.expense > 0;
-                  });
+                  const monthlyRows = windowRows.filter(row => row.expense > 0);
                   if (monthlyRows.length === 0) return <span style={{ color: '#aaa' }}>—</span>;
                   const byCat = monthlyRows.reduce((acc: Record<string, number>, row) => {
                     acc[row.category || 'Other'] = (acc[row.category || 'Other'] || 0) + row.expense;
@@ -718,8 +728,8 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
               <span style={{ fontSize: 15, opacity: 0.85 }}>Upcoming Low Balance Date</span>
               <span style={{ fontSize: 19, fontWeight: 700, color: '#facc15', marginTop: 2 }}>
                 {(() => {
-                  if (!lowBalanceThreshold || !transactionsWithBalance.length) return <span style={{ color: '#aaa' }}>—</span>;
-                  const upcoming = transactionsWithBalance.find(row => row.runningBalance < lowBalanceThreshold);
+                  if (!lowBalanceThreshold || !upcomingRows.length) return <span style={{ color: '#aaa' }}>—</span>;
+                  const upcoming = upcomingRows.find(row => row.runningBalance < lowBalanceThreshold);
                   if (!upcoming) return <span style={{ color: '#aaa' }}>—</span>;
                   return <>{upcoming.date.toLocaleDateString()} <span style={{ color: '#fff', fontWeight: 500 }}>${upcoming.runningBalance.toFixed(2)}</span></>;
                 })()}
@@ -732,14 +742,10 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
           <div style={{ display: 'flex', gap: 32, flex: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
             {/* Lowest Projected Balance (Next 30 Days) */}
             <div className="card" style={{ minWidth: 220, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(37,44,51,0.48)' }}>
-              <span style={{ fontSize: 15, opacity: 0.85 }}>Lowest Projected Balance (30d)</span>
+              <span style={{ fontSize: 15, opacity: 0.85 }}>Lowest Projected Balance ({timelineLabel})</span>
               <span style={{ fontSize: 19, fontWeight: 700, color: '#ef4444', marginTop: 2 }}>
                 {(() => {
-                  if (!transactionsWithBalance.length) return <span style={{ color: '#aaa' }}>—</span>;
-                  const now = new Date();
-                  const in30 = new Date();
-                  in30.setDate(now.getDate() + 30);
-                  const next30 = transactionsWithBalance.filter(row => row.date >= now && row.date <= in30);
+                  const next30 = upcomingRows;
                   if (!next30.length) return <span style={{ color: '#aaa' }}>—</span>;
                   const min = next30.reduce((a, b) => (a.runningBalance < b.runningBalance ? a : b));
                   return <>{min.date.toLocaleDateString()} <span style={{ color: '#fff', fontWeight: 500 }}>${min.runningBalance.toFixed(2)}</span></>;
@@ -781,12 +787,12 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
             </div>
             {/* Upcoming Large Expense */}
             <div className="card" style={{ minWidth: 220, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(37,44,51,0.48)' }}>
-              <span style={{ fontSize: 15, opacity: 0.85 }}>Upcoming Large Expense</span>
+              <span style={{ fontSize: 15, opacity: 0.85 }}>Upcoming Large Expense ({timelineLabel})</span>
               <span style={{ fontSize: 19, fontWeight: 700, color: '#ef4444', marginTop: 2 }}>
                 {(() => {
                   const now = new Date();
                   // Large = > $200, can adjust threshold
-                  const futureLarge = transactionsWithBalance.filter(row => row.date > now && row.expense > 200);
+                  const futureLarge = upcomingRows.filter(row => row.date > now && row.expense > 200);
                   if (!futureLarge.length) return <span style={{ color: '#aaa' }}>—</span>;
                   const next = futureLarge.reduce((a, b) => (a.date < b.date ? a : b));
                   return <>{next.name} <span style={{ color: '#fff', fontWeight: 500 }}>-${next.expense.toFixed(2)}</span> <span style={{ color: '#aaa', fontWeight: 400, fontSize: 15 }}>({next.date.toLocaleDateString()})</span></>;
@@ -2038,7 +2044,7 @@ function ImportData({ addIncomes, addExpenses }: { incomes: Income[]; expenses: 
   )
 }
 
-function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date; value: number; type?: 'income' | 'expense'; amount?: number }))[]; lowBalanceThreshold?: number }) {
+function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date; value: number; type?: 'income' | 'expense'; amount?: number; posted?: boolean; name?: string; category?: string; icon?: string }))[]; lowBalanceThreshold?: number }) {
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null)
   // No zoom window or drag state
     // Helper: find closest point, prioritizing negative balances if within threshold
@@ -2101,6 +2107,10 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
   const thresholdY = padding.top + chartHeight - ((lowBalanceThreshold - minVal) / range) * chartHeight
   // Find the first index where balance goes below zero
   const firstNegativeIdx = coords.findIndex(c => c.value < 0)
+  // Lowest point, flagged only when it is below zero or the low-balance threshold
+  const lowestIdx = coords.length ? coords.reduce((best, c, i) => (c.value < coords[best].value ? i : best), 0) : -1
+  const lowFlagLevel = Math.max(0, lowBalanceThreshold)
+  const showLowCallout = lowestIdx !== -1 && coords[lowestIdx].value < lowFlagLevel
 
   // Split path into segments for positive and negative
   let segments = []
@@ -2162,6 +2172,18 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
       onMouseLeave={() => setHoveredPoint(null)}
       // Remove drag/zoom handlers
     >
+      <div style={{ position: 'absolute', top: 0, right: 12, display: 'flex', gap: 16, fontSize: 12, color: '#facc15', pointerEvents: 'none', zIndex: 1 }}>
+        {[
+          { label: 'Income', color: '#10b981', posted: false },
+          { label: 'Expense (not posted)', color: '#ef4444', posted: false },
+          { label: 'Expense (posted)', color: '#ef4444', posted: true }
+        ].map(item => (
+          <span key={item.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <svg width="14" height="14"><circle cx="7" cy="7" r="5" fill={item.posted ? '#1f2933' : item.color} stroke={item.posted ? item.color : '#000'} strokeWidth={item.posted ? 2.5 : 1.2} /></svg>
+            {item.label}
+          </span>
+        ))}
+      </div>
       <svg width={containerWidth} height={height} viewBox={`0 0 ${containerWidth} ${height}`} className="chartSvg balance-chart" preserveAspectRatio="xMinYMid meet">
         {/* Y Axis */}
         <line x1={padding.left} y1={padding.top} x2={padding.left} y2={height - padding.bottom} stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
@@ -2260,31 +2282,24 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
             {negPath && <path d={negPath} fill="#ef4444" opacity="0.22" />}
           </>;
         })()}
-        {/* Large red marker and label at first negative point */}
-        {firstNegativeIdx !== -1 && coords[firstNegativeIdx] && (
-          <>
-            <circle
-              cx={coords[firstNegativeIdx].x}
-              cy={coords[firstNegativeIdx].y}
-              r={15}
-              fill="#fff"
-              stroke="#ef4444"
-              strokeWidth={4}
-              opacity={1}
-              style={{ filter: 'drop-shadow(0 2px 10px #ef4444cc)' }}
-            />
-            <text
-              x={coords[firstNegativeIdx].x}
-              y={coords[firstNegativeIdx].y + 6}
-              fontSize="28"
-              textAnchor="middle"
-              alignmentBaseline="middle"
-              style={{ pointerEvents: 'none' }}
-            >
-              ⚠️
-            </text>
-          </>
-        )}
+        {/* Low point callout: small ring plus a labeled box kept inside the chart */}
+        {showLowCallout && (() => {
+          const p = coords[lowestIdx];
+          const label = `Low ${formatDate(p.date)}: ${p.value < 0 ? '-' : ''}$${Math.abs(p.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          const boxW = label.length * 7.2 + 16;
+          const boxH = 24;
+          const boxX = Math.min(Math.max(p.x - boxW / 2, padding.left + 2), containerWidth - padding.right - boxW - 2);
+          const above = p.y - boxH - 16 >= padding.top;
+          const boxY = above ? p.y - boxH - 14 : p.y + 14;
+          return (
+            <g style={{ pointerEvents: 'none' }}>
+              <line x1={p.x} y1={above ? p.y - 8 : p.y + 8} x2={p.x} y2={above ? boxY + boxH : boxY} stroke="#ef4444" strokeWidth={1.5} />
+              <circle cx={p.x} cy={p.y} r={9} fill="none" stroke="#ef4444" strokeWidth={2.5} />
+              <rect x={boxX} y={boxY} width={boxW} height={boxH} rx={5} fill="rgba(20,25,30,0.95)" stroke="#ef4444" strokeWidth={1.5} />
+              <text x={boxX + boxW / 2} y={boxY + boxH / 2 + 4.5} textAnchor="middle" fontSize="13" fontWeight="700" fill="#fff">{label}</text>
+            </g>
+          );
+        })()}
 
         {/* Data points */}
         {/* Show all income/expense events as larger, colored circles. Offset if both on same day. */}
@@ -2330,10 +2345,10 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
                       cx={c.x}
                       cy={c.y + offset}
                       r={r}
-                      fill={color}
-                      stroke="#000"
-                      strokeWidth={1.2}
-                      opacity={hoveredPoint === idx ? 1 : 0.95}
+                      fill={c.posted ? '#1f2933' : color}
+                      stroke={c.posted ? color : '#000'}
+                      strokeWidth={c.posted ? 2.5 : 1.2}
+                      opacity={hoveredPoint === idx ? 1 : c.posted ? 0.8 : 0.95}
                       style={{ cursor: 'pointer', transition: 'all 0.2s' }}
                       onMouseEnter={() => setHoveredPoint(idx)}
                       onMouseLeave={() => setHoveredPoint(null)}
@@ -2366,10 +2381,10 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
                       cx={c.x}
                       cy={c.y}
                       r={r}
-                      fill={color}
-                      stroke="#000"
-                      strokeWidth={1.2}
-                      opacity={hoveredPoint === idx ? 1 : 0.95}
+                      fill={c.posted ? '#1f2933' : color}
+                      stroke={c.posted ? color : '#000'}
+                      strokeWidth={c.posted ? 2.5 : 1.2}
+                      opacity={hoveredPoint === idx ? 1 : c.posted ? 0.8 : 0.95}
                       style={{ cursor: 'pointer', transition: 'all 0.2s' }}
                       onMouseEnter={() => setHoveredPoint(idx)}
                       onMouseLeave={() => setHoveredPoint(null)}
@@ -2408,7 +2423,7 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
             {coords[hoveredPoint].name || '(No Name)'}
           </div>
           <div>Date: <span style={{ color: '#fff' }}>{formatDate(coords[hoveredPoint].date)}</span></div>
-          <div>Type: <span style={{ color: coords[hoveredPoint].type === 'income' ? '#10b981' : '#ef4444' }}>{coords[hoveredPoint].type === 'income' ? 'Income' : coords[hoveredPoint].type === 'expense' ? 'Expense' : 'N/A'}</span></div>
+          <div>Type: <span style={{ color: coords[hoveredPoint].type === 'income' ? '#10b981' : '#ef4444' }}>{coords[hoveredPoint].type === 'income' ? 'Income' : coords[hoveredPoint].type === 'expense' ? 'Expense' : 'N/A'}</span> <span style={{ color: '#aaa' }}>({coords[hoveredPoint].posted ? 'Posted' : 'Not posted'})</span></div>
           <div>Amount: <span style={{ color: coords[hoveredPoint].type === 'income' ? '#10b981' : '#ef4444' }}>
             {coords[hoveredPoint].type === 'income' ? '+' : coords[hoveredPoint].type === 'expense' ? '-' : ''}${coords[hoveredPoint].amount?.toFixed(2) ?? '0.00'}
           </span></div>
