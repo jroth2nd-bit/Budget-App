@@ -2297,15 +2297,10 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
         {showLowCallout && (() => {
           const p = coords[lowestIdx];
           const axisY = height - padding.bottom;
-          const dateLabel = formatDate(p.date);
-          const pillW = dateLabel.length * 7 + 14;
-          const pillX = Math.min(Math.max(p.x - pillW / 2, padding.left), containerWidth - padding.right - pillW);
           return (
             <g style={{ pointerEvents: 'none' }}>
               <line x1={p.x} y1={p.y} x2={p.x} y2={axisY} stroke="#ef4444" strokeWidth={1.5} strokeDasharray="4,3" />
               <circle cx={p.x} cy={p.y} r={9} fill="none" stroke="#ef4444" strokeWidth={2.5} />
-              <rect x={pillX} y={axisY + 24} width={pillW} height={20} rx={4} fill="#ef4444" />
-              <text x={pillX + pillW / 2} y={axisY + 38} textAnchor="middle" fontSize="12" fontWeight="700" fill="#fff">{dateLabel}</text>
             </g>
           );
         })()}
