@@ -99,16 +99,7 @@ export default function Administration({
     <div className="admin-card">
       <div className="admin-header">
         <span className="admin-header-icon" role="img" aria-label="settings">⚙️</span>
-        <h2 style={{ margin: 0, fontWeight: 700, fontSize: '1.5em', color: '#fffbe6', letterSpacing: 0.5 }}>Administration</h2>
-      </div>
-      <hr className="admin-divider" />
-      <div className="admin-section">
-        <div className="admin-section-title">App Background</div>
-        <select className="admin-select" value={background} onChange={e => setBackground(e.target.value)}>
-          {Object.keys(BACKGROUNDS).map(bg => (
-            <option key={bg} value={bg}>{bg.charAt(0).toUpperCase() + bg.slice(1)}</option>
-          ))}
-        </select>
+        <h2>Administration</h2>
       </div>
       <hr className="admin-divider" />
       <div className="admin-section">

@@ -8,7 +8,7 @@ import Login from './Login';
 import { supabase } from './supabase';
 import type { Session } from '@supabase/supabase-js';
 import DotDayList from './DotDayList';
-import './AppStyles.css';
+import { DashboardIcon, IncomeIcon, ExpenseIcon, AdminIcon, CalendarIcon } from './NavIcons';
 import { Income, Expense, Tag } from './types';
 import * as XLSX from 'xlsx';
 import ExpenseBarChart from './ExpenseBarChart';
@@ -227,56 +227,38 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
     }
   }, []);
 
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
+  const navItems: Array<{ id: Page; label: string; icon: JSX.Element }> = [
+    { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+    { id: 'income', label: 'Income', icon: <IncomeIcon /> },
+    { id: 'expenses', label: 'Expenses', icon: <ExpenseIcon /> },
+    { id: 'admin', label: 'Admin', icon: <AdminIcon /> },
+  ];
+  const renderNavItems = () => navItems.map(item => (
+    <button key={item.id} className={`navItem${page === item.id ? ' active' : ''}`} onClick={() => setPage(item.id)} title={item.label} aria-current={page === item.id ? 'page' : undefined}>
+      {item.icon}<span className="navLabel">{item.label}</span>
+    </button>
+  ));
+  const syncLabel = syncState === 'loading' ? 'Loading…' : syncState === 'saving' ? 'Saving…' : syncState === 'error' ? 'Sync failed' : 'Synced';
+
   return (
-    <div
-      className="appRoot"
-      style={{
-        minHeight: '100vh',
-        position: 'relative',
-        // Always use a valid image (fallback to default)
-        '--bg-url': `url('${BACKGROUNDS[background] || BACKGROUNDS.default}')`
-      } as React.CSSProperties}
-    >
+    <div className="appRoot">
       <nav className="sideNav">
-        <h1>Budget App</h1>
-        <button className={page === 'dashboard' ? 'active' : ''} onClick={() => setPage('dashboard')}>Dashboard</button>
-        <button className={page === 'income' ? 'active' : ''} onClick={() => setPage('income')}>Income</button>
-        <button className={page === 'expenses' ? 'active' : ''} onClick={() => setPage('expenses')}>Expenses</button>
-        <button className={page === 'admin' ? 'active' : ''} onClick={() => setPage('admin')}>Admin</button>
-
-        {/* DotDay Upcoming Transactions */}
-        <div className="navDotDay" style={{ margin: '24px 0 0 0', fontSize: 13, color: '#facc15', background: 'rgba(30,30,40,0.32)', borderRadius: 8, padding: 8, boxShadow: '0 2px 8px #0002' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, letterSpacing: 0.5 }}>DotDay</div>
-          <DotDayList
-            incomes={incomes}
-            expenses={expenses}
-            postedMap={postedMap}
-            onPostedChange={handlePostedChange}
-          />
-        </div>
-
-        {userId && (
-          <div className="navSync" style={{ marginTop: 'auto', fontSize: 12, opacity: 0.85, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-            <span>{syncState === 'loading' ? 'Loading…' : syncState === 'saving' ? 'Saving…' : syncState === 'error' ? '⚠ Sync failed' : '☁ Synced'}</span>
-            <button onClick={onSignOut} style={{ fontSize: 12, padding: '2px 8px' }}>Sign out</button>
-          </div>
-        )}
-        <div className="navBackground" style={{ marginTop: userId ? 12 : 'auto', fontSize: 12, opacity: 0.7 }}>
-          <span>Background:</span>
-          <select value={background} onChange={e => setBackground(e.target.value)} style={{ width: '100%' }}>
-            {Object.keys(BACKGROUND_LABELS)
-              .filter(bg => BACKGROUNDS[bg])
-              .map(bg => (
-                <option key={bg} value={bg}>
-                  {BACKGROUND_LABELS[bg] || bg.charAt(0).toUpperCase() + bg.slice(1)}
-                </option>
-              ))}
-          </select>
-        </div>
+        <div className="brand"><span className="brandMark">$</span><span className="brandName">Budget App</span></div>
+        {renderNavItems()}
       </nav>
 
-      {/* DotDayList: next 10 upcoming transactions (name, date, amount, posted checkbox) */}
-      <main className="mainContent" style={{ overflowY: 'auto', maxHeight: '100vh' }}>
+      <div className="mainArea">
+        <header className="topBar">
+          <div className="brand"><span className="brandMark">$</span><span>Budget App</span></div>
+          <span className="spacer" />
+          {userId && <span className={`syncBadge${syncState === 'error' ? ' err' : ''}`}>{syncLabel}</span>}
+          <button className="upcomingToggle navItem" style={{ width: 'auto' }} onClick={() => setUpcomingOpen(true)}><CalendarIcon /><span>Upcoming</span></button>
+          {userId && <button onClick={onSignOut}>Sign out</button>}
+        </header>
+
+      <main className="mainContent">
+
         {page === 'dashboard' && (
           <DashboardPage
             expenses={expenses}
@@ -350,6 +332,18 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
           />
         )}
       </main>
+      </div>
+
+      <div className={`scrim${upcomingOpen ? ' open' : ''}`} onClick={() => setUpcomingOpen(false)} />
+      <aside className={`upcoming${upcomingOpen ? ' open' : ''}`} aria-label="Upcoming transactions">
+        <div className="upcomingHead">
+          <h3>DotDay · Upcoming</h3>
+          <button className="upcomingClose" onClick={() => setUpcomingOpen(false)} aria-label="Close upcoming">✕</button>
+        </div>
+        <DotDayList incomes={incomes} expenses={expenses} postedMap={postedMap} onPostedChange={handlePostedChange} />
+      </aside>
+
+      <nav className="bottomNav">{renderNavItems()}</nav>
     </div>
   )
 }
