@@ -579,15 +579,19 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
   const currentBalance = startingBalance + calculatePastBalance()
   const lowRow = lowBalanceThreshold ? upcomingRows.find(row => row.runningBalance < lowBalanceThreshold) : undefined
   const minRow = upcomingRows.length ? upcomingRows.reduce((a, b) => (a.runningBalance < b.runningBalance ? a : b)) : undefined
-  const nextPayday = (() => {
+  const { nextPayday, nextPayAmount } = (() => {
     const now = new Date()
     let best: Date | null = null
+    let amount = 0
     incomes.forEach(item => {
       const d = new Date(item.startDate)
-      while (d <= now && item.isRecurring && (!item.endDate || dateKey(d) <= item.endDate)) stepDate(d, item.frequency)
-      if (d > now && (!item.endDate || dateKey(d) <= item.endDate) && (!best || d < best)) best = new Date(d)
+      while (item.isRecurring && (!item.endDate || dateKey(d) <= item.endDate) && (d <= now || isSkipped(item, d))) stepDate(d, item.frequency)
+      if (d > now && (!item.endDate || dateKey(d) <= item.endDate) && !isSkipped(item, d)) {
+        if (!best || dateKey(d) < dateKey(best)) { best = new Date(d); amount = amountFor(item, d) }
+        else if (dateKey(d) === dateKey(best)) amount += amountFor(item, d)
+      }
     })
-    return best as Date | null
+    return { nextPayday: best as Date | null, nextPayAmount: amount }
   })()
   const daysToPayday = nextPayday ? Math.ceil((nextPayday.getTime() - Date.now()) / 86400000) : null
 
@@ -620,7 +624,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
         <div className="kpi">
           <span className="kpiLabel">Next Paycheck</span>
           <span className="kpiValue pos">{daysToPayday === null ? '—' : `${daysToPayday} day${daysToPayday !== 1 ? 's' : ''}`}</span>
-          <span className="kpiSub">{nextPayday ? fmtDay(nextPayday) : 'None scheduled'}</span>
+          <span className="kpiSub">{nextPayday ? `${fmtDay(nextPayday)} · ${fmtMoney(nextPayAmount)}` : 'None scheduled'}</span>
         </div>
       </div>
 
