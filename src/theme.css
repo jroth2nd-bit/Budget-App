@@ -210,24 +210,79 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 .dotRow.income .dotAmt { color: var(--pos); }
 .dotRow.expense .dotAmt { color: var(--neg); }
 
-/* ============ Legacy dashboard/table rules (replaced in later stages) ============ */
-.chartCard table th.actionsCol, .chartCard table td.actionsCol { min-width: 260px; text-align: right; white-space: nowrap; }
-.summaryRow { margin-bottom: 16px; }
-@media (max-width: 1500px) {
-  .dashHeader { flex-wrap: wrap; }
-  .dashHeader .summaryRow { margin-left: 0 !important; flex: 1 1 100% !important; flex-wrap: wrap; }
-  .dashHeader .summaryRow .card { flex: 1 1 140px !important; min-width: 140px !important; }
-}
+/* ============ Dashboard ============ */
+.pageHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.pageHead h2 { margin: 0 !important; }
+
+.seg { display: inline-flex; flex: none; padding: 3px; gap: 2px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
+.seg button { background: transparent; border: none; border-radius: 7px; padding: 5px 12px; font-size: 0.82rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.seg button:hover:not(:disabled) { color: var(--text); }
+.seg button.on { background: var(--accent); color: var(--accent-ink); }
+
+.kpiGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.kpiLabel { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpiValue { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpiSub { font-size: 0.78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pos { color: var(--pos); }
+.neg { color: var(--neg); }
+.warn { color: var(--accent); }
+.muted { color: var(--muted); }
+
+.dashCharts { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; margin-bottom: 12px; align-items: start; }
+.cardHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; min-width: 0; }
+.cardHead h3 { margin: 0 !important; white-space: nowrap; }
+.filterBar { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.filterBar::-webkit-scrollbar { display: none; }
+.filterBar > * { flex: none; }
+.filterBar input[type='date'] { width: 136px; padding: 5px 8px; font-size: 0.82rem; }
+.filterBar select { padding: 6px 8px; font-size: 0.82rem; }
+.filterBar button { padding: 5px 10px; font-size: 0.82rem; }
+
+.chartMeta { position: absolute; top: 0; left: 0; right: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; pointer-events: none; white-space: nowrap; overflow: hidden; }
+.lowBadge { font-size: 0.75rem; font-weight: 600; color: var(--neg); background: rgba(248, 113, 113, 0.1); border: 1px solid rgba(248, 113, 113, 0.35); border-radius: 6px; padding: 1px 8px; margin-left: 50px; overflow: hidden; text-overflow: ellipsis; }
+.chartLegend { display: inline-flex; gap: 12px; margin-left: auto; font-size: 0.75rem; color: var(--muted); }
+.legendItem { display: inline-flex; align-items: center; gap: 4px; }
+
+.mtm { padding: 16px; }
+.mtm h3 { margin: 0 0 8px; font-size: 1rem; }
+.mtmRow { display: grid; grid-template-columns: 72px auto auto minmax(0, 1fr); align-items: baseline; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.mtmLabel { font-weight: 600; font-size: 0.85rem; }
+.mtmDelta { font-weight: 600; white-space: nowrap; }
+.mtmPct { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.mtmDetail { color: var(--muted); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.tableScroll { overflow: auto; max-height: 65vh; margin: 0 -16px -16px; }
+.dataTable th, .dataTable td { padding: 10px 14px; }
+.dataTable thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.dataTable .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dataTable .ctr { text-align: center; }
+.dataTable .nowrap { white-space: nowrap; }
+.dataTable .strong { font-weight: 600; }
+.dataTable .nameCell { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 @media (max-width: 1100px) {
-  .chartsRowTop { flex-direction: column !important; height: auto !important; }
-  .chartsRowTop > .chartCard { min-width: 0 !important; max-width: 100% !important; width: 100% !important; height: 420px !important; flex: none !important; }
-  .tableRow { flex-direction: column !important; }
-  .tableRow > .chartCard { width: 100% !important; min-width: 0 !important; max-width: 100% !important; }
-  .quickFilters { max-width: none !important; width: 100%; }
+  .dashCharts { grid-template-columns: minmax(0, 1fr); }
 }
+@media (max-width: 639px) {
+  .kpiGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .kpi { padding: 12px; }
+  .kpiValue { font-size: 1.15rem; }
+  .cardHead { flex-direction: column; align-items: stretch; gap: 8px; }
+  .filterBar { display: grid; grid-template-columns: 1fr 1fr; overflow: visible; }
+  .filterBar > .seg { grid-column: 1 / -1; justify-self: start; }
+  .filterBar > select, .filterBar > button { grid-column: 1 / -1; }
+  .filterBar input[type='date'] { width: 100%; }
+  .chartCard { padding: 12px; }
+  .mtmRow { grid-template-columns: 62px auto auto; row-gap: 2px; }
+  .mtmDetail { grid-column: 1 / -1; }
+  .tableScroll { margin: 0 -12px -12px; }
+  .chartLegend { gap: 8px; }
+}
+
+/* ============ Legacy Income/Expense table rules (replaced in Stage 3) ============ */
+.chartCard table th.actionsCol, .chartCard table td.actionsCol { min-width: 260px; text-align: right; white-space: nowrap; }
 @media (max-width: 800px) {
-  .chartsRowTop > .chartCard { height: auto !important; min-height: 420px; overflow-x: auto; }
-  .chartsRowTop .timelineSelect { flex-wrap: wrap; }
   .chartCard { overflow-x: auto; }
   .card { min-width: 0 !important; }
 }
