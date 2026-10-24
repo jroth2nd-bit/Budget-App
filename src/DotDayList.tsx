@@ -93,19 +93,17 @@ export default function DotDayList({ incomes, expenses, postedMap, onPostedChang
   const next10 = unpostedTxs.slice(0, 10);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {next10.length === 0 && <div style={{ color: '#aaa', fontSize: 12 }}>No upcoming transactions</div>}
+    <div className="dotList">
+      {next10.length === 0 && <div className="dotEmpty">No upcoming transactions</div>}
       {next10.map(tx => (
-        <div key={tx.id} style={{ padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.07)', fontSize: 12 }}>
-          <div style={{ color: tx.type === 'expense' ? '#ef4444' : '#10b981', fontWeight: 600, fontSize: 13, marginBottom: 2, wordBreak: 'break-word' }}>{tx.name}</div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ minWidth: 70, textAlign: 'left', color: '#fff', fontWeight: 400 }}>{tx.date.toLocaleDateString()}</div>
-            <div style={{ minWidth: 60, textAlign: 'right', color: tx.type === 'expense' ? '#ef4444' : '#10b981', fontWeight: 600 }}>
-              {tx.type === 'expense' ? '-' : '+'}${tx.amount.toFixed(2)}
-            </div>
-            <input type="checkbox" style={{ marginLeft: 8 }} checked={!!postedMap[tx.id]} onChange={() => onPostedChange(tx.id)} />
-          </div>
-        </div>
+        <label key={tx.id} className={`dotRow ${tx.type}`}>
+          <input type="checkbox" checked={!!postedMap[tx.id]} onChange={() => onPostedChange(tx.id)} />
+          <span className="dotMain">
+            <span className="dotName">{tx.name}</span>
+            <span className="dotDate">{tx.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+          </span>
+          <span className="dotAmt">{tx.type === 'expense' ? '-' : '+'}${tx.amount.toFixed(2)}</span>
+        </label>
       ))}
     </div>
   );

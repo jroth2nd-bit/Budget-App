@@ -1,6 +1,5 @@
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import React from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface ExpenseBarChartProps {
   data: Record<string, number>;
@@ -8,12 +7,6 @@ interface ExpenseBarChartProps {
   mode: 'percent' | 'dollar';
   transactions: any[];
 }
-
-const COLORS = [
-  '#facc15', '#f87171', '#60a5fa', '#34d399', '#a78bfa', '#fbbf24', '#f472b6', '#38bdf8', '#4ade80', '#fcd34d',
-  '#c084fc', '#fb7185', '#f472b6', '#818cf8', '#f9a8d4', '#bef264', '#fdba74', '#fca5a5', '#a3e635', '#fef08a'
-];
-
 
 function CustomTooltip({ active, payload, label, transactions }: any) {
   if (!active || !payload || !payload.length) return null;
@@ -81,22 +74,19 @@ export default function ExpenseBarChart({ data, total, mode, transactions }: Exp
       value: mode === 'percent' && total > 0 ? (value / total) * 100 : value
     }))
     .sort((a, b) => b.value - a.value);
+  const tick = { fill: '#8d93a1', fontSize: 12 };
 
   return (
-    <ResponsiveContainer width="100%" height={350}>
+    <ResponsiveContainer width="100%" height={Math.max(220, chartData.length * 30 + 40)}>
       <BarChart
         data={chartData}
         layout="vertical"
-        margin={{ top: 16, right: 32, left: 32, bottom: 16 }}
+        margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
       >
-        <XAxis type="number" domain={[0, mode === 'percent' ? 100 : 'dataMax']} tickFormatter={v => mode === 'percent' ? `${v.toFixed(0)}%` : `$${v.toFixed(2)}`} />
-        <YAxis type="category" dataKey="name" width={120} />
+        <XAxis type="number" tick={tick} axisLine={false} tickLine={false} domain={[0, mode === 'percent' ? 100 : 'dataMax']} tickFormatter={v => mode === 'percent' ? `${v.toFixed(0)}%` : `$${Math.round(v).toLocaleString()}`} />
+        <YAxis type="category" dataKey="name" width={96} tick={tick} axisLine={false} tickLine={false} interval={0} />
         <Tooltip content={<CustomTooltip transactions={transactions} />} cursor={{ fill: 'rgba(250,204,21,0.08)' }} />
-        <Bar dataKey="value" fill="#facc15">
-          {chartData.map((entry, idx) => (
-            <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
-          ))}
-        </Bar>
+        <Bar dataKey="value" fill="#facc15" radius={[0, 4, 4, 0]} barSize={14} />
       </BarChart>
     </ResponsiveContainer>
   );

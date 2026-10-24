@@ -8,14 +8,14 @@ import Login from './Login';
 import { supabase } from './supabase';
 import type { Session } from '@supabase/supabase-js';
 import DotDayList from './DotDayList';
-import './AppStyles.css';
+import { DashboardIcon, TransactionsIcon, AdminIcon, CalendarIcon } from './NavIcons';
+import TransactionsPage from './Transactions';
 import { Income, Expense, Tag } from './types';
 import * as XLSX from 'xlsx';
-import ExpenseBarChart from './ExpenseBarChart';
 import { AmountScope, DeleteScope, amountFor, applyAmountChange, applyDelete, dateKey, isSkipped, stepDate } from './recurrence';
 import { AmountScopeDialog, DeleteScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
 
-type Page = 'dashboard' | 'income' | 'expenses' | 'admin'
+type Page = 'dashboard' | 'transactions' | 'admin'
 
 const ICON_OPTIONS = ['💼','💰','💸','🏠','🛒','🍔','🚗','🎓','🎁','🩺','📈','💡','🧾','📦','🪙']
 
@@ -227,56 +227,37 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
     }
   }, []);
 
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
+  const navItems: Array<{ id: Page; label: string; icon: JSX.Element }> = [
+    { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+    { id: 'transactions', label: 'Transactions', icon: <TransactionsIcon /> },
+    { id: 'admin', label: 'Admin', icon: <AdminIcon /> },
+  ];
+  const renderNavItems = () => navItems.map(item => (
+    <button key={item.id} className={`navItem${page === item.id ? ' active' : ''}`} onClick={() => setPage(item.id)} title={item.label} aria-current={page === item.id ? 'page' : undefined}>
+      {item.icon}<span className="navLabel">{item.label}</span>
+    </button>
+  ));
+  const syncLabel = syncState === 'loading' ? 'Loading…' : syncState === 'saving' ? 'Saving…' : syncState === 'error' ? 'Sync failed' : 'Synced';
+
   return (
-    <div
-      className="appRoot"
-      style={{
-        minHeight: '100vh',
-        position: 'relative',
-        // Always use a valid image (fallback to default)
-        '--bg-url': `url('${BACKGROUNDS[background] || BACKGROUNDS.default}')`
-      } as React.CSSProperties}
-    >
+    <div className="appRoot">
       <nav className="sideNav">
-        <h1>Budget App</h1>
-        <button className={page === 'dashboard' ? 'active' : ''} onClick={() => setPage('dashboard')}>Dashboard</button>
-        <button className={page === 'income' ? 'active' : ''} onClick={() => setPage('income')}>Income</button>
-        <button className={page === 'expenses' ? 'active' : ''} onClick={() => setPage('expenses')}>Expenses</button>
-        <button className={page === 'admin' ? 'active' : ''} onClick={() => setPage('admin')}>Admin</button>
-
-        {/* DotDay Upcoming Transactions */}
-        <div className="navDotDay" style={{ margin: '24px 0 0 0', fontSize: 13, color: '#facc15', background: 'rgba(30,30,40,0.32)', borderRadius: 8, padding: 8, boxShadow: '0 2px 8px #0002' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, letterSpacing: 0.5 }}>DotDay</div>
-          <DotDayList
-            incomes={incomes}
-            expenses={expenses}
-            postedMap={postedMap}
-            onPostedChange={handlePostedChange}
-          />
-        </div>
-
-        {userId && (
-          <div className="navSync" style={{ marginTop: 'auto', fontSize: 12, opacity: 0.85, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-            <span>{syncState === 'loading' ? 'Loading…' : syncState === 'saving' ? 'Saving…' : syncState === 'error' ? '⚠ Sync failed' : '☁ Synced'}</span>
-            <button onClick={onSignOut} style={{ fontSize: 12, padding: '2px 8px' }}>Sign out</button>
-          </div>
-        )}
-        <div className="navBackground" style={{ marginTop: userId ? 12 : 'auto', fontSize: 12, opacity: 0.7 }}>
-          <span>Background:</span>
-          <select value={background} onChange={e => setBackground(e.target.value)} style={{ width: '100%' }}>
-            {Object.keys(BACKGROUND_LABELS)
-              .filter(bg => BACKGROUNDS[bg])
-              .map(bg => (
-                <option key={bg} value={bg}>
-                  {BACKGROUND_LABELS[bg] || bg.charAt(0).toUpperCase() + bg.slice(1)}
-                </option>
-              ))}
-          </select>
-        </div>
+        <div className="brand"><span className="brandMark">$</span><span className="brandName">Budget App</span></div>
+        {renderNavItems()}
       </nav>
 
-      {/* DotDayList: next 10 upcoming transactions (name, date, amount, posted checkbox) */}
-      <main className="mainContent" style={{ overflowY: 'auto', maxHeight: '100vh' }}>
+      <div className="mainArea">
+        <header className="topBar">
+          <div className="brand"><span className="brandMark">$</span><span>Budget App</span></div>
+          <span className="spacer" />
+          {userId && <span className={`syncBadge${syncState === 'error' ? ' err' : ''}`}>{syncLabel}</span>}
+          <button className="upcomingToggle navItem" style={{ width: 'auto' }} onClick={() => setUpcomingOpen(true)}><CalendarIcon /><span>Upcoming</span></button>
+          {userId && <button onClick={onSignOut}>Sign out</button>}
+        </header>
+
+      <main className="mainContent">
+
         {page === 'dashboard' && (
           <DashboardPage
             expenses={expenses}
@@ -288,26 +269,16 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
             lowBalanceThreshold={lowBalanceThreshold}
           />
         )}
-        {page === 'income' && (
-          <IncomePage
+        {page === 'transactions' && (
+          <TransactionsPage
             incomes={incomes}
-            tags={tags}
-            addIncome={income => setIncomes(prev => [...prev, income])}
-            updateIncome={income => setIncomes(prev => prev.map(i => i.id === income.id ? income : i))}
-            deleteIncome={id => setIncomes(prev => prev.filter(i => i.id !== id))}
-            postedMap={postedMap}
-            onPostedChange={handlePostedChange}
-          />
-        )}
-        {page === 'expenses' && (
-          <ExpensePage
             expenses={expenses}
             tags={tags}
-            addExpense={expense => setExpenses(prev => [...prev, expense])}
-            updateExpense={expense => setExpenses(prev => prev.map(e => e.id === expense.id ? expense : e))}
-            deleteExpense={id => setExpenses(prev => prev.filter(e => e.id !== id))}
             postedMap={postedMap}
             onPostedChange={handlePostedChange}
+            onAdd={(kind, item) => kind === 'income' ? setIncomes(prev => [...prev, item as Income]) : setExpenses(prev => [...prev, item as Expense])}
+            onUpdate={(kind, item) => kind === 'income' ? setIncomes(prev => prev.map(i => i.id === item.id ? item as Income : i)) : setExpenses(prev => prev.map(e => e.id === item.id ? item as Expense : e))}
+            onDelete={(kind, id) => kind === 'income' ? setIncomes(prev => prev.filter(i => i.id !== id)) : setExpenses(prev => prev.filter(e => e.id !== id))}
           />
         )}
         {page === 'admin' && (
@@ -350,6 +321,18 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
           />
         )}
       </main>
+      </div>
+
+      <div className={`scrim${upcomingOpen ? ' open' : ''}`} onClick={() => setUpcomingOpen(false)} />
+      <aside className={`upcoming${upcomingOpen ? ' open' : ''}`} aria-label="Upcoming transactions">
+        <div className="upcomingHead">
+          <h3>DotDay · Upcoming</h3>
+          <button className="upcomingClose" onClick={() => setUpcomingOpen(false)} aria-label="Close upcoming">✕</button>
+        </div>
+        <DotDayList incomes={incomes} expenses={expenses} postedMap={postedMap} onPostedChange={handlePostedChange} />
+      </aside>
+
+      <nav className="bottomNav">{renderNavItems()}</nav>
     </div>
   )
 }
@@ -366,6 +349,18 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
     // postedMap and onPostedChange are provided by props from App
     // Tab state for dashboard sections
     const [tab, setTab] = useState<'table' | 'charts'>('charts');
+    const [wide, setWide] = useState(() => window.matchMedia('(min-width: 1100px)').matches);
+    const [chartOpen, setChartOpen] = useState(() => localStorage.getItem('chartCollapsed') !== '1');
+    const toggleChart = () => setChartOpen(o => { localStorage.setItem('chartCollapsed', o ? '1' : '0'); return !o; });
+    const [medium, setMedium] = useState(() => window.matchMedia('(min-width: 640px)').matches);
+    useEffect(() => {
+      const mq = window.matchMedia('(min-width: 1100px)');
+      const mq2 = window.matchMedia('(min-width: 640px)');
+      const onChange = () => { setWide(mq.matches); setMedium(mq2.matches); };
+      mq.addEventListener('change', onChange);
+      mq2.addEventListener('change', onChange);
+      return () => { mq.removeEventListener('change', onChange); mq2.removeEventListener('change', onChange); };
+    }, []);
     // Date filter state for running balance table
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
@@ -463,32 +458,6 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
       return { ...tx, runningBalance: running };
     });
 
-    // Pie chart state and logic (must be after transactionsWithBalance is defined)
-    const [pieMode, setPieMode] = useState<'percent' | 'dollar'>('percent');
-    const [pieFrom, setPieFrom] = useState('');
-    const [pieTo, setPieTo] = useState('');
-    const filteredPieRows = transactionsWithBalance.filter((row: any) => {
-      if (row.expense <= 0) return false;
-      const dateVal = row.date.toISOString().slice(0,10);
-      return (!pieFrom || dateVal >= pieFrom) && (!pieTo || dateVal <= pieTo);
-    });
-    const pieExpenseByName = filteredPieRows.reduce((acc: Record<string, number>, row: any) => {
-      acc[row.category || row.name || 'Other'] = (acc[row.category || row.name || 'Other'] || 0) + row.expense;
-      return acc;
-    }, {});
-    const pieTotalExpense = filteredPieRows.reduce((sum: number, row: any) => sum + (row.expense || 0), 0);
-
-    // Calculate monthly income, expense, and net from running balance transactions
-    const today = new Date();
-    const thisMonth = today.getMonth();
-    const thisYear = today.getFullYear();
-    const monthlyRows = transactionsWithBalance.filter(row => {
-      const d = row.date;
-      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-    });
-    const monthlyIncome = monthlyRows.reduce((sum, row) => sum + (row.income || 0), 0);
-    const monthlyExpense = monthlyRows.reduce((sum, row) => sum + (row.expense || 0), 0);
-    const netMonthly = monthlyIncome - monthlyExpense;
     // Date filter for running balance table (for display only)
     // Only show unposted transactions in the table
     const filteredRows = transactionsWithBalance.filter(row => {
@@ -516,13 +485,13 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
       if (!item.isRecurring) {
         const date = new Date(item.startDate)
         date.setHours(0, 0, 0, 0)
-        if (date < today) {
+        if (date <= today) {
           pastBalance += amountFor(item, date)
         }
       } else {
         let current = new Date(item.startDate)
         current.setHours(0, 0, 0, 0)
-        while (current < today && (!item.endDate || dateKey(current) <= item.endDate)) {
+        while (current <= today && (!item.endDate || dateKey(current) <= item.endDate)) {
           if (isSkipped(item, current)) { stepDate(current, item.frequency); continue }
           pastBalance += amountFor(item, current)
           if (item.frequency === 'weekly') current.setDate(current.getDate() + 7)
@@ -540,13 +509,13 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
       if (!item.isRecurring) {
         const date = new Date(item.startDate)
         date.setHours(0, 0, 0, 0)
-        if (date < today) {
+        if (date <= today) {
           pastBalance -= amountFor(item, date)
         }
       } else {
         let current = new Date(item.startDate)
         current.setHours(0, 0, 0, 0)
-        while (current < today && (!item.endDate || dateKey(current) <= item.endDate)) {
+        while (current <= today && (!item.endDate || dateKey(current) <= item.endDate)) {
           if (isSkipped(item, current)) { stepDate(current, item.frequency); continue }
           pastBalance -= amountFor(item, current)
           if (item.frequency === 'weekly') current.setDate(current.getDate() + 7)
@@ -610,347 +579,130 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
   const windowRows = projectionRows.filter(row => row.date >= projStart && row.date <= projEnd)
   const upcomingRows = windowRows.filter(row => dateKey(row.date) >= todayKey)
 
+  const fmtMoney = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const fmtDay = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const currentBalance = startingBalance + calculatePastBalance()
+  const lowRow = lowBalanceThreshold ? upcomingRows.find(row => row.runningBalance < lowBalanceThreshold) : undefined
+  const minRow = upcomingRows.length ? upcomingRows.reduce((a, b) => (a.runningBalance < b.runningBalance ? a : b)) : undefined
+  const { nextPayday, nextPayAmount } = (() => {
+    const now = new Date()
+    let best: Date | null = null
+    let amount = 0
+    incomes.forEach(item => {
+      const d = new Date(item.startDate)
+      while (item.isRecurring && (!item.endDate || dateKey(d) <= item.endDate) && (d <= now || isSkipped(item, d))) stepDate(d, item.frequency)
+      if (d > now && (!item.endDate || dateKey(d) <= item.endDate) && !isSkipped(item, d)) {
+        if (!best || dateKey(d) < dateKey(best)) { best = new Date(d); amount = amountFor(item, d) }
+        else if (dateKey(d) === dateKey(best)) amount += amountFor(item, d)
+      }
+    })
+    return { nextPayday: best as Date | null, nextPayAmount: amount }
+  })()
+  const daysToPayday = nextPayday ? Math.ceil((nextPayday.getTime() - Date.now()) / 86400000) : null
+
   return (
-    <div>
-      <div className="dashHeader" style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 20 }}>
-        <h2 style={{ margin: 0, marginRight: 18, fontSize: 28 }}>Dashboard</h2>
-        {/* Tab Bar */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setTab('table')} style={{ padding: '6px 18px', borderRadius: 6, border: '1px solid #facc15', background: tab === 'table' ? '#facc15' : 'transparent', color: tab === 'table' ? '#222' : '#facc15', fontWeight: 600, cursor: 'pointer' }}>Table</button>
-          <button onClick={() => setTab('charts')} style={{ padding: '6px 18px', borderRadius: 6, border: '1px solid #facc15', background: tab === 'charts' ? '#facc15' : 'transparent', color: tab === 'charts' ? '#222' : '#facc15', fontWeight: 600, cursor: 'pointer' }}>Charts</button>
+    <div className="dash">
+      <div className="pageHead">
+        <h2>Dashboard</h2>
+        {!wide && <div className="seg" role="tablist">
+          <button className={tab === 'charts' ? 'on' : ''} onClick={() => setTab('charts')}>{medium ? 'Charts' : 'Upcoming'}</button>
+          <button className={tab === 'table' ? 'on' : ''} onClick={() => setTab('table')}>Table</button>
+        </div>}
+      </div>
+
+      <div className="kpiGrid">
+        <div className="kpi">
+          <span className="kpiLabel">Current Balance</span>
+          <span className={`kpiValue${currentBalance < 0 ? ' neg' : ''}`}>{fmtMoney(currentBalance)}</span>
+          <span className="kpiSub">Today</span>
         </div>
-        {/* Summary cards always visible */}
-        <div className="summaryRow" style={{ display: 'flex', flexDirection: 'row', gap: 16, margin: 0, marginLeft: 24, flex: 1 }}>
-          <div className="card" style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.2 }}>
-            <span style={{ fontSize: 14, opacity: 0.85 }}>Monthly Income</span>
-            <span style={{ fontSize: 18, fontWeight: 600 }}>${monthlyIncome.toFixed(2)}</span>
-          </div>
-          <div className="card" style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.2 }}>
-            <span style={{ fontSize: 14, opacity: 0.85 }}>Monthly Expense</span>
-            <span style={{ fontSize: 18, fontWeight: 600 }}>${monthlyExpense.toFixed(2)}</span>
-          </div>
-          <div className="card" style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.2 }}>
-            <span style={{ fontSize: 14, opacity: 0.85 }}>Net Monthly</span>
-            <span style={{ fontSize: 18, fontWeight: 600 }}>${netMonthly.toFixed(2)}</span>
-          </div>
-          <div className="card" style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.2 }}>
-            <span style={{ fontSize: 14, opacity: 0.85 }}>Current Balance</span>
-            <span style={{ fontSize: 18, fontWeight: 600 }}>${(startingBalance + calculatePastBalance()).toFixed(2)}</span>
-          </div>
+        <div className="kpi">
+          <span className="kpiLabel">Upcoming Low Balance</span>
+          <span className={`kpiValue${lowRow ? ' warn' : ''}`}>{lowRow ? fmtMoney(lowRow.runningBalance) : '—'}</span>
+          <span className="kpiSub">{lowRow ? fmtDay(lowRow.date) : 'None ahead'}</span>
+        </div>
+        <div className="kpi">
+          <span className="kpiLabel">Lowest Projected</span>
+          <span className={`kpiValue${minRow && minRow.runningBalance < 0 ? ' neg' : ''}`}>{minRow ? fmtMoney(minRow.runningBalance) : '—'}</span>
+          <span className="kpiSub">{minRow ? `${fmtDay(minRow.date)} · ${timelineLabel}` : timelineLabel}</span>
+        </div>
+        <div className="kpi">
+          <span className="kpiLabel">Next Paycheck</span>
+          <span className="kpiValue pos">{daysToPayday === null ? '—' : `${daysToPayday} day${daysToPayday !== 1 ? 's' : ''}`}</span>
+          <span className="kpiSub">{nextPayday ? `${fmtDay(nextPayday)} · ${fmtMoney(nextPayAmount)}` : 'None scheduled'}</span>
         </div>
       </div>
 
-      {tab === 'charts' && (
-        <>
-        <div className="chartsRow chartsRowTop" style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', gap: 24, marginTop: 0, marginBottom: 24, height: 420 }}>
-          <div className="chartCard" style={{ flex: 2, minWidth: 0, marginRight: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <h3 style={{ margin: 0 }}>Balance Projection ({timeline === '30d' ? '30 Days' : timeline})</h3>
-              <div className="timelineSelect" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label htmlFor="timeline" className="timelineLabel">Timeline:</label>
-                <select id="timeline" value={timeline} onChange={e => setTimeline(e.target.value as '30d' | '3m' | '6m' | '12m')}>
-                  <option value="30d">30 Days</option>
-                  <option value="3m">3 Months</option>
-                  <option value="6m">6 Months</option>
-                  <option value="12m">12 Months</option>
-                </select>
-                <label style={{ marginLeft: 12, marginRight: 4 }}>From:</label>
-                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ marginRight: 8 }} />
-                <label style={{ marginRight: 4 }}>To:</label>
-                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-              </div>
-            </div>
-            <BalanceChart data={projection} lowBalanceThreshold={lowBalanceThreshold} />
-          </div>
-          <div className="chartCard" style={{ flex: 1, minWidth: 320, maxWidth: 500, marginLeft: 0, overflowX: 'auto', height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <h3 style={{ margin: 0 }}>Expenses by Category</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', rowGap: 8, justifyContent: 'flex-end', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(30,36,42,0.10)', borderRadius: 6, padding: '2px 8px' }}>
-                  <button
-                    style={{ background: pieMode === 'percent' ? '#facc15' : '#222', color: pieMode === 'percent' ? '#222' : '#facc15', border: '1px solid #facc15', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontWeight: 600 }}
-                    onClick={() => setPieMode('percent')}
-                  >% </button>
-                  <button
-                    style={{ background: pieMode === 'dollar' ? '#facc15' : '#222', color: pieMode === 'dollar' ? '#222' : '#facc15', border: '1px solid #facc15', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontWeight: 600 }}
-                    onClick={() => setPieMode('dollar')}
-                  >$</button>
+      {(wide || tab === 'charts') && (
+        <div className={`dashCharts${wide && chartOpen ? ' split' : ''}`}>
+        {medium && (
+          <div className="chartCard balanceCard">
+            <div className="cardHead">
+              <h3><button className="collapseBtn" onClick={toggleChart} aria-expanded={chartOpen} aria-label={chartOpen ? 'Collapse chart' : 'Expand chart'}><span className={`chev${chartOpen ? ' open' : ''}`}>›</span>Balance Projection</button></h3>
+              {chartOpen && <div className="filterBar">
+                <div className="seg">
+                  {([['30d', '30D'], ['3m', '3M'], ['6m', '6M'], ['12m', '12M']] as const).map(([v, l]) => (
+                    <button key={v} className={timeline === v ? 'on' : ''} onClick={() => setTimeline(v)}>{l}</button>
+                  ))}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <label style={{ fontSize: 12, marginRight: 2 }}>From:</label>
-                    <input type="date" value={pieFrom} onChange={e => setPieFrom(e.target.value)} style={{ fontSize: 12, minWidth: 0, width: 110 }} />
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-                    <label style={{ fontSize: 12, marginRight: 2 }}>To:</label>
-                    <input type="date" value={pieTo} onChange={e => setPieTo(e.target.value)} style={{ fontSize: 12, minWidth: 0, width: 110 }} />
-                  </div>
-                </div>
-              </div>
+                <input type="date" aria-label="From date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                <input type="date" aria-label="To date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+              </div>}
             </div>
-            <ExpenseBarChart data={pieExpenseByName} total={pieTotalExpense} mode={pieMode} transactions={filteredPieRows} />
+            {chartOpen && <BalanceChart data={projection} lowBalanceThreshold={lowBalanceThreshold} fitViewport={wide} />}
+          </div>
+        )}
+          <div className="chartCard upcomingCard">
+            <div className="cardHead"><h3>Upcoming</h3></div>
+            <DotDayList incomes={incomes} expenses={expenses} postedMap={postedMap} onPostedChange={onPostedChange} />
           </div>
         </div>
-        {/* Highlights/Insights: Two rows of three cards, with Month-to-Month Change on its own row */}
-        <div style={{ display: 'flex', gap: 32, margin: '0 0 12px 0', justifyContent: 'center', alignItems: 'stretch', flexWrap: 'wrap' }}>
-          {/* Row 1 */}
-          <div style={{ display: 'flex', gap: 32, flex: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
-            {/* Biggest Expense This Month */}
-            <div className="card" style={{ minWidth: 220, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(37,44,51,0.48)' }}>
-              <span style={{ fontSize: 15, opacity: 0.85 }}>Biggest Expense ({timelineLabel})</span>
-              <span style={{ fontSize: 19, fontWeight: 700, color: '#ef4444', marginTop: 2 }}>
-                {(() => {
-                  const monthlyRows = windowRows.filter(row => row.expense > 0);
-                  if (monthlyRows.length === 0) return <span style={{ color: '#aaa' }}>—</span>;
-                  const max = monthlyRows.reduce((a, b) => (a.expense > b.expense ? a : b));
-                  return <>{max.name} <span style={{ color: '#fff', fontWeight: 500 }}>-${max.expense.toFixed(2)}</span></>;
-                })()}
-              </span>
-            </div>
-            {/* Top Category This Month */}
-            <div className="card" style={{ minWidth: 220, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(37,44,51,0.48)' }}>
-              <span style={{ fontSize: 15, opacity: 0.85 }}>Top Category ({timelineLabel})</span>
-              <span style={{ fontSize: 19, fontWeight: 700, color: '#facc15', marginTop: 2 }}>
-                {(() => {
-                  const monthlyRows = windowRows.filter(row => row.expense > 0);
-                  if (monthlyRows.length === 0) return <span style={{ color: '#aaa' }}>—</span>;
-                  const byCat = monthlyRows.reduce((acc: Record<string, number>, row) => {
-                    acc[row.category || 'Other'] = (acc[row.category || 'Other'] || 0) + row.expense;
-                    return acc;
-                  }, {});
-                  const topCat = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
-                  return <>{topCat[0]} <span style={{ color: '#fff', fontWeight: 500 }}>-${topCat[1].toFixed(2)}</span></>;
-                })()}
-              </span>
-            </div>
-            {/* Upcoming Low Balance Date */}
-            <div className="card" style={{ minWidth: 220, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(37,44,51,0.48)' }}>
-              <span style={{ fontSize: 15, opacity: 0.85 }}>Upcoming Low Balance Date</span>
-              <span style={{ fontSize: 19, fontWeight: 700, color: '#facc15', marginTop: 2 }}>
-                {(() => {
-                  if (!lowBalanceThreshold || !upcomingRows.length) return <span style={{ color: '#aaa' }}>—</span>;
-                  const upcoming = upcomingRows.find(row => row.runningBalance < lowBalanceThreshold);
-                  if (!upcoming) return <span style={{ color: '#aaa' }}>—</span>;
-                  return <>{upcoming.date.toLocaleDateString()} <span style={{ color: '#fff', fontWeight: 500 }}>${upcoming.runningBalance.toFixed(2)}</span></>;
-                })()}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 32, margin: '0 0 12px 0', justifyContent: 'center', alignItems: 'stretch', flexWrap: 'wrap' }}>
-          {/* Row 2 */}
-          <div style={{ display: 'flex', gap: 32, flex: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
-            {/* Lowest Projected Balance (Next 30 Days) */}
-            <div className="card" style={{ minWidth: 220, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(37,44,51,0.48)' }}>
-              <span style={{ fontSize: 15, opacity: 0.85 }}>Lowest Projected Balance ({timelineLabel})</span>
-              <span style={{ fontSize: 19, fontWeight: 700, color: '#ef4444', marginTop: 2 }}>
-                {(() => {
-                  const next30 = upcomingRows;
-                  if (!next30.length) return <span style={{ color: '#aaa' }}>—</span>;
-                  const min = next30.reduce((a, b) => (a.runningBalance < b.runningBalance ? a : b));
-                  return <>{min.date.toLocaleDateString()} <span style={{ color: '#fff', fontWeight: 500 }}>${min.runningBalance.toFixed(2)}</span></>;
-                })()}
-              </span>
-            </div>
-            {/* Days Until Next Paycheck */}
-            <div className="card" style={{ minWidth: 220, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(37,44,51,0.48)' }}>
-              <span style={{ fontSize: 15, opacity: 0.85 }}>Days Until Next Paycheck</span>
-              <span style={{ fontSize: 19, fontWeight: 700, color: '#10b981', marginTop: 2 }}>
-                {(() => {
-                  const now = new Date();
-                  const futureIncomes = incomes
-                    .map(item => {
-                      if (!item.isRecurring) {
-                        const d = new Date(item.startDate);
-                        return d > now ? d : null;
-                      } else {
-                        let d = new Date(item.startDate);
-                        while (d <= now) {
-                          if (item.frequency === 'weekly') d.setDate(d.getDate() + 7);
-                          else if (item.frequency === 'biweekly') d.setDate(d.getDate() + 14);
-                          else if (item.frequency === 'bimonthly') d.setMonth(d.getMonth() + 2);
-                          else if (item.frequency === 'monthly') d.setMonth(d.getMonth() + 1);
-                          else if (item.frequency === 'quarterly') d.setMonth(d.getMonth() + 3);
-                          else if (item.frequency === 'semiannual') d.setMonth(d.getMonth() + 6);
-                          else if (item.frequency === 'annual') d.setFullYear(d.getFullYear() + 1);
-                        }
-                        return d;
-                      }
-                    })
-                    .filter(Boolean) as Date[];
-                  if (!futureIncomes.length) return <span style={{ color: '#aaa' }}>—</span>;
-                  const next = futureIncomes.reduce((a, b) => (a < b ? a : b));
-                  const days = Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                  return <>{days} day{days !== 1 ? 's' : ''} ({next.toLocaleDateString()})</>;
-                })()}
-              </span>
-            </div>
-            {/* Upcoming Large Expense */}
-            <div className="card" style={{ minWidth: 220, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(37,44,51,0.48)' }}>
-              <span style={{ fontSize: 15, opacity: 0.85 }}>Upcoming Large Expense ({timelineLabel})</span>
-              <span style={{ fontSize: 19, fontWeight: 700, color: '#ef4444', marginTop: 2 }}>
-                {(() => {
-                  const now = new Date();
-                  // Large = > $200, can adjust threshold
-                  const futureLarge = upcomingRows.filter(row => row.date > now && row.expense > 200);
-                  if (!futureLarge.length) return <span style={{ color: '#aaa' }}>—</span>;
-                  const next = futureLarge.reduce((a, b) => (a.date < b.date ? a : b));
-                  return <>{next.name} <span style={{ color: '#fff', fontWeight: 500 }}>-${next.expense.toFixed(2)}</span> <span style={{ color: '#aaa', fontWeight: 400, fontSize: 15 }}>({next.date.toLocaleDateString()})</span></>;
-                })()}
-              </span>
-            </div>
-          </div>
-        </div>
-        {/* Month-to-Month Change: Full width row */}
-        <div style={{ width: '100%', margin: '0 0 24px 0' }}>
-          <div className="card" style={{ width: '100%', minWidth: 320, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(37,44,51,0.48)' }}>
-            <span style={{ fontSize: 15, opacity: 0.85 }}>Month-to-Month Change</span>
-            <div style={{ fontSize: 19, fontWeight: 700, color: '#38bdf8', marginTop: 2, textAlign: 'center', lineHeight: 1.25, width: '100%' }}>
-              {(() => {
-                const now = new Date();
-                const thisMonth = now.getMonth();
-                const thisYear = now.getFullYear();
-                const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
-                const lastYear = thisMonth === 0 ? thisYear - 1 : thisYear;
-                const thisMonthIncomeRows = transactionsWithBalance.filter(row => row.date.getMonth() === thisMonth && row.date.getFullYear() === thisYear && row.income > 0);
-                const thisMonthExpenseRows = transactionsWithBalance.filter(row => row.date.getMonth() === thisMonth && row.date.getFullYear() === thisYear && row.expense > 0);
-                const lastMonthIncomeRows = transactionsWithBalance.filter(row => row.date.getMonth() === lastMonth && row.date.getFullYear() === lastYear && row.income > 0);
-                const lastMonthExpenseRows = transactionsWithBalance.filter(row => row.date.getMonth() === lastMonth && row.date.getFullYear() === lastYear && row.expense > 0);
-                const thisMonthIncome = thisMonthIncomeRows.reduce((sum, row) => sum + row.income, 0);
-                const thisMonthExpense = thisMonthExpenseRows.reduce((sum, row) => sum + row.expense, 0);
-                const lastMonthIncome = lastMonthIncomeRows.reduce((sum, row) => sum + row.income, 0);
-                const lastMonthExpense = lastMonthExpenseRows.reduce((sum, row) => sum + row.expense, 0);
-                const incomeChange = lastMonthIncome ? ((thisMonthIncome - lastMonthIncome) / lastMonthIncome) * 100 : null;
-                const expenseChange = lastMonthExpense ? ((thisMonthExpense - lastMonthExpense) / lastMonthExpense) * 100 : null;
-                const incomeDollar = thisMonthIncome - lastMonthIncome;
-                const expenseDollar = thisMonthExpense - lastMonthExpense;
-                // Find top contributors to change
-                function summarizeChange(
-                  thisRows: { name: string; income: number; expense: number }[],
-                  lastRows: { name: string; income: number; expense: number }[],
-                  type: 'income' | 'expense'
-                ) {
-                  const byNameThis = thisRows.reduce((acc: Record<string, number>, row) => {
-                    acc[row.name] = (acc[row.name] || 0) + (type === 'income' ? row.income : row.expense);
-                    return acc;
-                  }, {});
-                  const byNameLast = lastRows.reduce((acc: Record<string, number>, row) => {
-                    acc[row.name] = (acc[row.name] || 0) + (type === 'income' ? row.income : row.expense);
-                    return acc;
-                  }, {});
-                  const allNames = Array.from(new Set([...Object.keys(byNameThis), ...Object.keys(byNameLast)]));
-                  const diffs = allNames.map(name => ({
-                    name,
-                    diff: (byNameThis[name] || 0) - (byNameLast[name] || 0),
-                    thisVal: byNameThis[name] || 0,
-                    lastVal: byNameLast[name] || 0
-                  }));
-                  // Only show significant changes
-                  const top = diffs.filter(d => Math.abs(d.diff) > 0.01).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 2);
-                  return top.map(d => {
-                    if (d.lastVal === 0) return `New: ${d.name} $${d.thisVal.toFixed(2)}`;
-                    if (d.thisVal === 0) return `Ended: ${d.name} $${d.lastVal.toFixed(2)}`;
-                    return `${d.name} ${d.diff > 0 ? '+' : ''}$${d.diff.toFixed(2)}`;
-                  }).join('; ');
-                }
-                return <>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                      <span style={{ color: '#10b981' }}>Income: </span>
-                      {lastMonthIncome === 0 ? '—' : <>
-                        {incomeDollar >= 0 ? '+' : ''}${incomeDollar.toFixed(2)}
-                        <span style={{ marginLeft: 4, color: '#aaa', fontWeight: 400, fontSize: 16 }}>
-                          ({incomeChange! >= 0 ? '+' : ''}{incomeChange?.toFixed(1)}%)
-                        </span>
-                        {incomeDollar !== 0 && (
-                          <span style={{ fontSize: 13, color: '#fffbe6', marginLeft: 10, fontWeight: 400, opacity: 0.92, lineHeight: 1.2 }}>
-                            {summarizeChange(thisMonthIncomeRows, lastMonthIncomeRows, 'income')}
-                          </span>
-                        )}
-                      </>}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                      <span style={{ color: '#ef4444' }}>Expense: </span>
-                      {lastMonthExpense === 0 ? '—' : <>
-                        {expenseDollar >= 0 ? '+' : ''}${expenseDollar.toFixed(2)}
-                        <span style={{ marginLeft: 4, color: '#aaa', fontWeight: 400, fontSize: 16 }}>
-                          ({expenseChange! >= 0 ? '+' : ''}{expenseChange?.toFixed(1)}%)
-                        </span>
-                        {expenseDollar !== 0 && (
-                          <span style={{ fontSize: 13, color: '#fffbe6', marginLeft: 10, fontWeight: 400, opacity: 0.92, lineHeight: 1.2 }}>
-                            {summarizeChange(thisMonthExpenseRows, lastMonthExpenseRows, 'expense')}
-                          </span>
-                        )}
-                      </>}
-                    </div>
-                  </div>
-                </>;
-              })()}
-            </div>
-          </div>
-        </div>
-        </>
       )}
 
-      {tab === 'table' && (
-        <div className="chartsRow tableRow" style={{ marginTop: 40, display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 32 }}>
-          <div className="chartCard" style={{ width: '60vw', minWidth: 420, maxWidth: 1100, overflowX: 'auto', marginLeft: 0, marginRight: 'auto', maxHeight: '60vh', overflowY: 'auto', paddingBottom: 32 }}>
+      {!wide && tab === 'table' && (
+        <div className="chartCard">
+          <div className="cardHead">
             <h3>Running Balance</h3>
-            {/* Only show unposted transactions, but allow posting from here */}
-            <table style={{ width: '100%', margin: '0 auto', fontSize: 15, borderCollapse: 'collapse', tableLayout: 'auto' }}>
+            <div className="filterBar">
+              <input type="date" aria-label="From date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+              <input type="date" aria-label="To date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+              <select aria-label="Category" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+                <option value="">All categories</option>
+                {[...new Set(transactionsWithBalance.map(row => row.category).filter(Boolean))].map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              {(dateFrom || dateTo || categoryFilter) && <button onClick={() => { setDateFrom(''); setDateTo(''); setCategoryFilter(''); }}>Clear</button>}
+            </div>
+          </div>
+          <div className="tableScroll">
+            <table className="dataTable">
               <thead>
-                <tr style={{ color: '#facc15', background: 'rgba(50,60,70,0.3)' }}>
-                  <th style={{ padding: '10px 18px' }}>Date</th>
-                  <th style={{ padding: '10px 18px' }}>Name</th>
-                  <th style={{ padding: '10px 18px' }}>Category</th>
-                  <th style={{ padding: '10px 18px' }}>Income</th>
-                  <th style={{ padding: '10px 18px' }}>Expense</th>
-                  <th style={{ padding: '10px 18px' }}>Balance</th>
-                  <th style={{ padding: '10px 18px' }}>Posted</th>
+                <tr>
+                  <th>Date</th>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th className="num">Income</th>
+                  <th className="num">Expense</th>
+                  <th className="num">Balance</th>
+                  <th className="ctr">Posted</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, idx) => (
-                  <tr key={row.id} style={idx === rows.length - 1 ? { borderBottom: '2px solid #facc15' } : {}}>
-                    <td style={{ padding: '10px 18px', textAlign: 'center' }}>{row.date.toLocaleDateString()}</td>
-                    <td style={{ padding: '10px 18px', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</td>
-                    <td style={{ padding: '10px 18px', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.category}</td>
-                    <td style={{ padding: '10px 18px', color: row.income > 0 ? '#10b981' : undefined, textAlign: 'right' }}>{row.income > 0 ? `+$${row.income.toFixed(2)}` : ''}</td>
-                    <td style={{ padding: '10px 18px', color: row.expense > 0 ? '#ef4444' : undefined, textAlign: 'right' }}>{row.expense > 0 ? `-$${row.expense.toFixed(2)}` : ''}</td>
-                    <td
-                      style={{
-                        padding: '10px 18px',
-                        fontWeight: 600,
-                        color: row.runningBalance < 0 ? '#ef4444' : row.runningBalance < lowBalanceThreshold ? '#facc15' : '#10b981',
-                        background: row.runningBalance < lowBalanceThreshold ? 'rgba(250,204,21,0.18)' : undefined,
-                        textAlign: 'right'
-                      }}
-                    >
-                      ${row.runningBalance.toFixed(2)}
-                    </td>
-                    <td style={{ padding: '10px 18px', textAlign: 'center' }}>
-                      <input type="checkbox" checked={!!postedMap[row.id]} onChange={() => onPostedChange(row.id)} />
-                    </td>
+                {rows.map(row => (
+                  <tr key={row.id}>
+                    <td className="nowrap">{row.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                    <td className="nameCell">{row.name}</td>
+                    <td className="muted nowrap">{row.category}</td>
+                    <td className="num pos">{row.income > 0 ? `+${fmtMoney(row.income)}` : ''}</td>
+                    <td className="num neg">{row.expense > 0 ? `-${fmtMoney(row.expense)}` : ''}</td>
+                    <td className={`num strong ${row.runningBalance < 0 ? 'neg' : row.runningBalance < lowBalanceThreshold ? 'warn' : ''}`}>{fmtMoney(row.runningBalance)}</td>
+                    <td className="ctr"><input type="checkbox" checked={!!postedMap[row.id]} onChange={() => onPostedChange(row.id)} /></td>
                   </tr>
                 ))}
+                {rows.length === 0 && <tr><td colSpan={7} className="muted ctr">No transactions</td></tr>}
               </tbody>
             </table>
-          </div>
-          {/* Quick Filters Panel */}
-          <div className="quickFilters" style={{ minWidth: 200, maxWidth: 260, background: 'rgba(30,36,42,0.65)', border: '1px solid #facc15', borderRadius: 12, padding: 18, color: '#facc15', boxShadow: '0 2px 8px #0002', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Quick Filters</div>
-            <label style={{ fontSize: 13, marginBottom: 2 }}>From</label>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ fontSize: 13, marginBottom: 8, background: '#222', color: '#facc15', border: '1px solid #facc15', borderRadius: 4, padding: '2px 6px' }} />
-            <label style={{ fontSize: 13, marginBottom: 2 }}>To</label>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ fontSize: 13, marginBottom: 8, background: '#222', color: '#facc15', border: '1px solid #facc15', borderRadius: 4, padding: '2px 6px' }} />
-            <label style={{ fontSize: 13, marginBottom: 2 }}>Category</label>
-            <select className="admin-select" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-              <option value="">All</option>
-              {[...new Set(transactionsWithBalance.map(row => row.category).filter(Boolean))].map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-            <button onClick={() => { setDateFrom(''); setDateTo(''); setCategoryFilter(''); }} style={{ marginTop: 8, background: '#facc15', color: '#222', border: 'none', borderRadius: 6, padding: '6px 0', fontWeight: 600, cursor: 'pointer' }}>Clear Filters</button>
           </div>
         </div>
       )}
@@ -2044,7 +1796,13 @@ function ImportData({ addIncomes, addExpenses }: { incomes: Income[]; expenses: 
   )
 }
 
-function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date; value: number; type?: 'income' | 'expense'; amount?: number; posted?: boolean; name?: string; category?: string; icon?: string }))[]; lowBalanceThreshold?: number }) {
+function BalanceChart({ data, lowBalanceThreshold = 0, fitViewport = false }: { data: (({ date: Date; value: number; type?: 'income' | 'expense'; amount?: number; posted?: boolean; name?: string; category?: string; icon?: string }))[]; lowBalanceThreshold?: number; fitViewport?: boolean }) {
+  const [viewH, setViewH] = useState(() => window.innerHeight)
+  useEffect(() => {
+    const onResize = () => setViewH(window.innerHeight)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null)
   // No zoom window or drag state
     // Helper: find closest point, prioritizing negative balances if within threshold
@@ -2071,8 +1829,9 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
       return minIdx;
     };
   const [containerWidth, setContainerWidth] = useState(900);
-  const height = 380;
-  const padding = { top: 36, right: 20, bottom: 50, left: 60 };
+  const narrow = containerWidth < 520;
+  const height = fitViewport ? Math.max(260, Math.min(560, viewH - 390)) : narrow ? 280 : containerWidth > 860 ? 420 : 340;
+  const padding = { top: 30, right: 26, bottom: 34, left: narrow ? 50 : 58 };
   const chartWidth = containerWidth - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2172,22 +1931,24 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
       onMouseLeave={() => setHoveredPoint(null)}
       // Remove drag/zoom handlers
     >
-      {showLowCallout && (
-        <div style={{ position: 'absolute', top: 2, left: padding.left, background: 'rgba(239,68,68,0.16)', border: '1px solid #ef4444', borderRadius: 6, padding: '2px 10px', fontSize: 13, fontWeight: 700, color: '#fff', pointerEvents: 'none', zIndex: 1 }}>
-          Lowest: {formatDate(coords[lowestIdx].date)} | {coords[lowestIdx].value < 0 ? '-' : ''}${Math.abs(coords[lowestIdx].value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </div>
-      )}
-      <div style={{ position: 'absolute', top: 4, right: 12, display: 'flex', gap: 16, fontSize: 12, color: '#facc15', pointerEvents: 'none', zIndex: 1 }}>
-        {[
-          { label: 'Income', color: '#10b981', posted: false },
-          { label: 'Expense (not posted)', color: '#ef4444', posted: false },
-          { label: 'Expense (posted)', color: '#ef4444', posted: true }
-        ].map(item => (
-          <span key={item.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <svg width="14" height="14"><circle cx="7" cy="7" r="5" fill={item.posted ? '#1f2933' : item.color} stroke={item.posted ? item.color : '#000'} strokeWidth={item.posted ? 2.5 : 1.2} /></svg>
-            {item.label}
+      <div className="chartMeta">
+        {showLowCallout && (
+          <span className="lowBadge">
+            Lowest: {formatDate(coords[lowestIdx].date)} | {coords[lowestIdx].value < 0 ? '-' : ''}${Math.abs(coords[lowestIdx].value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
-        ))}
+        )}
+        <span className="chartLegend">
+          {[
+            { label: 'Income', color: '#34d399', posted: false },
+            { label: 'Expense', color: '#f87171', posted: false },
+            { label: 'Posted', color: '#f87171', posted: true }
+          ].map(item => (
+            <span key={item.label} className="legendItem">
+              <svg width="12" height="12"><circle cx="6" cy="6" r="4" fill={item.posted ? '#13151a' : item.color} stroke={item.color} strokeWidth={item.posted ? 2 : 1} /></svg>
+              {item.label}
+            </span>
+          ))}
+        </span>
       </div>
       <svg width={containerWidth} height={height} viewBox={`0 0 ${containerWidth} ${height}`} className="chartSvg balance-chart" preserveAspectRatio="xMinYMid meet">
         {/* Y Axis */}

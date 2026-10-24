@@ -18,12 +18,12 @@ export default function Login() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#14161b' }}>
-      <form onSubmit={submit} className="chartCard" style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 12, padding: 24 }}>
-        <h2 style={{ margin: 0, color: '#facc15' }}>Budget App</h2>
+    <div className="loginWrap">
+      <form onSubmit={submit} className="card loginCard">
+        <h2><span className="brandMark">$</span>Budget App</h2>
         <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" required />
         <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required />
-        {error && <div style={{ color: '#f87171', fontSize: 13 }}>{error}</div>}
+        {error && <div style={{ color: 'var(--neg)', fontSize: 13 }}>{error}</div>}
         <button type="submit" disabled={busy}>{busy ? 'Signing in...' : 'Sign in'}</button>
       </form>
     </div>
