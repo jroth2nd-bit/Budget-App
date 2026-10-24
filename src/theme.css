@@ -240,6 +240,14 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 .collapseBtn:focus-visible { outline: 2px solid var(--accent, #f5c518); outline-offset: 2px; border-radius: 4px; }
 .chev { display: inline-block; transition: transform .15s; font-size: 1.2em; line-height: 1; color: var(--accent, #f5c518); }
 .chev.open { transform: rotate(90deg); }
+
+/* Desktop: KPI cards stacked on the left, chart on the right */
+@media (min-width: 1100px) {
+  .dash { display: grid; grid-template-columns: 260px minmax(0, 1fr); column-gap: 12px; align-items: start; }
+  .dash > .pageHead, .dash > .chartCard { grid-column: 1 / -1; }
+  .dash > .kpiGrid { grid-column: 1; grid-row: 2; grid-template-columns: minmax(0, 1fr); margin-bottom: 12px; }
+  .dash > .dashCharts { grid-column: 2; grid-row: 2; }
+}
 .cardHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; min-width: 0; }
 .cardHead h3 { margin: 0 !important; white-space: nowrap; }
 .filterBar { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
