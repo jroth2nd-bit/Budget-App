@@ -280,11 +280,89 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
   .chartLegend { gap: 8px; }
 }
 
-/* ============ Legacy Income/Expense table rules (replaced in Stage 3) ============ */
-.chartCard table th.actionsCol, .chartCard table td.actionsCol { min-width: 260px; text-align: right; white-space: nowrap; }
-@media (max-width: 800px) {
-  .chartCard { overflow-x: auto; }
-  .card { min-width: 0 !important; }
+/* ============ Transactions ============ */
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+button.danger { color: var(--neg); border-color: rgba(248, 113, 113, 0.45); background: rgba(248, 113, 113, 0.08); }
+button.active { border-color: var(--accent); color: var(--accent); }
+
+.tx .spacer { flex: 1; }
+.txBar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; min-width: 0; }
+.txBar > * { flex: none; }
+.txBar .txSearch { flex: 1 1 140px; min-width: 0; }
+.txBar select, .txBar button { padding: 7px 10px; font-size: 0.88rem; }
+.txFilters, .txAdd { margin-bottom: 10px; }
+.txFilters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.txFilters label, .txAddGrid label { display: flex; flex-direction: column; gap: 4px; font-size: 0.74rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; min-width: 0; }
+.txFilters input, .txFilters select, .txAddGrid input, .txAddGrid select { width: 100%; text-transform: none; letter-spacing: normal; font-size: 0.9rem; }
+.txClear { justify-self: start; }
+.txAdd { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.txAddGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.txAddFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.txAddFoot .check { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+.txMeta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; min-height: 32px; }
+.txMeta button { padding: 5px 12px; font-size: 0.82rem; }
+
+.txWrap { container-type: inline-size; }
+.txList { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.txRow {
+  display: grid; align-items: center; column-gap: 8px;
+  grid-template-columns: 28px 104px minmax(0, 1fr) 130px 96px 104px 52px minmax(40px, auto);
+  padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 0.9rem; min-width: 0;
+}
+.txRow:last-child { border-bottom: none; }
+.txRow > div { min-width: 0; }
+.txRow:not(.txHead):hover { background: rgba(255, 255, 255, 0.025); }
+.txHead { position: sticky; top: var(--topbar-h); z-index: 2; background: var(--surface-2); border-radius: var(--radius) var(--radius) 0 0; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.txRow .cDate, .txRow .cCat, .txRow .cFreq { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.txRow .cName { overflow: hidden; }
+.txName { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.recurMark { color: var(--accent); }
+.txRow .cMeta { display: none; }
+.txRow .cAmt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+.txRow .cChk, .txRow .cPost { display: flex; justify-content: center; }
+.txRow .cAct { position: relative; display: flex; justify-content: flex-end; gap: 6px; }
+.txRow .cAct button { padding: 4px 10px; font-size: 0.8rem; }
+.txRow input:not([type='checkbox']), .txRow select { width: 100%; padding: 5px 8px; font-size: 0.85rem; }
+.txRow.isPosted .txName, .txRow.isPosted .cAmt { text-decoration: line-through; }
+.txRow.isPosted { opacity: 0.55; }
+.txRow.isEditing { background: var(--accent-soft); }
+.iconBtn { padding: 2px 10px !important; font-size: 1.1rem !important; line-height: 1; }
+.menuScrim { position: fixed; inset: 0; z-index: 25; }
+.menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 170px; display: flex; flex-direction: column; padding: 4px; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
+.txRow .menu button { border: none; background: transparent; text-align: left; padding: 8px 10px; font-size: 0.88rem; }
+.txRow .menu button:hover { background: var(--accent-soft); }
+.txEmpty { padding: 28px 14px; text-align: center; font-size: 0.9rem; }
+
+@container (min-width: 760px) {
+  .txList.editing .txRow { grid-template-columns: 28px 136px minmax(0, 1fr) 140px 112px 110px 52px minmax(40px, auto); }
+}
+
+@container (max-width: 759px) {
+  .txHead { display: none; }
+  .txRow { grid-template-columns: 24px minmax(0, 1fr) auto 24px 34px; padding: 10px 10px; column-gap: 6px; }
+  .txRow .cAct button.iconBtn { padding: 2px 6px !important; }
+  .txRow .cDate, .txRow .cCat, .txRow .cFreq { display: none; }
+  .txRow .cMeta { display: block; font-size: 0.76rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .txRow.isEditing { grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr); row-gap: 8px; grid-template-areas: 'chk name name' '. date amt' '. cat freq' '. post act'; }
+  .txRow.isEditing .cChk { grid-area: chk; }
+  .txRow.isEditing .cName { grid-area: name; }
+  .txRow.isEditing .cDate { display: block; grid-area: date; }
+  .txRow.isEditing .cAmt { grid-area: amt; }
+  .txRow.isEditing .cCat { display: block; grid-area: cat; }
+  .txRow.isEditing .cFreq { display: block; grid-area: freq; }
+  .txRow.isEditing .cPost { grid-area: post; justify-content: flex-start; }
+  .txRow.isEditing .cAct { grid-area: act; }
+}
+
+@media (max-width: 639px) {
+  .txBar { display: grid; grid-template-columns: 1fr 1fr; }
+  .txBar > .seg, .txBar > .txSearch { grid-column: 1 / -1; }
+  .txBar > .seg { display: flex; }
+  .txBar > .seg button { flex: 1; }
+  .txFilters { grid-template-columns: 1fr 1fr; }
+  .txAddGrid { grid-template-columns: 1fr 1fr; }
+  .txAddGrid label:first-child { grid-column: 1 / -1; }
 }
 
 /* ============ Tablet / iPad mini (640–1023) : icon rail ============ */

@@ -8,14 +8,14 @@ import Login from './Login';
 import { supabase } from './supabase';
 import type { Session } from '@supabase/supabase-js';
 import DotDayList from './DotDayList';
-import { DashboardIcon, IncomeIcon, ExpenseIcon, AdminIcon, CalendarIcon } from './NavIcons';
+import { DashboardIcon, TransactionsIcon, AdminIcon, CalendarIcon } from './NavIcons';
+import TransactionsPage from './Transactions';
 import { Income, Expense, Tag } from './types';
 import * as XLSX from 'xlsx';
-import ExpenseBarChart from './ExpenseBarChart';
 import { AmountScope, DeleteScope, amountFor, applyAmountChange, applyDelete, dateKey, isSkipped, stepDate } from './recurrence';
 import { AmountScopeDialog, DeleteScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
 
-type Page = 'dashboard' | 'income' | 'expenses' | 'admin'
+type Page = 'dashboard' | 'transactions' | 'admin'
 
 const ICON_OPTIONS = ['💼','💰','💸','🏠','🛒','🍔','🚗','🎓','🎁','🩺','📈','💡','🧾','📦','🪙']
 
@@ -230,8 +230,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
   const [upcomingOpen, setUpcomingOpen] = useState(false);
   const navItems: Array<{ id: Page; label: string; icon: JSX.Element }> = [
     { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-    { id: 'income', label: 'Income', icon: <IncomeIcon /> },
-    { id: 'expenses', label: 'Expenses', icon: <ExpenseIcon /> },
+    { id: 'transactions', label: 'Transactions', icon: <TransactionsIcon /> },
     { id: 'admin', label: 'Admin', icon: <AdminIcon /> },
   ];
   const renderNavItems = () => navItems.map(item => (
@@ -270,26 +269,16 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
             lowBalanceThreshold={lowBalanceThreshold}
           />
         )}
-        {page === 'income' && (
-          <IncomePage
+        {page === 'transactions' && (
+          <TransactionsPage
             incomes={incomes}
-            tags={tags}
-            addIncome={income => setIncomes(prev => [...prev, income])}
-            updateIncome={income => setIncomes(prev => prev.map(i => i.id === income.id ? income : i))}
-            deleteIncome={id => setIncomes(prev => prev.filter(i => i.id !== id))}
-            postedMap={postedMap}
-            onPostedChange={handlePostedChange}
-          />
-        )}
-        {page === 'expenses' && (
-          <ExpensePage
             expenses={expenses}
             tags={tags}
-            addExpense={expense => setExpenses(prev => [...prev, expense])}
-            updateExpense={expense => setExpenses(prev => prev.map(e => e.id === expense.id ? expense : e))}
-            deleteExpense={id => setExpenses(prev => prev.filter(e => e.id !== id))}
             postedMap={postedMap}
             onPostedChange={handlePostedChange}
+            onAdd={(kind, item) => kind === 'income' ? setIncomes(prev => [...prev, item as Income]) : setExpenses(prev => [...prev, item as Expense])}
+            onUpdate={(kind, item) => kind === 'income' ? setIncomes(prev => prev.map(i => i.id === item.id ? item as Income : i)) : setExpenses(prev => prev.map(e => e.id === item.id ? item as Expense : e))}
+            onDelete={(kind, id) => kind === 'income' ? setIncomes(prev => prev.filter(i => i.id !== id)) : setExpenses(prev => prev.filter(e => e.id !== id))}
           />
         )}
         {page === 'admin' && (
@@ -457,21 +446,6 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
       return { ...tx, runningBalance: running };
     });
 
-    // Pie chart state and logic (must be after transactionsWithBalance is defined)
-    const [pieMode, setPieMode] = useState<'percent' | 'dollar'>('percent');
-    const [pieFrom, setPieFrom] = useState('');
-    const [pieTo, setPieTo] = useState('');
-    const filteredPieRows = transactionsWithBalance.filter((row: any) => {
-      if (row.expense <= 0) return false;
-      const dateVal = row.date.toISOString().slice(0,10);
-      return (!pieFrom || dateVal >= pieFrom) && (!pieTo || dateVal <= pieTo);
-    });
-    const pieExpenseByName = filteredPieRows.reduce((acc: Record<string, number>, row: any) => {
-      acc[row.category || row.name || 'Other'] = (acc[row.category || row.name || 'Other'] || 0) + row.expense;
-      return acc;
-    }, {});
-    const pieTotalExpense = filteredPieRows.reduce((sum: number, row: any) => sum + (row.expense || 0), 0);
-
     // Date filter for running balance table (for display only)
     // Only show unposted transactions in the table
     const filteredRows = transactionsWithBalance.filter(row => {
@@ -499,13 +473,13 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
       if (!item.isRecurring) {
         const date = new Date(item.startDate)
         date.setHours(0, 0, 0, 0)
-        if (date < today) {
+        if (date <= today) {
           pastBalance += amountFor(item, date)
         }
       } else {
         let current = new Date(item.startDate)
         current.setHours(0, 0, 0, 0)
-        while (current < today && (!item.endDate || dateKey(current) <= item.endDate)) {
+        while (current <= today && (!item.endDate || dateKey(current) <= item.endDate)) {
           if (isSkipped(item, current)) { stepDate(current, item.frequency); continue }
           pastBalance += amountFor(item, current)
           if (item.frequency === 'weekly') current.setDate(current.getDate() + 7)
@@ -523,13 +497,13 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
       if (!item.isRecurring) {
         const date = new Date(item.startDate)
         date.setHours(0, 0, 0, 0)
-        if (date < today) {
+        if (date <= today) {
           pastBalance -= amountFor(item, date)
         }
       } else {
         let current = new Date(item.startDate)
         current.setHours(0, 0, 0, 0)
-        while (current < today && (!item.endDate || dateKey(current) <= item.endDate)) {
+        while (current <= today && (!item.endDate || dateKey(current) <= item.endDate)) {
           if (isSkipped(item, current)) { stepDate(current, item.frequency); continue }
           pastBalance -= amountFor(item, current)
           if (item.frequency === 'weekly') current.setDate(current.getDate() + 7)
@@ -660,92 +634,6 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
               </div>
             </div>
             <BalanceChart data={projection} lowBalanceThreshold={lowBalanceThreshold} />
-          </div>
-          <div className="chartCard categoryCard">
-            <div className="cardHead">
-              <h3>Expenses by Category</h3>
-              <div className="filterBar">
-                <div className="seg">
-                  <button className={pieMode === 'percent' ? 'on' : ''} onClick={() => setPieMode('percent')}>%</button>
-                  <button className={pieMode === 'dollar' ? 'on' : ''} onClick={() => setPieMode('dollar')}>$</button>
-                </div>
-                <input type="date" aria-label="From date" value={pieFrom} onChange={e => setPieFrom(e.target.value)} />
-                <input type="date" aria-label="To date" value={pieTo} onChange={e => setPieTo(e.target.value)} />
-              </div>
-            </div>
-            <ExpenseBarChart data={pieExpenseByName} total={pieTotalExpense} mode={pieMode} transactions={filteredPieRows} />
-          </div>
-        </div>
-        {/* Month-to-Month Change */}
-        <div className="card mtm">
-          <h3>Month-to-Month Change</h3>
-          <div>
-              {(() => {
-                const now = new Date();
-                const thisMonth = now.getMonth();
-                const thisYear = now.getFullYear();
-                const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
-                const lastYear = thisMonth === 0 ? thisYear - 1 : thisYear;
-                const thisMonthIncomeRows = transactionsWithBalance.filter(row => row.date.getMonth() === thisMonth && row.date.getFullYear() === thisYear && row.income > 0);
-                const thisMonthExpenseRows = transactionsWithBalance.filter(row => row.date.getMonth() === thisMonth && row.date.getFullYear() === thisYear && row.expense > 0);
-                const lastMonthIncomeRows = transactionsWithBalance.filter(row => row.date.getMonth() === lastMonth && row.date.getFullYear() === lastYear && row.income > 0);
-                const lastMonthExpenseRows = transactionsWithBalance.filter(row => row.date.getMonth() === lastMonth && row.date.getFullYear() === lastYear && row.expense > 0);
-                const thisMonthIncome = thisMonthIncomeRows.reduce((sum, row) => sum + row.income, 0);
-                const thisMonthExpense = thisMonthExpenseRows.reduce((sum, row) => sum + row.expense, 0);
-                const lastMonthIncome = lastMonthIncomeRows.reduce((sum, row) => sum + row.income, 0);
-                const lastMonthExpense = lastMonthExpenseRows.reduce((sum, row) => sum + row.expense, 0);
-                const incomeChange = lastMonthIncome ? ((thisMonthIncome - lastMonthIncome) / lastMonthIncome) * 100 : null;
-                const expenseChange = lastMonthExpense ? ((thisMonthExpense - lastMonthExpense) / lastMonthExpense) * 100 : null;
-                const incomeDollar = thisMonthIncome - lastMonthIncome;
-                const expenseDollar = thisMonthExpense - lastMonthExpense;
-                // Find top contributors to change
-                function summarizeChange(
-                  thisRows: { name: string; income: number; expense: number }[],
-                  lastRows: { name: string; income: number; expense: number }[],
-                  type: 'income' | 'expense'
-                ) {
-                  const byNameThis = thisRows.reduce((acc: Record<string, number>, row) => {
-                    acc[row.name] = (acc[row.name] || 0) + (type === 'income' ? row.income : row.expense);
-                    return acc;
-                  }, {});
-                  const byNameLast = lastRows.reduce((acc: Record<string, number>, row) => {
-                    acc[row.name] = (acc[row.name] || 0) + (type === 'income' ? row.income : row.expense);
-                    return acc;
-                  }, {});
-                  const allNames = Array.from(new Set([...Object.keys(byNameThis), ...Object.keys(byNameLast)]));
-                  const diffs = allNames.map(name => ({
-                    name,
-                    diff: (byNameThis[name] || 0) - (byNameLast[name] || 0),
-                    thisVal: byNameThis[name] || 0,
-                    lastVal: byNameLast[name] || 0
-                  }));
-                  // Only show significant changes
-                  const top = diffs.filter(d => Math.abs(d.diff) > 0.01).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 2);
-                  return top.map(d => {
-                    if (d.lastVal === 0) return `New: ${d.name} $${d.thisVal.toFixed(2)}`;
-                    if (d.thisVal === 0) return `Ended: ${d.name} $${d.lastVal.toFixed(2)}`;
-                    return `${d.name} ${d.diff > 0 ? '+' : ''}$${d.diff.toFixed(2)}`;
-                  }).join('; ');
-                }
-                return <>
-                  <div className="mtmRow">
-                    <span className="mtmLabel pos">Income</span>
-                    {lastMonthIncome === 0 ? <span className="mtmDelta">—</span> : <>
-                      <span className="mtmDelta">{incomeDollar >= 0 ? '+' : '-'}${Math.abs(incomeDollar).toFixed(2)}</span>
-                      <span className="mtmPct">{incomeChange! >= 0 ? '+' : ''}{incomeChange?.toFixed(1)}%</span>
-                      {incomeDollar !== 0 && <span className="mtmDetail">{summarizeChange(thisMonthIncomeRows, lastMonthIncomeRows, 'income')}</span>}
-                    </>}
-                  </div>
-                  <div className="mtmRow">
-                    <span className="mtmLabel neg">Expense</span>
-                    {lastMonthExpense === 0 ? <span className="mtmDelta">—</span> : <>
-                      <span className="mtmDelta">{expenseDollar >= 0 ? '+' : '-'}${Math.abs(expenseDollar).toFixed(2)}</span>
-                      <span className="mtmPct">{expenseChange! >= 0 ? '+' : ''}{expenseChange?.toFixed(1)}%</span>
-                      {expenseDollar !== 0 && <span className="mtmDetail">{summarizeChange(thisMonthExpenseRows, lastMonthExpenseRows, 'expense')}</span>}
-                    </>}
-                  </div>
-                </>;
-              })()}
           </div>
         </div>
         </>
