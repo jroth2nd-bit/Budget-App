@@ -350,10 +350,10 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
     // Tab state for dashboard sections
     const [tab, setTab] = useState<'table' | 'charts'>('charts');
     const [wide, setWide] = useState(() => window.matchMedia('(min-width: 1100px)').matches);
-    const [medium, setMedium] = useState(() => window.matchMedia('(min-width: 700px)').matches);
+    const [medium, setMedium] = useState(() => window.matchMedia('(min-width: 640px)').matches);
     useEffect(() => {
       const mq = window.matchMedia('(min-width: 1100px)');
-      const mq2 = window.matchMedia('(min-width: 700px)');
+      const mq2 = window.matchMedia('(min-width: 640px)');
       const onChange = () => { setWide(mq.matches); setMedium(mq2.matches); };
       mq.addEventListener('change', onChange);
       mq2.addEventListener('change', onChange);
@@ -603,7 +603,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
       <div className="pageHead">
         <h2>Dashboard</h2>
         {!wide && <div className="seg" role="tablist">
-          <button className={tab === 'charts' ? 'on' : ''} onClick={() => setTab('charts')}>Charts</button>
+          <button className={tab === 'charts' ? 'on' : ''} onClick={() => setTab('charts')}>{medium ? 'Charts' : 'Upcoming'}</button>
           <button className={tab === 'table' ? 'on' : ''} onClick={() => setTab('table')}>Table</button>
         </div>}
       </div>
@@ -633,6 +633,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
 
       {(wide || tab === 'charts') && (
         <>
+        {medium && (
         <div className="dashCharts">
           <div className="chartCard balanceCard">
             <div className="cardHead">
@@ -650,7 +651,8 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
             <BalanceChart data={projection} lowBalanceThreshold={lowBalanceThreshold} />
           </div>
         </div>
-        {medium && !wide && (
+        )}
+        {!wide && (
           <div className="chartCard upcomingCard">
             <div className="cardHead"><h3>Upcoming</h3></div>
             <DotDayList incomes={incomes} expenses={expenses} postedMap={postedMap} onPostedChange={onPostedChange} />

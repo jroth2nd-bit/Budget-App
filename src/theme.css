@@ -388,6 +388,8 @@ button.active { border-color: var(--accent); color: var(--accent); }
   .sideNav { display: none; }
   .topBar { padding: 8px 12px; }
   .topBar .brand { display: flex; }
+  .upcomingToggle { display: none; }
+  .upcomingCard .dotList { grid-template-columns: minmax(0, 1fr); }
   .mainContent { padding: 14px 12px calc(var(--bottom-nav-h) + 24px + env(safe-area-inset-bottom)); }
   .mainContent h2 { font-size: 1.35rem; }
   .bottomNav {
