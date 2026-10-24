@@ -350,11 +350,14 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
     // Tab state for dashboard sections
     const [tab, setTab] = useState<'table' | 'charts'>('charts');
     const [wide, setWide] = useState(() => window.matchMedia('(min-width: 1100px)').matches);
+    const [medium, setMedium] = useState(() => window.matchMedia('(min-width: 700px)').matches);
     useEffect(() => {
       const mq = window.matchMedia('(min-width: 1100px)');
-      const onChange = () => setWide(mq.matches);
+      const mq2 = window.matchMedia('(min-width: 700px)');
+      const onChange = () => { setWide(mq.matches); setMedium(mq2.matches); };
       mq.addEventListener('change', onChange);
-      return () => mq.removeEventListener('change', onChange);
+      mq2.addEventListener('change', onChange);
+      return () => { mq.removeEventListener('change', onChange); mq2.removeEventListener('change', onChange); };
     }, []);
     // Date filter state for running balance table
     const [dateFrom, setDateFrom] = useState('');
@@ -647,6 +650,12 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
             <BalanceChart data={projection} lowBalanceThreshold={lowBalanceThreshold} />
           </div>
         </div>
+        {medium && !wide && (
+          <div className="chartCard upcomingCard">
+            <div className="cardHead"><h3>Upcoming</h3></div>
+            <DotDayList incomes={incomes} expenses={expenses} postedMap={postedMap} onPostedChange={onPostedChange} />
+          </div>
+        )}
         </>
       )}
 
