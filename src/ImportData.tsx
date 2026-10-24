@@ -160,19 +160,18 @@ export default function ImportData({ addIncomes, addExpenses, tags = [], setTags
 
   return (
     <div className="tagAdmin">
-      <h3>Import Data</h3>
       {!previewMode ? (
-        <form className="formSmall" onSubmit={e => e.preventDefault()} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <form className="formSmall" onSubmit={e => e.preventDefault()} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <select value={importType} onChange={e => setImportType(e.target.value as any)}>
             <option value="income">Import Income</option>
             <option value="expense">Import Expense</option>
           </select>
-          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} />
-          <small style={{ opacity: 0.7, marginLeft: 8 }}>Supported: CSV, XLSX, XLS. File should have columns: name, amount, frequency, startDate</small>
-          <label style={{ marginLeft: 16, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} style={{ maxWidth: '100%' }} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <input type="checkbox" checked={replaceAll} onChange={e => setReplaceAll(e.target.checked)} />
             <span>Replace All</span>
           </label>
+          <small style={{ opacity: 0.7, flexBasis: '100%' }}>Supported: CSV, XLSX, XLS. Columns: name, amount, frequency, startDate</small>
         </form>
       ) : (
         <div>

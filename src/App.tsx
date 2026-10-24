@@ -349,6 +349,13 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
     // postedMap and onPostedChange are provided by props from App
     // Tab state for dashboard sections
     const [tab, setTab] = useState<'table' | 'charts'>('charts');
+    const [wide, setWide] = useState(() => window.matchMedia('(min-width: 1100px)').matches);
+    useEffect(() => {
+      const mq = window.matchMedia('(min-width: 1100px)');
+      const onChange = () => setWide(mq.matches);
+      mq.addEventListener('change', onChange);
+      return () => mq.removeEventListener('change', onChange);
+    }, []);
     // Date filter state for running balance table
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
@@ -588,10 +595,10 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
     <div className="dash">
       <div className="pageHead">
         <h2>Dashboard</h2>
-        <div className="seg" role="tablist">
+        {!wide && <div className="seg" role="tablist">
           <button className={tab === 'charts' ? 'on' : ''} onClick={() => setTab('charts')}>Charts</button>
           <button className={tab === 'table' ? 'on' : ''} onClick={() => setTab('table')}>Table</button>
-        </div>
+        </div>}
       </div>
 
       <div className="kpiGrid">
@@ -617,7 +624,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
         </div>
       </div>
 
-      {tab === 'charts' && (
+      {(wide || tab === 'charts') && (
         <>
         <div className="dashCharts">
           <div className="chartCard balanceCard">
@@ -639,7 +646,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
         </>
       )}
 
-      {tab === 'table' && (
+      {(wide || tab === 'table') && (
         <div className="chartCard">
           <div className="cardHead">
             <h3>Running Balance</h3>
@@ -1804,7 +1811,7 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
     };
   const [containerWidth, setContainerWidth] = useState(900);
   const narrow = containerWidth < 520;
-  const height = narrow ? 280 : 340;
+  const height = narrow ? 280 : containerWidth > 860 ? 420 : 340;
   const padding = { top: 30, right: 26, bottom: 34, left: narrow ? 50 : 58 };
   const chartWidth = containerWidth - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
