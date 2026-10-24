@@ -634,9 +634,8 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
       </div>
 
       {(wide || tab === 'charts') && (
-        <>
+        <div className={`dashCharts${wide && chartOpen ? ' split' : ''}`}>
         {medium && (
-        <div className="dashCharts">
           <div className="chartCard balanceCard">
             <div className="cardHead">
               <h3><button className="collapseBtn" onClick={toggleChart} aria-expanded={chartOpen} aria-label={chartOpen ? 'Collapse chart' : 'Expand chart'}><span className={`chev${chartOpen ? ' open' : ''}`}>›</span>Balance Projection</button></h3>
@@ -652,15 +651,12 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
             </div>
             {chartOpen && <BalanceChart data={projection} lowBalanceThreshold={lowBalanceThreshold} />}
           </div>
-        </div>
         )}
-        {!wide && (
           <div className="chartCard upcomingCard">
             <div className="cardHead"><h3>Upcoming</h3></div>
             <DotDayList incomes={incomes} expenses={expenses} postedMap={postedMap} onPostedChange={onPostedChange} />
           </div>
-        )}
-        </>
+        </div>
       )}
 
       {(wide || tab === 'table') && (
