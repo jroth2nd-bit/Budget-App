@@ -350,6 +350,8 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
     // Tab state for dashboard sections
     const [tab, setTab] = useState<'table' | 'charts'>('charts');
     const [wide, setWide] = useState(() => window.matchMedia('(min-width: 1100px)').matches);
+    const [chartOpen, setChartOpen] = useState(() => localStorage.getItem('chartCollapsed') !== '1');
+    const toggleChart = () => setChartOpen(o => { localStorage.setItem('chartCollapsed', o ? '1' : '0'); return !o; });
     const [medium, setMedium] = useState(() => window.matchMedia('(min-width: 640px)').matches);
     useEffect(() => {
       const mq = window.matchMedia('(min-width: 1100px)');
@@ -637,8 +639,8 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
         <div className="dashCharts">
           <div className="chartCard balanceCard">
             <div className="cardHead">
-              <h3>Balance Projection</h3>
-              <div className="filterBar">
+              <h3><button className="collapseBtn" onClick={toggleChart} aria-expanded={chartOpen} aria-label={chartOpen ? 'Collapse chart' : 'Expand chart'}><span className={`chev${chartOpen ? ' open' : ''}`}>›</span>Balance Projection</button></h3>
+              {chartOpen && <div className="filterBar">
                 <div className="seg">
                   {([['30d', '30D'], ['3m', '3M'], ['6m', '6M'], ['12m', '12M']] as const).map(([v, l]) => (
                     <button key={v} className={timeline === v ? 'on' : ''} onClick={() => setTimeline(v)}>{l}</button>
@@ -646,9 +648,9 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
                 </div>
                 <input type="date" aria-label="From date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
                 <input type="date" aria-label="To date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-              </div>
+              </div>}
             </div>
-            <BalanceChart data={projection} lowBalanceThreshold={lowBalanceThreshold} />
+            {chartOpen && <BalanceChart data={projection} lowBalanceThreshold={lowBalanceThreshold} />}
           </div>
         </div>
         )}
