@@ -649,7 +649,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
                 <input type="date" aria-label="To date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
               </div>}
             </div>
-            {chartOpen && <BalanceChart data={projection} lowBalanceThreshold={lowBalanceThreshold} />}
+            {chartOpen && <BalanceChart data={projection} lowBalanceThreshold={lowBalanceThreshold} fitViewport={wide} />}
           </div>
         )}
           <div className="chartCard upcomingCard">
@@ -659,7 +659,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
         </div>
       )}
 
-      {(wide || tab === 'table') && (
+      {!wide && tab === 'table' && (
         <div className="chartCard">
           <div className="cardHead">
             <h3>Running Balance</h3>
@@ -1796,7 +1796,13 @@ function ImportData({ addIncomes, addExpenses }: { incomes: Income[]; expenses: 
   )
 }
 
-function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date; value: number; type?: 'income' | 'expense'; amount?: number; posted?: boolean; name?: string; category?: string; icon?: string }))[]; lowBalanceThreshold?: number }) {
+function BalanceChart({ data, lowBalanceThreshold = 0, fitViewport = false }: { data: (({ date: Date; value: number; type?: 'income' | 'expense'; amount?: number; posted?: boolean; name?: string; category?: string; icon?: string }))[]; lowBalanceThreshold?: number; fitViewport?: boolean }) {
+  const [viewH, setViewH] = useState(() => window.innerHeight)
+  useEffect(() => {
+    const onResize = () => setViewH(window.innerHeight)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null)
   // No zoom window or drag state
     // Helper: find closest point, prioritizing negative balances if within threshold
@@ -1824,7 +1830,7 @@ function BalanceChart({ data, lowBalanceThreshold = 0 }: { data: (({ date: Date;
     };
   const [containerWidth, setContainerWidth] = useState(900);
   const narrow = containerWidth < 520;
-  const height = narrow ? 280 : containerWidth > 860 ? 420 : 340;
+  const height = fitViewport ? Math.max(260, Math.min(560, viewH - 390)) : narrow ? 280 : containerWidth > 860 ? 420 : 340;
   const padding = { top: 30, right: 26, bottom: 34, left: narrow ? 50 : 58 };
   const chartWidth = containerWidth - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
