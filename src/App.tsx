@@ -452,11 +452,20 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
     const allTransactions = gatherTransactions();
     const transactions = allTransactions.filter(tx => !postedMap[tx.id]);
     // Calculate running balance for all transactions (unfiltered)
-    let running = startingBalance;
-    const transactionsWithBalance = allTransactions.map((tx) => {
-      running += tx.income - tx.expense;
-      return { ...tx, runningBalance: running };
-    });
+    // Past-due unposted items are treated as pending today, so they don't change the balance until posted
+    const nowKey = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}` })();
+    const effectiveDate = (tx: { id: string; date: Date }) => (!postedMap[tx.id] && dateKey(tx.date) < nowKey ? new Date(nowKey) : tx.date);
+    const withBalances = <T extends { id: string; date: Date; income: number; expense: number }>(rows: T[]) => {
+      let bal = startingBalance;
+      return rows
+        .map(tx => ({ tx, eff: effectiveDate(tx) }))
+        .sort((a, b) => a.eff.getTime() - b.eff.getTime() || a.tx.date.getTime() - b.tx.date.getTime())
+        .map(({ tx, eff }) => {
+          bal += tx.income - tx.expense;
+          return { ...tx, effDate: eff, runningBalance: bal };
+        });
+    };
+    const transactionsWithBalance = withBalances(allTransactions);
 
     // Date filter for running balance table (for display only)
     // Only show unposted transactions in the table
@@ -474,63 +483,6 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
   const [timeline, setTimeline] = useState<'30d' | '3m' | '6m' | '12m'>('30d')
 
 
-
-  // Calculate cumulative past income and expenses to add to starting balance
-  const calculatePastBalance = () => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    let pastBalance = 0
-
-    incomes.forEach(item => {
-      if (!item.isRecurring) {
-        const date = new Date(item.startDate)
-        date.setHours(0, 0, 0, 0)
-        if (date <= today) {
-          pastBalance += amountFor(item, date)
-        }
-      } else {
-        let current = new Date(item.startDate)
-        current.setHours(0, 0, 0, 0)
-        while (current <= today && (!item.endDate || dateKey(current) <= item.endDate)) {
-          if (isSkipped(item, current)) { stepDate(current, item.frequency); continue }
-          pastBalance += amountFor(item, current)
-          if (item.frequency === 'weekly') current.setDate(current.getDate() + 7)
-          else if (item.frequency === 'biweekly') current.setDate(current.getDate() + 14)
-          else if (item.frequency === 'bimonthly') current.setMonth(current.getMonth() + 2)
-          else if (item.frequency === 'monthly') current.setMonth(current.getMonth() + 1)
-          else if (item.frequency === 'quarterly') current.setMonth(current.getMonth() + 3)
-          else if (item.frequency === 'semiannual') current.setMonth(current.getMonth() + 6)
-          else if (item.frequency === 'annual') current.setFullYear(current.getFullYear() + 1)
-        }
-      }
-    })
-
-    expenses.forEach(item => {
-      if (!item.isRecurring) {
-        const date = new Date(item.startDate)
-        date.setHours(0, 0, 0, 0)
-        if (date <= today) {
-          pastBalance -= amountFor(item, date)
-        }
-      } else {
-        let current = new Date(item.startDate)
-        current.setHours(0, 0, 0, 0)
-        while (current <= today && (!item.endDate || dateKey(current) <= item.endDate)) {
-          if (isSkipped(item, current)) { stepDate(current, item.frequency); continue }
-          pastBalance -= amountFor(item, current)
-          if (item.frequency === 'weekly') current.setDate(current.getDate() + 7)
-          else if (item.frequency === 'biweekly') current.setDate(current.getDate() + 14)
-          else if (item.frequency === 'bimonthly') current.setMonth(current.getMonth() + 2)
-          else if (item.frequency === 'monthly') current.setMonth(current.getMonth() + 1)
-          else if (item.frequency === 'quarterly') current.setMonth(current.getMonth() + 3)
-          else if (item.frequency === 'semiannual') current.setMonth(current.getMonth() + 6)
-          else if (item.frequency === 'annual') current.setFullYear(current.getFullYear() + 1)
-        }
-      }
-    })
-
-    return pastBalance
-  }
 
   // Use all transactions for the projection graph (not just unposted)
   const todayStart = new Date()
@@ -553,18 +505,14 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
   if (timeline === '30d') projEnd.setDate(projEnd.getDate() + 30)
   else projEnd.setMonth(projEnd.getMonth() + (timeline === '3m' ? 3 : timeline === '6m' ? 6 : 12))
   projEnd.setHours(23, 59, 59, 999)
-  let projRunning = startingBalance
-  const projectionRows = gatherTransactions(projEnd).map(tx => {
-    projRunning += tx.income - tx.expense
-    return { ...tx, runningBalance: projRunning }
-  })
+  const projectionRows = withBalances(gatherTransactions(projEnd))
   const projection = projectionRows
         .filter(row => {
-          const dateVal = row.date.toISOString().slice(0,10);
-          return row.date >= projStart && row.date <= projEnd && (!dateFrom || dateVal >= dateFrom) && (!dateTo || dateVal <= dateTo);
+          const dateVal = row.effDate.toISOString().slice(0,10);
+          return row.effDate >= projStart && row.effDate <= projEnd && (!dateFrom || dateVal >= dateFrom) && (!dateTo || dateVal <= dateTo);
         })
         .map(row => ({
-          date: row.date,
+          date: row.effDate,
           posted: !!postedMap[row.id],
           value: row.runningBalance,
           type: row.income > 0 ? 'income' : row.expense > 0 ? 'expense' : undefined,
@@ -576,12 +524,12 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
 
   // Rows backing the summary cards: selected timeline window only
   const timelineLabel = timeline === '30d' ? '30 Days' : timeline === '3m' ? '3 Months' : timeline === '6m' ? '6 Months' : '12 Months'
-  const windowRows = projectionRows.filter(row => row.date >= projStart && row.date <= projEnd)
-  const upcomingRows = windowRows.filter(row => dateKey(row.date) >= todayKey)
+  const windowRows = projectionRows.filter(row => row.effDate >= projStart && row.effDate <= projEnd)
+  const upcomingRows = windowRows.filter(row => dateKey(row.effDate) >= todayKey)
 
   const fmtMoney = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const fmtDay = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  const currentBalance = startingBalance + calculatePastBalance()
+  const currentBalance = startingBalance + gatherTransactions().reduce((sum, tx) => sum + (postedMap[tx.id] ? tx.income - tx.expense : 0), 0)
   const lowRow = lowBalanceThreshold ? upcomingRows.find(row => row.runningBalance < lowBalanceThreshold) : undefined
   const minRow = upcomingRows.length ? upcomingRows.reduce((a, b) => (a.runningBalance < b.runningBalance ? a : b)) : undefined
   const { nextPayday, nextPayAmount } = (() => {
@@ -619,12 +567,12 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
         <div className="kpi">
           <span className="kpiLabel">Upcoming Low Balance</span>
           <span className={`kpiValue${lowRow ? ' warn' : ''}`}>{lowRow ? fmtMoney(lowRow.runningBalance) : '—'}</span>
-          <span className="kpiSub">{lowRow ? fmtDay(lowRow.date) : 'None ahead'}</span>
+          <span className="kpiSub">{lowRow ? fmtDay(lowRow.effDate) : 'None ahead'}</span>
         </div>
         <div className="kpi">
           <span className="kpiLabel">Lowest Projected</span>
           <span className={`kpiValue${minRow && minRow.runningBalance < 0 ? ' neg' : ''}`}>{minRow ? fmtMoney(minRow.runningBalance) : '—'}</span>
-          <span className="kpiSub">{minRow ? `${fmtDay(minRow.date)} · ${timelineLabel}` : timelineLabel}</span>
+          <span className="kpiSub">{minRow ? `${fmtDay(minRow.effDate)} · ${timelineLabel}` : timelineLabel}</span>
         </div>
         <div className="kpi">
           <span className="kpiLabel">Next Paycheck</span>

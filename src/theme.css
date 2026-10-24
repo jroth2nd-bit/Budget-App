@@ -204,6 +204,8 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 .dotList { display: flex; flex-direction: column; gap: 6px; }
 .dotEmpty { color: var(--muted); font-size: 0.85rem; padding: 8px 0; }
 .dotRow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: 10px; cursor: pointer; }
+.dotRow.pastDue { background: rgba(245, 197, 24, 0.07); }
+.pastDueTag { color: var(--accent); font-weight: 600; }
 .dotRow.income { border-left-color: var(--pos); }
 .dotRow.expense { border-left-color: var(--neg); }
 .dotRow:has(input:checked) { opacity: 0.5; }
