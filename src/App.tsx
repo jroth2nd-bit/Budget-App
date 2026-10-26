@@ -356,25 +356,17 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
   lowBalanceThreshold: number;
 }) {
     // postedMap and onPostedChange are provided by props from App
-    // Tab state for dashboard sections
-    const [tab, setTab] = useState<'table' | 'charts'>('charts');
     const [wide, setWide] = useState(() => window.matchMedia('(min-width: 1100px)').matches);
     const [chartOpen, setChartOpen] = useState(() => localStorage.getItem('chartCollapsed') !== '1');
     const toggleChart = () => setChartOpen(o => { localStorage.setItem('chartCollapsed', o ? '1' : '0'); return !o; });
-    const [medium, setMedium] = useState(() => window.matchMedia('(min-width: 640px)').matches);
     useEffect(() => {
       const mq = window.matchMedia('(min-width: 1100px)');
-      const mq2 = window.matchMedia('(min-width: 640px)');
-      const onChange = () => { setWide(mq.matches); setMedium(mq2.matches); };
+      const onChange = () => setWide(mq.matches);
       mq.addEventListener('change', onChange);
-      mq2.addEventListener('change', onChange);
-      return () => { mq.removeEventListener('change', onChange); mq2.removeEventListener('change', onChange); };
+      return () => mq.removeEventListener('change', onChange);
     }, []);
-    // Date filter state for running balance table
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
-    // Category filter for running balance table
-    const [categoryFilter, setCategoryFilter] = useState('');
 
     // Compute default projection range: first and last day of current year
     // Removed unused defaultFrom/defaultTo
@@ -457,11 +449,6 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
       txs.sort((a, b) => a.date.getTime() - b.date.getTime())
       return txs
     }
-    // Only include unposted transactions for the table
-    const allTransactions = gatherTransactions();
-    const transactions = allTransactions.filter(tx => !postedMap[tx.id]);
-    // Calculate running balance for all transactions (unfiltered)
-    // Past-due unposted items are treated as pending today, so they don't change the balance until posted
     const nowKey = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}` })();
     const effectiveDate = (tx: { id: string; date: Date }) => (!postedMap[tx.id] && dateKey(tx.date) < nowKey ? new Date(nowKey) : tx.date);
     const withBalances = <T extends { id: string; date: Date; income: number; expense: number }>(rows: T[]) => {
@@ -474,21 +461,6 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
           return { ...tx, effDate: eff, runningBalance: bal };
         });
     };
-    const transactionsWithBalance = withBalances(allTransactions);
-
-    // Date filter for running balance table (for display only)
-    // Only show unposted transactions in the table
-    const filteredRows = transactionsWithBalance.filter(row => {
-      const dateVal = row.date.toISOString().slice(0,10);
-      return (
-        (!dateFrom || dateVal >= dateFrom) &&
-        (!dateTo || dateVal <= dateTo) &&
-        (!categoryFilter || row.category === categoryFilter) &&
-        !postedMap[row.id]
-      );
-    });
-    const rows = filteredRows;
-    // Use onPostedChange from props
   const [timeline, setTimeline] = useState<'30d' | '3m' | '6m' | '12m'>('30d')
 
 
@@ -543,10 +515,6 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
     <div className="dash">
       <div className="pageHead">
         <h2>Dashboard</h2>
-        {!wide && <div className="seg" role="tablist">
-          <button className={tab === 'charts' ? 'on' : ''} onClick={() => setTab('charts')}>{medium ? 'Charts' : 'Upcoming'}</button>
-          <button className={tab === 'table' ? 'on' : ''} onClick={() => setTab('table')}>Table</button>
-        </div>}
       </div>
 
       <div className="kpiGrid">
@@ -572,9 +540,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
         </div>
       </div>
 
-      {(wide || tab === 'charts') && (
-        <div className={`dashCharts${wide && chartOpen ? ' split' : ''}`}>
-        {medium && (
+      <div className={`dashCharts${wide && chartOpen ? ' split' : ''}`}>
           <div className="chartCard balanceCard">
             <div className="cardHead">
               <h3><button className="collapseBtn" onClick={toggleChart} aria-expanded={chartOpen} aria-label={chartOpen ? 'Collapse chart' : 'Expand chart'}><span className={`chev${chartOpen ? ' open' : ''}`}>›</span>Balance Projection</button></h3>
@@ -590,61 +556,12 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
             </div>
             {chartOpen && <BalanceChart data={projection} lowBalanceThreshold={lowBalanceThreshold} fitViewport={wide} />}
           </div>
-        )}
           <div className="chartCard upcomingCard">
             <div className="cardHead"><h3>Upcoming</h3></div>
             <DotDayList incomes={incomes} expenses={expenses} postedMap={postedMap} onPostedChange={onPostedChange} />
           </div>
-        </div>
-      )}
+      </div>
 
-      {!wide && tab === 'table' && (
-        <div className="chartCard">
-          <div className="cardHead">
-            <h3>Running Balance</h3>
-            <div className="filterBar">
-              <input type="date" aria-label="From date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-              <input type="date" aria-label="To date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-              <select aria-label="Category" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-                <option value="">All categories</option>
-                {[...new Set(transactionsWithBalance.map(row => row.category).filter(Boolean))].map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-              {(dateFrom || dateTo || categoryFilter) && <button onClick={() => { setDateFrom(''); setDateTo(''); setCategoryFilter(''); }}>Clear</button>}
-            </div>
-          </div>
-          <div className="tableScroll">
-            <table className="dataTable">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Name</th>
-                  <th>Category</th>
-                  <th className="num">Income</th>
-                  <th className="num">Expense</th>
-                  <th className="num">Balance</th>
-                  <th className="ctr">Posted</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(row => (
-                  <tr key={row.id}>
-                    <td className="nowrap">{row.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                    <td className="nameCell">{row.name}</td>
-                    <td className="muted nowrap">{row.category}</td>
-                    <td className="num pos">{row.income > 0 ? `+${fmtMoney(row.income)}` : ''}</td>
-                    <td className="num neg">{row.expense > 0 ? `-${fmtMoney(row.expense)}` : ''}</td>
-                    <td className={`num strong ${row.runningBalance < 0 ? 'neg' : row.runningBalance < lowBalanceThreshold ? 'warn' : ''}`}>{fmtMoney(row.runningBalance)}</td>
-                    <td className="ctr"><input type="checkbox" checked={!!postedMap[row.id]} onChange={() => onPostedChange(row.id)} /></td>
-                  </tr>
-                ))}
-                {rows.length === 0 && <tr><td colSpan={7} className="muted ctr">No transactions</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
