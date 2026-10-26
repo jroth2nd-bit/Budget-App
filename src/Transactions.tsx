@@ -79,7 +79,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
   const [amountMin, setAmountMin] = useState('');
   const [amountMax, setAmountMax] = useState('');
   const [showAdd, setShowAdd] = useState(false);
-  const [rangeDays, setRangeDays] = useState<30 | 60 | 90>(90);
+  const [rangeDays, setRangeDays] = useState<30 | 60 | 90>(30);
 
   const [selected, setSelected] = useState<string[]>([]);
   const [editAll, setEditAll] = useState(false);

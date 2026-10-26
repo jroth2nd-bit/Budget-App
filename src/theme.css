@@ -224,7 +224,7 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 .seg { display: inline-flex; flex: none; padding: 3px; gap: 2px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
 .seg button { background: transparent; border: none; border-radius: 7px; padding: 5px 12px; font-size: 0.82rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .seg button:hover:not(:disabled) { color: var(--text); }
-.seg button.on { background: var(--accent); color: var(--accent-ink); }
+.seg button.on, .seg button.on:hover:not(:disabled) { background: var(--accent); color: var(--accent-ink); }
 
 .kpiGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
 .kpi { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }

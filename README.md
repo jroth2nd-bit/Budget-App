@@ -9,6 +9,7 @@ A simple budgeting app built with React and TypeScript.
 - Add expenses with various frequencies (weekly, biweekly, bimonthly, monthly, quarterly, semiannual, annual)
 - View monthly summary
 - Balance projections over 12 months
+- Dashboard chart and Upcoming sections are shown together across screen sizes
 
 ## Getting Started
 
@@ -21,7 +22,7 @@ A simple budgeting app built with React and TypeScript.
 - Add incomes and expenses using the forms
 - Mark income as a paycheck when adding or editing it; income descriptions containing “Paycheck” are detected automatically when imported or migrated
 - Review posted and unposted transactions in the current paycheck period
-- Choose a 30-, 60-, or 90-day range on the Transactions page; the range selector is available at all screen sizes
+- Choose a 30-, 60-, or 90-day range on the Transactions page (defaults to 30 days); the range selector is available at all screen sizes
 - View the monthly net income
 - See the balance projection for the next 12 months
 
