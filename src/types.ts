@@ -2,6 +2,7 @@ export interface Income {
   id: string;
   name: string;
   amount: number;
+  isPaycheck?: boolean;
   frequency: 'weekly' | 'biweekly' | 'bimonthly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
   startDate: string; // ISO date
   endDate?: string;
