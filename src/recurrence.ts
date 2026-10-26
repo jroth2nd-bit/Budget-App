@@ -1,6 +1,14 @@
+import type { Income } from './types';
+
 export type Frequency = 'weekly' | 'biweekly' | 'bimonthly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
 export type AmountScope = 'once' | 'forward';
 export type DeleteScope = 'once' | 'forward' | 'all';
+
+export interface PaycheckPeriod {
+  lastPaycheck: Date | null;
+  nextPaycheck: Date | null;
+  nextPayAmount: number;
+}
 
 export interface AmountAdjustable {
   amount: number;
@@ -65,6 +73,41 @@ export function firstOccurrenceOnOrAfter(startDate: string, frequency: string, f
 
 export function isSkipped(item: { skipped?: string[] }, date: Date): boolean {
   return !!item.skipped && item.skipped.includes(dateKey(date));
+}
+
+export function getPaycheckPeriod(incomes: Income[], now = new Date()): PaycheckPeriod {
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  let lastPaycheck: Date | null = null;
+  let nextPaycheck: Date | null = null;
+  let nextPayAmount = 0;
+
+  incomes.filter(item => item.isPaycheck).forEach(item => {
+    const current = new Date(item.startDate);
+    if (Number.isNaN(current.getTime())) return;
+    let guard = 0;
+
+    while ((!item.endDate || dateKey(current) <= item.endDate) && guard++ < 5000) {
+      if (!isSkipped(item, current)) {
+        const key = dateKey(current);
+        if (key <= todayKey) {
+          if (!lastPaycheck || key > dateKey(lastPaycheck)) lastPaycheck = new Date(current);
+        } else {
+          if (!nextPaycheck || key < dateKey(nextPaycheck)) {
+            nextPaycheck = new Date(current);
+            nextPayAmount = amountFor(item, current);
+          } else if (key === dateKey(nextPaycheck)) {
+            nextPayAmount += amountFor(item, current);
+          }
+          break;
+        }
+      }
+
+      if (!item.isRecurring) break;
+      stepDate(current, item.frequency);
+    }
+  });
+
+  return { lastPaycheck, nextPaycheck, nextPayAmount };
 }
 
 // Returns the updated item, or null when nothing is left of the series

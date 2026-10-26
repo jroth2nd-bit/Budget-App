@@ -209,6 +209,7 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 .dotRow.income { border-left-color: var(--pos); }
 .dotRow.expense { border-left-color: var(--neg); }
 .dotRow:has(input:checked) { opacity: 0.5; }
+.dotRow.isPosted { background: rgba(255, 255, 255, 0.045); }
 .dotMain { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .dotName { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dotDate { font-size: 0.75rem; color: var(--muted); }
@@ -348,6 +349,9 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .txRow.isPosted .txName, .txRow.isPosted .cAmt { text-decoration: line-through; }
 .txRow.isPosted { opacity: 0.55; }
 .txRow.isEditing { background: var(--accent-soft); }
+.paycheckEdit { display: inline-flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+.paycheckEdit input { width: auto !important; }
+.paycheckBadge { display: inline-block; margin-top: 3px; color: var(--accent); font-size: 0.72rem; font-weight: 600; }
 .iconBtn { padding: 2px 10px !important; font-size: 1.1rem !important; line-height: 1; }
 .menuScrim { position: fixed; inset: 0; z-index: 25; }
 .menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 170px; display: flex; flex-direction: column; padding: 4px; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }

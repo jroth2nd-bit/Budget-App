@@ -5,6 +5,7 @@ A simple budgeting app built with React and TypeScript.
 ## Features
 
 - Add recurring or one-time incomes
+- Mark paycheck income to define the current pay period and the next-paycheck dashboard summary
 - Add expenses with various frequencies (weekly, biweekly, bimonthly, monthly, quarterly, semiannual, annual)
 - View monthly summary
 - Balance projections over 12 months
@@ -18,6 +19,8 @@ A simple budgeting app built with React and TypeScript.
 ## Usage
 
 - Add incomes and expenses using the forms
+- Mark income as a paycheck when adding or editing it; income descriptions containing “Paycheck” are detected automatically when imported or migrated
+- Review posted and unposted transactions in the current paycheck period
 - View the monthly net income
 - See the balance projection for the next 12 months
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Income, Expense, Tag } from './types';
-import { AmountScope, DeleteScope, FREQUENCIES, amountFor, applyAmountChange, applyDelete, dateKey, isSkipped, stepDate } from './recurrence';
+import { AmountScope, DeleteScope, FREQUENCIES, amountFor, applyAmountChange, applyDelete, dateKey, getPaycheckPeriod, isSkipped, stepDate } from './recurrence';
 import { AmountScopeDialog, DeleteScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
 
 type Kind = 'income' | 'expense';
@@ -17,12 +17,15 @@ interface Row {
   orig: Item;
 }
 
-interface EditRow { date: string; name: string; category: string; amount: string; frequency: string }
+interface EditRow { date: string; name: string; category: string; amount: string; frequency: string; isPaycheck: boolean }
 
 const ICON_OPTIONS = ['💼', '💰', '💸', '🏠', '🛒', '🍔', '🚗', '🎓', '🎁', '🩺', '📈', '💡', '🧾', '📦', '🪙'];
 
 const money = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtDate = (d: Date) => d.toLocaleDateString(undefined, d.getFullYear() === new Date().getFullYear() ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' });
+const fmtDate = (d: Date) => {
+  const displayDate = new Date(`${dateKey(d)}T00:00:00`);
+  return displayDate.toLocaleDateString(undefined, displayDate.getFullYear() === new Date().getFullYear() ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' });
+};
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function buildRows(items: Item[], kind: Kind): Row[] {
@@ -67,7 +70,7 @@ interface Props {
 export default function TransactionsPage({ incomes, expenses, tags, postedMap, onPostedChange, onAdd, onUpdate, onDelete }: Props) {
   const [kindFilter, setKindFilter] = useState<'all' | Kind>('all');
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<'pending' | 'posted' | 'all'>('pending');
+  const [status, setStatus] = useState<'pending' | 'posted' | 'all'>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -86,6 +89,9 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
   const [amountQueue, setAmountQueue] = useState<Array<{ row: Row; newAmount: number }>>([]);
   const [deleteQueue, setDeleteQueue] = useState<Row[]>([]);
 
+  const paycheckPeriod = getPaycheckPeriod(incomes);
+  const paycheckStart = paycheckPeriod.lastPaycheck ? dateKey(paycheckPeriod.lastPaycheck) : null;
+  const paycheckEnd = paycheckPeriod.nextPaycheck ? dateKey(paycheckPeriod.nextPaycheck) : null;
   const allRows = [...buildRows(incomes, 'income'), ...buildRows(expenses, 'expense')]
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 
@@ -96,6 +102,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
     const isPosted = !!postedMap[row.id];
     return (
       (kindFilter === 'all' || row.kind === kindFilter) &&
+      (!paycheckStart || dateFrom || dateTo || (day >= paycheckStart && (!paycheckEnd || day < paycheckEnd))) &&
       (!search || row.name.toLowerCase().includes(search.toLowerCase())) &&
       (!dateFrom || day >= dateFrom) &&
       (!dateTo || day <= dateTo) &&
@@ -110,7 +117,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
   const activeFilters = [dateFrom, dateTo, category, frequency, amountMin, amountMax].filter(Boolean).length;
   const clearFilters = () => { setDateFrom(''); setDateTo(''); setCategory(''); setFrequency(''); setAmountMin(''); setAmountMax(''); };
 
-  const toEdit = (row: Row): EditRow => ({ date: dateKey(row.date), name: row.name, category: row.category, amount: String(row.amount), frequency: row.frequency });
+  const toEdit = (row: Row): EditRow => ({ date: dateKey(row.date), name: row.name, category: row.category, amount: String(row.amount), frequency: row.frequency, isPaycheck: row.kind === 'income' && !!(row.orig as Income).isPaycheck });
   const startEditAll = () => {
     setEditingId(null);
     setEditAll(true);
@@ -123,7 +130,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
     setEdits({ [row.id]: toEdit(row) });
   };
   const stopEditing = () => { setEditAll(false); setEditingId(null); setEdits({}); };
-  const setField = (id: string, field: keyof EditRow, value: string) =>
+  const setField = (id: string, field: keyof EditRow, value: string | boolean) =>
     setEdits(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
 
   const saveRows = (ids: string[]) => {
@@ -133,7 +140,13 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
       const edit = edits[id];
       if (!row || !edit) return;
       const base = row.orig;
-      const updated: Item = { ...base, name: edit.name, tags: [edit.category], frequency: edit.frequency as Item['frequency'] };
+      const updated: Item = {
+        ...base,
+        name: edit.name,
+        tags: [edit.category],
+        frequency: edit.frequency as Item['frequency'],
+        ...(row.kind === 'income' ? { isPaycheck: edit.isPaycheck } : {}),
+      };
       const newAmount = parseFloat(edit.amount);
       // Recurring rows keep their series start; amount changes go through the scope dialog
       if (!base.isRecurring) {
@@ -261,6 +274,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
 
       <div className="txMeta">
         <span className="muted">{rows.length} transaction{rows.length === 1 ? '' : 's'}</span>
+        {paycheckStart && !dateFrom && !dateTo && <span className="muted">Pay period since {fmtDate(new Date(`${paycheckStart}T00:00:00`))}</span>}
         <span className="spacer" />
         {selected.length > 0 && <button className="danger" onClick={deleteSelected}>Delete selected ({selected.length})</button>}
         {editAll ? (
@@ -297,7 +311,10 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
                 {isEditing ? (
                   <>
                     <div className="cDate"><input type="date" value={edit.date} disabled={row.orig.isRecurring} title={row.orig.isRecurring ? 'Recurring series start date cannot be changed here' : undefined} onChange={e => setField(row.id, 'date', e.target.value)} /></div>
-                    <div className="cName"><input value={edit.name} onChange={e => setField(row.id, 'name', e.target.value)} /></div>
+                    <div className="cName">
+                      <input value={edit.name} onChange={e => setField(row.id, 'name', e.target.value)} />
+                      {row.kind === 'income' && !editAll && <label className="paycheckEdit"><input type="checkbox" checked={edit.isPaycheck} onChange={e => setField(row.id, 'isPaycheck', e.target.checked)} /> Paycheck</label>}
+                    </div>
                     <div className="cCat">
                       <select value={edit.category} onChange={e => setField(row.id, 'category', e.target.value)}>
                         <option value="">None</option>
@@ -317,6 +334,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
                     <div className="cName">
                       <span className="txName" title={row.name}>{row.name}{row.orig.isRecurring && <span className="recurMark" title="Recurring"> ↻</span>}</span>
                       <span className="cMeta">{meta}</span>
+                      {row.kind === 'income' && (row.orig as Income).isPaycheck && <span className="paycheckBadge">Paycheck</span>}
                     </div>
                     <div className="cCat">{row.category}</div>
                     <div className="cFreq">{cap(row.frequency)}</div>
@@ -378,6 +396,7 @@ function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind;
   const [frequency, setFrequency] = useState<Item['frequency']>('monthly');
   const [startDate, setStartDate] = useState('');
   const [isRecurring, setIsRecurring] = useState(true);
+  const [isPaycheck, setIsPaycheck] = useState(false);
   const [category, setCategory] = useState('');
   const [icon, setIcon] = useState(ICON_OPTIONS[0]);
   const [customIcon, setCustomIcon] = useState('');
@@ -392,6 +411,7 @@ function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind;
       startDate,
       isRecurring,
       tags: category ? [category] : [],
+      ...(kind === 'income' ? { isPaycheck } : {}),
     };
     if (kind === 'income') item.icon = customIcon.trim() || icon;
     onAdd(kind, item);
@@ -404,7 +424,11 @@ function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind;
         <button type="button" className={kind === 'expense' ? 'on' : ''} onClick={() => setKind('expense')}>Expense</button>
       </div>
       <div className="txAddGrid">
-        <label>Name<input value={name} onChange={e => setName(e.target.value)} required /></label>
+        <label>Name<input value={name} onChange={e => {
+          const value = e.target.value;
+          setName(value);
+          if (/\bpaychecks?\b/i.test(value)) setIsPaycheck(true);
+        }} required /></label>
         <label>Amount<input type="number" step="0.01" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} required /></label>
         <label>Date<input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required /></label>
         <label>Category
@@ -426,6 +450,7 @@ function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind;
             </select>
           </label>
         )}
+        {kind === 'income' && <label className="paycheckEdit"><input type="checkbox" checked={isPaycheck} onChange={e => setIsPaycheck(e.target.checked)} /> Paycheck</label>}
         {kind === 'income' && icon === 'custom' && (
           <label>Custom icon<input value={customIcon} onChange={e => setCustomIcon(e.target.value)} /></label>
         )}

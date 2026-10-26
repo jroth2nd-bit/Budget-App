@@ -31,7 +31,7 @@ export default function ImportData({ addIncomes, addExpenses, tags = [], setTags
           const fileHeaders = Object.keys(parsedData[0]);
           setHeaders(fileHeaders);
           const lowerHeaders = fileHeaders.map(h => h.toLowerCase());
-          setMappedName(fileHeaders[lowerHeaders.indexOf('name')] || '');
+          setMappedName(fileHeaders[lowerHeaders.indexOf('name')] || fileHeaders[lowerHeaders.indexOf('description')] || '');
           setMappedAmount(fileHeaders[lowerHeaders.indexOf('amount')] || '');
           setMappedFrequency(fileHeaders[lowerHeaders.indexOf('frequency')] || '');
           setMappedStartDate(fileHeaders[lowerHeaders.indexOf('startdate')] || fileHeaders[lowerHeaders.indexOf('date')] || '');
@@ -124,10 +124,14 @@ export default function ImportData({ addIncomes, addExpenses, tags = [], setTags
         const startDateStr = row[mappedStartDate] || new Date().toISOString().split('T')[0];
         const startDate = new Date(startDateStr).toISOString().split('T')[0];
         const category = row[mappedCategory]?.toString().trim() || '';
+        const hasPaycheckDescription = Object.entries(row).some(([key, value]) =>
+          key.trim().toLowerCase() === 'description' && /\bpaychecks?\b/i.test(String(value || ''))
+        );
         return {
           id: Date.now().toString() + idx,
           name,
           amount,
+          isPaycheck: /\bpaychecks?\b/i.test(String(name)) || hasPaycheckDescription,
           frequency,
           startDate,
           isRecurring: false,

@@ -12,12 +12,24 @@ import { DashboardIcon, TransactionsIcon, AdminIcon, CalendarIcon } from './NavI
 import TransactionsPage from './Transactions';
 import { Income, Expense, Tag } from './types';
 import * as XLSX from 'xlsx';
-import { AmountScope, DeleteScope, amountFor, applyAmountChange, applyDelete, dateKey, isSkipped, stepDate } from './recurrence';
+import { AmountScope, DeleteScope, amountFor, applyAmountChange, applyDelete, dateKey, getPaycheckPeriod, isSkipped, stepDate } from './recurrence';
 import { AmountScopeDialog, DeleteScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
 
 type Page = 'dashboard' | 'transactions' | 'admin'
 
 const ICON_OPTIONS = ['💼','💰','💸','🏠','🛒','🍔','🚗','🎓','🎁','🩺','📈','💡','🧾','📦','🪙']
+
+function normalizeIncome(income: Income): Income {
+  const description = (income as Income & { description?: string }).description || '';
+  return {
+    ...income,
+    isPaycheck: typeof income.isPaycheck === 'boolean'
+      ? income.isPaycheck
+      : /\bpaychecks?\b/i.test(`${income.name} ${description}`),
+    tags: income.tags || [],
+    icon: income.icon || '',
+  };
+}
 
 
 
@@ -52,11 +64,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
     const saved = localStorage.getItem('incomes');
     if (saved) {
       try {
-        return JSON.parse(saved).map((income: Income) => ({
-          ...income,
-          tags: income.tags || [],
-          icon: income.icon || ''
-        }));
+        return JSON.parse(saved).map((income: Income) => normalizeIncome(income));
       } catch {
         return [];
       }
@@ -123,7 +131,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
       if (error) { setSyncState('error'); return; }
       const d = data?.data as Partial<CloudData> | undefined;
       if (d && Array.isArray(d.incomes)) {
-        setIncomes(d.incomes.map(i => ({ ...i, tags: i.tags || [], icon: i.icon || '' })));
+        setIncomes(d.incomes.map(i => normalizeIncome(i)));
         setExpenses((d.expenses || []).map(e => ({ ...e, tags: e.tags || [], icon: e.icon || '' })));
         setTags(d.tags || []);
         setStartingBalance(Number(d.startingBalance) || 0);
@@ -276,7 +284,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
             tags={tags}
             postedMap={postedMap}
             onPostedChange={handlePostedChange}
-            onAdd={(kind, item) => kind === 'income' ? setIncomes(prev => [...prev, item as Income]) : setExpenses(prev => [...prev, item as Expense])}
+            onAdd={(kind, item) => kind === 'income' ? setIncomes(prev => [...prev, normalizeIncome(item as Income)]) : setExpenses(prev => [...prev, item as Expense])}
             onUpdate={(kind, item) => kind === 'income' ? setIncomes(prev => prev.map(i => i.id === item.id ? item as Income : i)) : setExpenses(prev => prev.map(e => e.id === item.id ? item as Expense : e))}
             onDelete={(kind, id) => kind === 'income' ? setIncomes(prev => prev.filter(i => i.id !== id)) : setExpenses(prev => prev.filter(e => e.id !== id))}
           />
@@ -287,7 +295,8 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
             setBackground={setBackground}
             BACKGROUNDS={BACKGROUNDS}
             addIncomes={(newIncomes, replaceAll) => {
-              const updated = replaceAll ? newIncomes : [...incomes, ...newIncomes];
+              const normalized = newIncomes.map((income: Income) => normalizeIncome(income));
+              const updated = replaceAll ? normalized : [...incomes, ...normalized];
               setIncomes(updated);
               window.localStorage.setItem('incomes', JSON.stringify(updated));
             }}
@@ -302,7 +311,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
             setLowBalanceThreshold={setLowBalanceThreshold}
             backup={{ incomes, expenses, tags, startingBalance, lowBalanceThreshold, postedMap, background }}
             onRestoreAll={data => {
-              setIncomes(data.incomes);
+              setIncomes(data.incomes.map(income => normalizeIncome(income)));
               setExpenses(data.expenses);
               setTags(data.tags);
               setStartingBalance(data.startingBalance);
@@ -491,16 +500,8 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
   const todayKey = `${todayStart.getFullYear()}-${pad2(todayStart.getMonth() + 1)}-${pad2(todayStart.getDate())}`
 
   // Most recent income occurrence on or before today; the timeline starts there
-  let lastPaycheck: Date | null = null
-  for (const item of incomes) {
-    const current = new Date(item.startDate)
-    while (dateKey(current) <= todayKey && (!item.endDate || dateKey(current) <= item.endDate)) {
-      if (!isSkipped(item, current) && (!lastPaycheck || current > lastPaycheck)) lastPaycheck = new Date(current)
-      if (!item.isRecurring) break
-      stepDate(current, item.frequency)
-    }
-  }
-  const projStart = lastPaycheck ?? todayStart
+  const paycheckPeriod = getPaycheckPeriod(incomes, todayStart);
+  const projStart = paycheckPeriod.lastPaycheck ?? todayStart
   const projEnd = new Date(todayStart)
   if (timeline === '30d') projEnd.setDate(projEnd.getDate() + 30)
   else projEnd.setMonth(projEnd.getMonth() + (timeline === '3m' ? 3 : timeline === '6m' ? 6 : 12))
@@ -528,25 +529,15 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
   const upcomingRows = windowRows.filter(row => dateKey(row.effDate) >= todayKey)
 
   const fmtMoney = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  const fmtDay = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const fmtDay = (d: Date) => new Date(`${dateKey(d)}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   const currentBalance = startingBalance + gatherTransactions().reduce((sum, tx) => sum + (postedMap[tx.id] ? tx.income - tx.expense : 0), 0)
   const lowRow = lowBalanceThreshold ? upcomingRows.find(row => row.runningBalance < lowBalanceThreshold) : undefined
   const minRow = upcomingRows.length ? upcomingRows.reduce((a, b) => (a.runningBalance < b.runningBalance ? a : b)) : undefined
-  const { nextPayday, nextPayAmount } = (() => {
-    const now = new Date()
-    let best: Date | null = null
-    let amount = 0
-    incomes.forEach(item => {
-      const d = new Date(item.startDate)
-      while (item.isRecurring && (!item.endDate || dateKey(d) <= item.endDate) && (d <= now || isSkipped(item, d))) stepDate(d, item.frequency)
-      if (d > now && (!item.endDate || dateKey(d) <= item.endDate) && !isSkipped(item, d)) {
-        if (!best || dateKey(d) < dateKey(best)) { best = new Date(d); amount = amountFor(item, d) }
-        else if (dateKey(d) === dateKey(best)) amount += amountFor(item, d)
-      }
-    })
-    return { nextPayday: best as Date | null, nextPayAmount: amount }
-  })()
-  const daysToPayday = nextPayday ? Math.ceil((nextPayday.getTime() - Date.now()) / 86400000) : null
+  const nextPayday = paycheckPeriod.nextPaycheck;
+  const nextPayAmount = paycheckPeriod.nextPayAmount;
+  const daysToPayday = nextPayday
+    ? Math.round((Date.parse(`${dateKey(nextPayday)}T00:00:00Z`) - Date.parse(`${todayKey}T00:00:00Z`)) / 86400000)
+    : null
 
   return (
     <div className="dash">
