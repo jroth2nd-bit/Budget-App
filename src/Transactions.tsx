@@ -91,7 +91,13 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
 
   const paycheckPeriod = getPaycheckPeriod(incomes);
   const paycheckStart = paycheckPeriod.lastPaycheck ? dateKey(paycheckPeriod.lastPaycheck) : null;
-  const paycheckEnd = paycheckPeriod.nextPaycheck ? dateKey(paycheckPeriod.nextPaycheck) : null;
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const targetMonth = new Date(today.getFullYear(), today.getMonth() + 3, 1);
+  const lastDayOfTargetMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate();
+  targetMonth.setDate(Math.min(today.getDate(), lastDayOfTargetMonth));
+  const transactionsEnd = targetMonth;
+  const transactionsEndKey = `${transactionsEnd.getFullYear()}-${String(transactionsEnd.getMonth() + 1).padStart(2, '0')}-${String(transactionsEnd.getDate()).padStart(2, '0')}`;
   const allRows = [...buildRows(incomes, 'income'), ...buildRows(expenses, 'expense')]
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 
@@ -102,7 +108,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
     const isPosted = !!postedMap[row.id];
     return (
       (kindFilter === 'all' || row.kind === kindFilter) &&
-      (!paycheckStart || dateFrom || dateTo || (day >= paycheckStart && (!paycheckEnd || day < paycheckEnd))) &&
+      (dateFrom || dateTo || (day >= (paycheckStart ?? todayKey) && day <= transactionsEndKey)) &&
       (!search || row.name.toLowerCase().includes(search.toLowerCase())) &&
       (!dateFrom || day >= dateFrom) &&
       (!dateTo || day <= dateTo) &&
@@ -274,7 +280,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
 
       <div className="txMeta">
         <span className="muted">{rows.length} transaction{rows.length === 1 ? '' : 's'}</span>
-        {paycheckStart && !dateFrom && !dateTo && <span className="muted">Pay period since {fmtDate(new Date(`${paycheckStart}T00:00:00`))}</span>}
+        {!dateFrom && !dateTo && <span className="muted">{paycheckStart ? `Since paycheck ${fmtDate(new Date(`${paycheckStart}T00:00:00`))}` : 'Next 3 months'}</span>}
         <span className="spacer" />
         {selected.length > 0 && <button className="danger" onClick={deleteSelected}>Delete selected ({selected.length})</button>}
         {editAll ? (
