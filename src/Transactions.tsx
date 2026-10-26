@@ -79,6 +79,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
   const [amountMin, setAmountMin] = useState('');
   const [amountMax, setAmountMax] = useState('');
   const [showAdd, setShowAdd] = useState(false);
+  const [rangeDays, setRangeDays] = useState<30 | 60 | 90>(90);
 
   const [selected, setSelected] = useState<string[]>([]);
   const [editAll, setEditAll] = useState(false);
@@ -93,10 +94,8 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
   const paycheckStart = paycheckPeriod.lastPaycheck ? dateKey(paycheckPeriod.lastPaycheck) : null;
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const targetMonth = new Date(today.getFullYear(), today.getMonth() + 3, 1);
-  const lastDayOfTargetMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate();
-  targetMonth.setDate(Math.min(today.getDate(), lastDayOfTargetMonth));
-  const transactionsEnd = targetMonth;
+  const transactionsEnd = new Date(today);
+  transactionsEnd.setDate(transactionsEnd.getDate() + rangeDays);
   const transactionsEndKey = `${transactionsEnd.getFullYear()}-${String(transactionsEnd.getMonth() + 1).padStart(2, '0')}-${String(transactionsEnd.getDate()).padStart(2, '0')}`;
   const allRows = [...buildRows(incomes, 'income'), ...buildRows(expenses, 'expense')]
     .sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -239,6 +238,23 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
         />
       )}
 
+      <div className="txRangeFilter" role="group" aria-label="Transaction date range">
+        <span>Show transactions for</span>
+        <div className="seg">
+          {([30, 60, 90] as const).map(days => (
+            <button
+              key={days}
+              type="button"
+              className={rangeDays === days ? 'on' : ''}
+              aria-pressed={rangeDays === days}
+              onClick={() => setRangeDays(days)}
+            >
+              {days} days
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="txBar">
         <div className="seg">
           {([['all', 'All'], ['income', 'Income'], ['expense', 'Expenses']] as const).map(([v, l]) => (
@@ -280,7 +296,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
 
       <div className="txMeta">
         <span className="muted">{rows.length} transaction{rows.length === 1 ? '' : 's'}</span>
-        {!dateFrom && !dateTo && <span className="muted">{paycheckStart ? `Since paycheck ${fmtDate(new Date(`${paycheckStart}T00:00:00`))}` : 'Next 3 months'}</span>}
+        {!dateFrom && !dateTo && <span className="muted">{paycheckStart ? `Since paycheck ${fmtDate(new Date(`${paycheckStart}T00:00:00`))} · ` : ''}Next {rangeDays} days</span>}
         <span className="spacer" />
         {selected.length > 0 && <button className="danger" onClick={deleteSelected}>Delete selected ({selected.length})</button>}
         {editAll ? (

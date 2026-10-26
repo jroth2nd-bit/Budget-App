@@ -309,6 +309,9 @@ button.danger { color: var(--neg); border-color: rgba(248, 113, 113, 0.45); back
 button.active { border-color: var(--accent); color: var(--accent); }
 
 .tx .spacer { flex: 1; }
+.txRangeFilter { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; font-size: 0.85rem; color: var(--muted); }
+.txRangeFilter .seg { display: inline-flex; gap: 4px; }
+.txRangeFilter button { padding: 6px 12px; font-size: 0.85rem; }
 .txBar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; min-width: 0; }
 .txBar > * { flex: none; }
 .txBar .txSearch { flex: 1 1 140px; min-width: 0; }
@@ -381,6 +384,9 @@ button.active { border-color: var(--accent); color: var(--accent); }
 }
 
 @media (max-width: 639px) {
+  .txRangeFilter { justify-content: space-between; }
+  .txRangeFilter .seg { flex: 1; }
+  .txRangeFilter button { flex: 1; padding-inline: 8px; }
   .txBar { display: grid; grid-template-columns: 1fr 1fr; }
   .txBar > .seg, .txBar > .txSearch { grid-column: 1 / -1; }
   .txBar > .seg { display: flex; }
