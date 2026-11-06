@@ -1,5 +1,5 @@
 
-import { amountFor, dateKey, getPaycheckPeriod, isSkipped, stepDate } from './recurrence';
+import { amountFor, dateKey, getPaycheckPeriod, isSkipped, occurrenceDetails, stepDate } from './recurrence';
 import type { Expense, Income } from './types';
 
 interface DotDayListProps {
@@ -25,21 +25,24 @@ export default function DotDayList({ incomes, expenses, postedMap, onPostedChang
 
   const collect = (item: Income | Expense, type: 'income' | 'expense') => {
     const current = new Date(item.startDate);
-    const push = (amount: number) => txs.push({
-      id: item.id + current.toISOString(),
-      name: item.name,
-      date: new Date(current),
-      amount,
-      type,
-      pastDue: dateKey(current) < todayKey,
-      posted: !!postedMap[item.id + current.toISOString()],
-    });
-    if (!item.isRecurring) {
+    const push = (amount: number) => {
+      const details = occurrenceDetails(item, current);
+      txs.push({
+        id: item.id + current.toISOString(),
+        name: details.name,
+        date: new Date(current),
+        amount,
+        type,
+        pastDue: dateKey(current) < todayKey,
+        posted: !!postedMap[item.id + current.toISOString()],
+      });
+    };
+    if (!item.isRecurring || item.frequency === 'once') {
       const key = dateKey(current);
       if (hasPayPeriod) {
-        if (key >= paycheckStart! && key < displayEnd) push(item.amount);
+        if (key >= paycheckStart! && key < displayEnd) push(amountFor(item, current));
       } else if (!postedMap[item.id + current.toISOString()]) {
-        push(item.amount);
+        push(amountFor(item, current));
       }
       return;
     }

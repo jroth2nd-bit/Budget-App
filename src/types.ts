@@ -3,7 +3,7 @@ export interface Income {
   name: string;
   amount: number;
   isPaycheck?: boolean;
-  frequency: 'weekly' | 'biweekly' | 'bimonthly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+  frequency: 'once' | 'weekly' | 'biweekly' | 'bimonthly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
   startDate: string; // ISO date
   endDate?: string;
   isRecurring: boolean;
@@ -11,6 +11,7 @@ export interface Income {
   icon?: string;
   overrides?: Record<string, number>;
   amountSchedule?: Array<{ from: string; amount: number }>;
+  occurrenceOverrides?: Record<string, { name?: string; tags?: string[]; isPaycheck?: boolean }>;
   // Occurrence dates (YYYY-MM-DD) removed from the series
   skipped?: string[];
 }
@@ -19,7 +20,7 @@ export interface Expense {
   id: string;
   name: string;
   amount: number;
-  frequency: 'weekly' | 'biweekly' | 'bimonthly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+  frequency: 'once' | 'weekly' | 'biweekly' | 'bimonthly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
   startDate: string;
   endDate?: string;
   isRecurring: boolean;
@@ -27,6 +28,7 @@ export interface Expense {
   icon?: string;
   overrides?: Record<string, number>;
   amountSchedule?: Array<{ from: string; amount: number }>;
+  occurrenceOverrides?: Record<string, { name?: string; tags?: string[]; isPaycheck?: boolean }>;
   // Occurrence dates (YYYY-MM-DD) removed from the series
   skipped?: string[];
 }

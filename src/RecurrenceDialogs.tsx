@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AmountScope, DeleteScope, FREQUENCIES, Frequency, dateKey, firstOccurrenceOnOrAfter } from './recurrence';
+import { AmountScope, DeleteScope, FREQUENCIES, RecurringFrequency, dateKey, firstOccurrenceOnOrAfter } from './recurrence';
 
 const overlay: React.CSSProperties = {
   position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex',
@@ -12,7 +12,7 @@ const card: React.CSSProperties = {
 };
 
 export interface MakeRecurringResult {
-  frequency: Frequency;
+  frequency: RecurringFrequency;
   startDate: string;
   endDate?: string;
 }
@@ -24,8 +24,9 @@ export function MakeRecurringDialog({ name, itemDate, frequency, onConfirm, onCa
   onConfirm: (result: MakeRecurringResult) => void;
   onCancel: () => void;
 }) {
-  const initialFrequency = (FREQUENCIES as string[]).includes(frequency) ? (frequency as Frequency) : 'monthly';
-  const [freq, setFreq] = useState<Frequency>(initialFrequency);
+  const recurringFrequencies = FREQUENCIES.filter((value): value is RecurringFrequency => value !== 'once');
+  const initialFrequency = recurringFrequencies.includes(frequency as RecurringFrequency) ? frequency as RecurringFrequency : 'monthly';
+  const [freq, setFreq] = useState<RecurringFrequency>(initialFrequency);
   // Recurrence starts today or later; past occurrences are not generated
   const [startDate, setStartDate] = useState(() => dateKey(firstOccurrenceOnOrAfter(itemDate, initialFrequency, new Date())));
   const [endDate, setEndDate] = useState('');
@@ -36,8 +37,8 @@ export function MakeRecurringDialog({ name, itemDate, frequency, onConfirm, onCa
       <form style={card} onSubmit={e => { e.preventDefault(); onConfirm({ frequency: freq, startDate, endDate: endDate || undefined }); }}>
         <h3 style={{ margin: 0 }}>Make "{name}" recurring</h3>
         <label>Frequency
-          <select value={freq} onChange={e => setFreq(e.target.value as Frequency)} style={{ width: '100%' }}>
-            {FREQUENCIES.map(f => <option key={f} value={f}>{f}</option>)}
+          <select value={freq} onChange={e => setFreq(e.target.value as RecurringFrequency)} style={{ width: '100%' }}>
+            {recurringFrequencies.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
         </label>
         <label>First occurrence
@@ -54,6 +55,30 @@ export function MakeRecurringDialog({ name, itemDate, frequency, onConfirm, onCa
     </div>,
     document.body
   ));
+}
+
+export function EditScopeDialog({ name, date, onConfirm, onCancel }: {
+  name: string;
+  date: Date;
+  onConfirm: (scope: 'once' | 'series') => void;
+  onCancel: () => void;
+}) {
+  const [scope, setScope] = useState<'once' | 'series'>('once');
+  return createPortal(
+    <div style={overlay}>
+      <form style={card} onSubmit={e => { e.preventDefault(); onConfirm(scope); }}>
+        <h3 style={{ margin: 0 }}>Edit "{name}"</h3>
+        <div>Occurrence on {date.toLocaleDateString()}</div>
+        <label><input type="radio" checked={scope === 'once'} onChange={() => setScope('once')} /> This occurrence only</label>
+        <label><input type="radio" checked={scope === 'series'} onChange={() => setScope('series')} /> Entire recurring series</label>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onCancel}>Cancel</button>
+          <button type="submit">Continue</button>
+        </div>
+      </form>
+    </div>,
+    document.body
+  );
 }
 
 export function AmountScopeDialog({ name, date, oldAmount, newAmount, onConfirm, onCancel }: {
