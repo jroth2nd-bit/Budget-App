@@ -1,6 +1,7 @@
 import type { Income } from './types';
 
-export type Frequency = 'weekly' | 'biweekly' | 'bimonthly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+export type Frequency = 'once' | 'weekly' | 'biweekly' | 'bimonthly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+export type RecurringFrequency = Exclude<Frequency, 'once'>;
 export type AmountScope = 'once' | 'forward';
 export type DeleteScope = 'once' | 'forward' | 'all';
 
@@ -19,7 +20,14 @@ export interface AmountAdjustable {
   skipped?: string[];
 }
 
-export const FREQUENCIES: Frequency[] = ['weekly', 'biweekly', 'bimonthly', 'monthly', 'quarterly', 'semiannual', 'annual'];
+export interface OccurrenceAdjustable {
+  name: string;
+  tags?: string[];
+  isPaycheck?: boolean;
+  occurrenceOverrides?: Record<string, { name?: string; tags?: string[]; isPaycheck?: boolean }>;
+}
+
+export const FREQUENCIES: Frequency[] = ['once', 'weekly', 'biweekly', 'bimonthly', 'monthly', 'quarterly', 'semiannual', 'annual'];
 
 export const dateKey = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -48,6 +56,15 @@ export function amountFor(item: AmountAdjustable, date: Date): number {
     }
   });
   return amount;
+}
+
+export function occurrenceDetails(item: OccurrenceAdjustable, date: Date) {
+  const override = item.occurrenceOverrides?.[dateKey(date)];
+  return {
+    name: override?.name ?? item.name,
+    tags: override?.tags ?? item.tags,
+    isPaycheck: override?.isPaycheck ?? item.isPaycheck,
+  };
 }
 
 export function applyAmountChange<T extends AmountAdjustable>(item: T, date: Date, newAmount: number, scope: AmountScope): T {
@@ -81,13 +98,13 @@ export function getPaycheckPeriod(incomes: Income[], now = new Date()): Paycheck
   let nextPaycheck: Date | null = null;
   let nextPayAmount = 0;
 
-  incomes.filter(item => item.isPaycheck).forEach(item => {
+  incomes.filter(item => item.isPaycheck || Object.values(item.occurrenceOverrides || {}).some(override => override.isPaycheck)).forEach(item => {
     const current = new Date(item.startDate);
     if (Number.isNaN(current.getTime())) return;
     let guard = 0;
 
     while ((!item.endDate || dateKey(current) <= item.endDate) && guard++ < 5000) {
-      if (!isSkipped(item, current)) {
+      if (!isSkipped(item, current) && isPaycheckFor(item, current)) {
         const key = dateKey(current);
         if (key <= todayKey) {
           if (!lastPaycheck || key > dateKey(lastPaycheck)) lastPaycheck = new Date(current);
@@ -102,12 +119,17 @@ export function getPaycheckPeriod(incomes: Income[], now = new Date()): Paycheck
         }
       }
 
-      if (!item.isRecurring) break;
+      if (!item.isRecurring || item.frequency === 'once') break;
       stepDate(current, item.frequency);
     }
+
   });
 
   return { lastPaycheck, nextPaycheck, nextPayAmount };
+}
+
+function isPaycheckFor(item: Income, date: Date) {
+  return occurrenceDetails(item, date).isPaycheck;
 }
 
 // Returns the updated item, or null when nothing is left of the series

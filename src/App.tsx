@@ -12,7 +12,7 @@ import { DashboardIcon, TransactionsIcon, AdminIcon, CalendarIcon } from './NavI
 import TransactionsPage from './Transactions';
 import { Income, Expense, Tag } from './types';
 import * as XLSX from 'xlsx';
-import { AmountScope, DeleteScope, amountFor, applyAmountChange, applyDelete, dateKey, getPaycheckPeriod, isSkipped, stepDate } from './recurrence';
+import { AmountScope, DeleteScope, amountFor, applyAmountChange, applyDelete, dateKey, getPaycheckPeriod, isSkipped, occurrenceDetails, stepDate } from './recurrence';
 import { AmountScopeDialog, DeleteScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
 
 type Page = 'dashboard' | 'transactions' | 'admin'
@@ -23,6 +23,7 @@ function normalizeIncome(income: Income): Income {
   const description = (income as Income & { description?: string }).description || '';
   return {
     ...income,
+    isRecurring: income.frequency !== 'once' && income.isRecurring,
     isPaycheck: typeof income.isPaycheck === 'boolean'
       ? income.isPaycheck
       : /\bpaychecks?\b/i.test(`${income.name} ${description}`),
@@ -385,15 +386,16 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
       let txs: Array<{ id: string, date: Date, name: string, category: string, income: number, expense: number, type: 'income' | 'expense' }> = []
       incomes.forEach(item => {
         let current = new Date(item.startDate)
-        if (item.isRecurring) {
+        if (item.isRecurring && item.frequency !== 'once') {
           const today = until
           while (current <= today && (!item.endDate || dateKey(current) <= item.endDate)) {
             if (isSkipped(item, current)) { stepDate(current, item.frequency); continue }
+            const details = occurrenceDetails(item, current);
             txs.push({
               id: item.id + current.toISOString(),
               date: new Date(current),
-              name: item.name,
-              category: (item.tags && item.tags.length > 0) ? item.tags[0] : '',
+              name: details.name,
+              category: (details.tags && details.tags.length > 0) ? details.tags[0] : '',
               income: amountFor(item, current),
               expense: 0,
               type: 'income'
@@ -407,12 +409,13 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
             else if (item.frequency === 'annual') current.setFullYear(current.getFullYear() + 1)
           }
         } else {
+          const details = occurrenceDetails(item, current);
           txs.push({
             id: item.id + current.toISOString(),
             date: new Date(current),
-            name: item.name,
-            category: (item.tags && item.tags.length > 0) ? item.tags[0] : '',
-            income: item.amount,
+            name: details.name,
+            category: (details.tags && details.tags.length > 0) ? details.tags[0] : '',
+            income: amountFor(item, current),
             expense: 0,
             type: 'income'
           })
@@ -420,15 +423,16 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
       })
       expenses.forEach(item => {
         let current = new Date(item.startDate)
-        if (item.isRecurring) {
+        if (item.isRecurring && item.frequency !== 'once') {
           const today = until
           while (current <= today && (!item.endDate || dateKey(current) <= item.endDate)) {
             if (isSkipped(item, current)) { stepDate(current, item.frequency); continue }
+            const details = occurrenceDetails(item, current);
             txs.push({
               id: item.id + current.toISOString(),
               date: new Date(current),
-              name: item.name,
-              category: (item.tags && item.tags.length > 0) ? item.tags[0] : '',
+              name: details.name,
+              category: (details.tags && details.tags.length > 0) ? details.tags[0] : '',
               income: 0,
               expense: amountFor(item, current),
               type: 'expense'
@@ -442,13 +446,14 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
             else if (item.frequency === 'annual') current.setFullYear(current.getFullYear() + 1)
           }
         } else {
+          const details = occurrenceDetails(item, current);
           txs.push({
             id: item.id + current.toISOString(),
             date: new Date(current),
-            name: item.name,
-            category: (item.tags && item.tags.length > 0) ? item.tags[0] : '',
+            name: details.name,
+            category: (details.tags && details.tags.length > 0) ? details.tags[0] : '',
             income: 0,
-            expense: item.amount,
+            expense: amountFor(item, current),
             type: 'expense'
           })
         }
@@ -663,7 +668,7 @@ function IncomePage({ incomes, tags, addIncome, updateIncome, deleteIncome, post
     let txs: Array<{ id: string, date: Date, name: string, category: string, amount: number, frequency: string, orig: Income }> = []
     incomes.forEach(item => {
       let current = new Date(item.startDate)
-      if (item.isRecurring) {
+      if (item.isRecurring && item.frequency !== 'once') {
         const today = new Date()
         today.setFullYear(today.getFullYear() + 1)
         while (current <= today && (!item.endDate || dateKey(current) <= item.endDate)) {
@@ -991,7 +996,7 @@ function ExpensePage({ expenses, tags, addExpense, updateExpense, deleteExpense,
     let txs: Array<{ id: string, date: Date, name: string, category: string, amount: number, frequency: string, orig: Expense }> = []
     expenses.forEach(item => {
       let current = new Date(item.startDate)
-      if (item.isRecurring) {
+      if (item.isRecurring && item.frequency !== 'once') {
         const today = new Date()
         today.setFullYear(today.getFullYear() + 1)
         while (current <= today && (!item.endDate || dateKey(current) <= item.endDate)) {

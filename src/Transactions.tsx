@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Income, Expense, Tag } from './types';
-import { AmountScope, DeleteScope, FREQUENCIES, amountFor, applyAmountChange, applyDelete, dateKey, getPaycheckPeriod, isSkipped, stepDate } from './recurrence';
-import { AmountScopeDialog, DeleteScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
+import { AmountScope, DeleteScope, FREQUENCIES, amountFor, applyAmountChange, applyDelete, dateKey, getPaycheckPeriod, isSkipped, occurrenceDetails, stepDate } from './recurrence';
+import { AmountScopeDialog, DeleteScopeDialog, EditScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
 
 type Kind = 'income' | 'expense';
 type Item = Income | Expense;
@@ -13,6 +13,7 @@ interface Row {
   name: string;
   category: string;
   amount: number;
+  isPaycheck: boolean;
   frequency: string;
   orig: Item;
 }
@@ -32,19 +33,23 @@ function buildRows(items: Item[], kind: Kind): Row[] {
   const limit = new Date();
   limit.setFullYear(limit.getFullYear() + 1);
   const out: Row[] = [];
-  const push = (item: Item, date: Date, amount: number) => out.push({
-    id: item.id + date.toISOString(),
-    kind,
-    date: new Date(date),
-    name: item.name,
-    category: item.tags && item.tags.length > 0 ? item.tags[0] : '',
-    amount,
-    frequency: item.frequency,
-    orig: item,
-  });
+  const push = (item: Item, date: Date, amount: number) => {
+    const details = occurrenceDetails(item, date);
+    out.push({
+      id: item.id + date.toISOString(),
+      kind,
+      date: new Date(date),
+      name: details.name,
+      category: details.tags && details.tags.length > 0 ? details.tags[0] : '',
+      amount,
+      isPaycheck: kind === 'income' && !!details.isPaycheck,
+      frequency: item.frequency,
+      orig: item,
+    });
+  };
   items.forEach(item => {
     const current = new Date(item.startDate);
-    if (item.isRecurring) {
+    if (item.isRecurring && item.frequency !== 'once') {
       while (current <= limit && (!item.endDate || dateKey(current) <= item.endDate)) {
         if (!isSkipped(item, current)) push(item, current, amountFor(item, current));
         stepDate(current, item.frequency);
@@ -85,6 +90,8 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
   const [editAll, setEditAll] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, EditRow>>({});
+  const [editScopePrompt, setEditScopePrompt] = useState<Row | null>(null);
+  const [editingScope, setEditingScope] = useState<'once' | 'series' | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [recurTarget, setRecurTarget] = useState<Row | null>(null);
   const [amountQueue, setAmountQueue] = useState<Array<{ row: Row; newAmount: number }>>([]);
@@ -122,21 +129,32 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
   const activeFilters = [dateFrom, dateTo, category, frequency, amountMin, amountMax].filter(Boolean).length;
   const clearFilters = () => { setDateFrom(''); setDateTo(''); setCategory(''); setFrequency(''); setAmountMin(''); setAmountMax(''); };
 
-  const toEdit = (row: Row): EditRow => ({ date: dateKey(row.date), name: row.name, category: row.category, amount: String(row.amount), frequency: row.frequency, isPaycheck: row.kind === 'income' && !!(row.orig as Income).isPaycheck });
+  const toEdit = (row: Row): EditRow => ({ date: dateKey(row.date), name: row.name, category: row.category, amount: String(row.amount), frequency: row.frequency, isPaycheck: row.isPaycheck });
   const startEditAll = () => {
     setEditingId(null);
     setEditAll(true);
     setEdits(Object.fromEntries(rows.map(r => [r.id, toEdit(r)])));
   };
-  const startEditRow = (row: Row) => {
+  const beginEditRow = (row: Row, scope: 'once' | 'series') => {
     setMenuId(null);
+    setEditScopePrompt(null);
     setEditAll(false);
     setEditingId(row.id);
+    setEditingScope(scope);
     setEdits({ [row.id]: toEdit(row) });
   };
-  const stopEditing = () => { setEditAll(false); setEditingId(null); setEdits({}); };
+  const startEditRow = (row: Row) => {
+    if (row.orig.isRecurring) {
+      setMenuId(null);
+      setEditScopePrompt(row);
+    }
+    else beginEditRow(row, 'once');
+  };
+  const stopEditing = () => { setEditAll(false); setEditingId(null); setEditingScope(null); setEdits({}); };
   const setField = (id: string, field: keyof EditRow, value: string | boolean) =>
     setEdits(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
+
+  const listFor = (kind: Kind): Item[] => (kind === 'income' ? incomes : expenses);
 
   const saveRows = (ids: string[]) => {
     const queue: Array<{ row: Row; newAmount: number }> = [];
@@ -145,11 +163,54 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
       const edit = edits[id];
       if (!row || !edit) return;
       const base = row.orig;
+      if (editingId === id && editingScope && base.isRecurring) {
+        const item = listFor(row.kind).find(candidate => candidate.id === base.id);
+        if (!item) return;
+        const newAmount = parseFloat(edit.amount);
+        let updated: Item;
+        if (editingScope === 'once') {
+          const key = dateKey(row.date);
+          const occurrence = {
+            ...item.occurrenceOverrides?.[key],
+            name: edit.name,
+            tags: edit.category ? [edit.category] : [],
+            ...(row.kind === 'income' ? { isPaycheck: edit.isPaycheck } : {}),
+          };
+          updated = { ...item, occurrenceOverrides: { ...(item.occurrenceOverrides || {}), [key]: occurrence } };
+          if (!isNaN(newAmount) && newAmount !== row.amount) {
+            updated = applyAmountChange(updated, row.date, newAmount, 'once');
+          }
+        } else {
+          const becomesOneTime = edit.frequency === 'once';
+          updated = {
+            ...item,
+            name: edit.name,
+            tags: edit.category ? [edit.category] : [],
+            frequency: edit.frequency as Item['frequency'],
+            isRecurring: !becomesOneTime,
+            ...(row.kind === 'income' ? { isPaycheck: edit.isPaycheck } : {}),
+            ...(becomesOneTime ? {
+              startDate: dateKey(row.date),
+              endDate: undefined,
+              skipped: undefined,
+              occurrenceOverrides: undefined,
+            } : {}),
+          };
+          if (becomesOneTime) {
+            updated = { ...updated, amount: isNaN(newAmount) ? row.amount : newAmount, overrides: undefined, amountSchedule: undefined };
+          } else if (!isNaN(newAmount) && newAmount !== row.amount) {
+            updated = { ...updated, amount: newAmount, overrides: undefined, amountSchedule: undefined };
+          }
+        }
+        onUpdate(row.kind, updated);
+        return;
+      }
       const updated: Item = {
         ...base,
         name: edit.name,
-        tags: [edit.category],
+        tags: edit.category ? [edit.category] : [],
         frequency: edit.frequency as Item['frequency'],
+        isRecurring: edit.frequency !== 'once' && base.isRecurring,
         ...(row.kind === 'income' ? { isPaycheck: edit.isPaycheck } : {}),
       };
       const newAmount = parseFloat(edit.amount);
@@ -157,6 +218,14 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
       if (!base.isRecurring) {
         updated.amount = newAmount;
         if (edit.date) updated.startDate = edit.date;
+      } else if (edit.frequency === 'once') {
+        updated.startDate = edit.date;
+        updated.amount = isNaN(newAmount) ? row.amount : newAmount;
+        updated.endDate = undefined;
+        updated.skipped = undefined;
+        updated.overrides = undefined;
+        updated.amountSchedule = undefined;
+        updated.occurrenceOverrides = undefined;
       } else if (!isNaN(newAmount) && newAmount !== row.amount) {
         queue.push({ row, newAmount });
       }
@@ -165,8 +234,6 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
     setAmountQueue(queue);
     stopEditing();
   };
-
-  const listFor = (kind: Kind): Item[] => (kind === 'income' ? incomes : expenses);
 
   const confirmAmount = (scope: AmountScope) => {
     const [current, ...rest] = amountQueue;
@@ -344,7 +411,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
                       </select>
                     </div>
                     <div className="cFreq">
-                      <select value={edit.frequency} onChange={e => setField(row.id, 'frequency', e.target.value)}>
+                      <select value={edit.frequency} disabled={row.orig.isRecurring && editingScope === 'once'} onChange={e => setField(row.id, 'frequency', e.target.value)}>
                         {FREQUENCIES.map(f => <option key={f} value={f}>{cap(f)}</option>)}
                       </select>
                     </div>
@@ -356,7 +423,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
                     <div className="cName">
                       <span className="txName" title={row.name}>{row.name}{row.orig.isRecurring && <span className="recurMark" title="Recurring"> ↻</span>}</span>
                       <span className="cMeta">{meta}</span>
-                      {row.kind === 'income' && (row.orig as Income).isPaycheck && <span className="paycheckBadge">Paycheck</span>}
+                      {row.kind === 'income' && row.isPaycheck && <span className="paycheckBadge">Paycheck</span>}
                     </div>
                     <div className="cCat">{row.category}</div>
                     <div className="cFreq">{cap(row.frequency)}</div>
@@ -401,6 +468,14 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
       {recurTarget && (
         <MakeRecurringDialog name={recurTarget.name} itemDate={recurTarget.orig.startDate} frequency={recurTarget.orig.frequency} onConfirm={confirmRecurring} onCancel={() => setRecurTarget(null)} />
       )}
+      {editScopePrompt && (
+        <EditScopeDialog
+          name={editScopePrompt.name}
+          date={editScopePrompt.date}
+          onConfirm={scope => beginEditRow(editScopePrompt, scope)}
+          onCancel={() => setEditScopePrompt(null)}
+        />
+      )}
       {deleteQueue[0] && (
         <DeleteScopeDialog name={deleteQueue[0].name} date={deleteQueue[0].date} onConfirm={confirmDelete} onCancel={() => setDeleteQueue(deleteQueue.slice(1))} />
       )}
@@ -431,7 +506,7 @@ function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind;
       amount: parseFloat(amount),
       frequency,
       startDate,
-      isRecurring,
+      isRecurring: frequency !== 'once' && isRecurring,
       tags: category ? [category] : [],
       ...(kind === 'income' ? { isPaycheck } : {}),
     };
@@ -460,7 +535,11 @@ function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind;
           </select>
         </label>
         <label>Frequency
-          <select value={frequency} onChange={e => setFrequency(e.target.value as Item['frequency'])}>
+          <select value={frequency} onChange={e => {
+            const value = e.target.value as Item['frequency'];
+            setFrequency(value);
+            if (value === 'once') setIsRecurring(false);
+          }}>
             {FREQUENCIES.map(f => <option key={f} value={f}>{cap(f)}</option>)}
           </select>
         </label>
@@ -478,7 +557,7 @@ function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind;
         )}
       </div>
       <div className="txAddFoot">
-        <label className="check"><input type="checkbox" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)} /> Recurring</label>
+        <label className="check"><input type="checkbox" checked={frequency !== 'once' && isRecurring} disabled={frequency === 'once'} onChange={e => setIsRecurring(e.target.checked)} /> Recurring</label>
         <button className="primary" type="submit">Add {kind === 'income' ? 'income' : 'expense'}</button>
       </div>
     </form>
