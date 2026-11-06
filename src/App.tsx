@@ -336,6 +336,8 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
             lowBalanceThreshold={lowBalanceThreshold}
             setLowBalanceThreshold={setLowBalanceThreshold}
             backup={{ incomes, expenses, tags, startingBalance, lowBalanceThreshold, postedMap, background, incomeHistory }}
+            onRestoreSalaryHistory={setIncomeHistory}
+            salaryImportReady={syncState === 'off' || syncState === 'saved'}
             onRestoreAll={data => {
               setIncomes(data.incomes.map(income => normalizeIncome(income)));
               setExpenses(data.expenses);
