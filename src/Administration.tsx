@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react';
 import ImportData from './ImportData';
 import LowBalanceThresholdInput from './LowBalanceThresholdInput';
 import type { IncomeHistoryData } from './types';
+import { parseSalaryHistoryBackup, SALARY_BACKUP_APP } from './salaryHistoryBackup';
 
 export interface BackupData {
   incomes: any[];
@@ -29,7 +30,9 @@ export default function Administration({
   setLowBalanceThreshold = () => {},
   onWipeAll = () => {},
   backup,
-  onRestoreAll = () => {}
+  onRestoreAll = () => {},
+  onRestoreSalaryHistory,
+  salaryImportReady,
 }: {
   background: string;
   setBackground: (bg: string) => void;
@@ -43,11 +46,50 @@ export default function Administration({
   onWipeAll?: () => void;
   backup?: BackupData;
   onRestoreAll?: (data: BackupData) => void;
+  onRestoreSalaryHistory: (data: IncomeHistoryData) => void;
+  salaryImportReady: boolean;
 }) {
   // Visual feedback for destructive/success actions
   const [successMsg, setSuccessMsg] = useState('');
   const [backupMsg, setBackupMsg] = useState<{ text: string; error?: boolean } | null>(null);
+  const [salaryBackupMsg, setSalaryBackupMsg] = useState<{ text: string; error?: boolean } | null>(null);
   const restoreInput = useRef<HTMLInputElement>(null);
+  const salaryRestoreInput = useRef<HTMLInputElement>(null);
+
+  const handleExportSalary = () => {
+    if (!backup?.incomeHistory) {
+      setSalaryBackupMsg({ text: 'Salary history is unavailable for export.', error: true });
+      return;
+    }
+    const payload = { app: SALARY_BACKUP_APP, version: 1, exportedAt: new Date().toISOString(), incomeHistory: backup.incomeHistory };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `salary-history-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setSalaryBackupMsg({ text: 'Salary history exported. Keep this file private.' });
+  };
+
+  const handleRestoreSalary = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!salaryImportReady) {
+      setSalaryBackupMsg({ text: 'Wait for account sync to finish successfully before importing.', error: true });
+      return;
+    }
+    try {
+      const history = parseSalaryHistoryBackup(JSON.parse(await file.text()) as unknown);
+      if (!window.confirm(`Replace all current salary history and annual goals with ${history.entries.length} salary entries and ${Object.keys(history.annualGoals).length} goals from this file? Budget and transaction data will not be changed.`)) return;
+      onRestoreSalaryHistory(history);
+      setSalaryBackupMsg({ text: 'Salary history imported. If signed in, check the account sync status to confirm it is saved.' });
+    } catch (err) {
+      setSalaryBackupMsg({ text: err instanceof Error ? err.message : 'Could not read the salary history file.', error: true });
+    }
+  };
 
   const handleExportAll = () => {
     if (!backup) return;
@@ -105,6 +147,18 @@ export default function Administration({
       <div className="admin-header">
         <span className="admin-header-icon" role="img" aria-label="settings">⚙️</span>
         <h2>Administration</h2>
+      </div>
+      <hr className="admin-divider" />
+      <div className="admin-section">
+        <div className="admin-section-title">Salary History Transfer</div>
+        <p>Export salary entries and annual goals only, or import them without replacing budget or transaction data. Import replaces existing salary history and goals.</p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="admin-btn" onClick={handleExportSalary}>Export Salary History</button>
+          <button className="admin-btn" disabled={!salaryImportReady} onClick={() => salaryRestoreInput.current?.click()}>Import Salary History</button>
+          <input ref={salaryRestoreInput} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleRestoreSalary} />
+        </div>
+        {!salaryImportReady && <p>Wait for account sync to finish successfully before importing.</p>}
+        {salaryBackupMsg && <div role="status" className={salaryBackupMsg.error ? undefined : 'admin-success'} style={salaryBackupMsg.error ? { color: '#ef4444', marginTop: 8 } : undefined}>{salaryBackupMsg.text}</div>}
       </div>
       <hr className="admin-divider" />
       <div className="admin-section">
