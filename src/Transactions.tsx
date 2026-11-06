@@ -60,6 +60,7 @@ interface Props {
   incomes: Income[];
   expenses: Expense[];
   tags: Tag[];
+  startingBalance: number;
   postedMap: Record<string, boolean>;
   onPostedChange: (id: string) => void;
   onAdd: (kind: Kind, item: Item) => void;
@@ -67,7 +68,7 @@ interface Props {
   onDelete: (kind: Kind, id: string) => void;
 }
 
-export default function TransactionsPage({ incomes, expenses, tags, postedMap, onPostedChange, onAdd, onUpdate, onDelete }: Props) {
+export default function TransactionsPage({ incomes, expenses, tags, startingBalance, postedMap, onPostedChange, onAdd, onUpdate, onDelete }: Props) {
   const [kindFilter, setKindFilter] = useState<'all' | Kind>('all');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'pending' | 'posted' | 'all'>('all');
@@ -97,8 +98,13 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
   const transactionsEnd = new Date(today);
   transactionsEnd.setDate(transactionsEnd.getDate() + rangeDays);
   const transactionsEndKey = `${transactionsEnd.getFullYear()}-${String(transactionsEnd.getMonth() + 1).padStart(2, '0')}-${String(transactionsEnd.getDate()).padStart(2, '0')}`;
+  let runningBalance = startingBalance;
   const allRows = [...buildRows(incomes, 'income'), ...buildRows(expenses, 'expense')]
-    .sort((a, b) => a.date.getTime() - b.date.getTime());
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map(row => {
+      runningBalance += row.kind === 'income' ? row.amount : -row.amount;
+      return { ...row, balance: runningBalance };
+    });
 
   const categories = Array.from(new Set([...tags.map(t => t.name), ...allRows.map(r => r.category).filter(Boolean)])).sort();
 
@@ -318,6 +324,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
             <div className="cCat">Category</div>
             <div className="cFreq">Frequency</div>
             <div className="cAmt">Amount</div>
+            <div className="cBal">Balance</div>
             <div className="cPost">Posted</div>
             <div className="cAct" />
           </div>
@@ -363,6 +370,7 @@ export default function TransactionsPage({ incomes, expenses, tags, postedMap, o
                     <div className={`cAmt ${row.kind === 'income' ? 'pos' : 'neg'}`}>{row.kind === 'income' ? '+' : '-'}{money(row.amount)}</div>
                   </>
                 )}
+                <div className="cBal" title="Running balance">{money(row.balance)}</div>
                 <div className="cPost"><input type="checkbox" aria-label="Posted" checked={isPosted} onChange={() => onPostedChange(row.id)} /></div>
                 <div className="cAct">
                   {editingId === row.id ? (

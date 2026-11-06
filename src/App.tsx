@@ -282,6 +282,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
             incomes={incomes}
             expenses={expenses}
             tags={tags}
+            startingBalance={startingBalance}
             postedMap={postedMap}
             onPostedChange={handlePostedChange}
             onAdd={(kind, item) => kind === 'income' ? setIncomes(prev => [...prev, normalizeIncome(item as Income)]) : setExpenses(prev => [...prev, item as Expense])}

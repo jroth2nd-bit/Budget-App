@@ -332,7 +332,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .txList { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .txRow {
   display: grid; align-items: center; column-gap: 8px;
-  grid-template-columns: 28px 104px minmax(0, 1fr) 130px 96px 104px 52px minmax(40px, auto);
+  grid-template-columns: 28px 104px minmax(0, 1fr) 130px 96px 104px 104px 52px minmax(40px, auto);
   padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 0.9rem; min-width: 0;
 }
 .txRow:last-child { border-bottom: none; }
@@ -345,6 +345,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .recurMark { color: var(--accent); }
 .txRow .cMeta { display: none; }
 .txRow .cAmt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+.txRow .cBal { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .txRow .cChk, .txRow .cPost { display: flex; justify-content: center; }
 .txRow .cAct { position: relative; display: flex; justify-content: flex-end; gap: 6px; }
 .txRow .cAct button { padding: 4px 10px; font-size: 0.8rem; }
@@ -363,20 +364,21 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .txEmpty { padding: 28px 14px; text-align: center; font-size: 0.9rem; }
 
 @container (min-width: 760px) {
-  .txList.editing .txRow { grid-template-columns: 28px 136px minmax(0, 1fr) 140px 112px 110px 52px minmax(40px, auto); }
+  .txList.editing .txRow { grid-template-columns: 28px 136px minmax(0, 1fr) 140px 112px 110px 110px 52px minmax(40px, auto); }
 }
 
 @container (max-width: 759px) {
   .txHead { display: none; }
-  .txRow { grid-template-columns: 24px minmax(0, 1fr) auto 24px 34px; padding: 10px 10px; column-gap: 6px; }
+  .txRow { grid-template-columns: 24px minmax(0, 1fr) auto auto 24px 34px; padding: 10px 10px; column-gap: 6px; }
   .txRow .cAct button.iconBtn { padding: 2px 6px !important; }
   .txRow .cDate, .txRow .cCat, .txRow .cFreq { display: none; }
   .txRow .cMeta { display: block; font-size: 0.76rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-  .txRow.isEditing { grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr); row-gap: 8px; grid-template-areas: 'chk name name' '. date amt' '. cat freq' '. post act'; }
+  .txRow.isEditing { grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr); row-gap: 8px; grid-template-areas: 'chk name name' '. date amt' '. cat freq' '. bal post' '. act act'; }
   .txRow.isEditing .cChk { grid-area: chk; }
   .txRow.isEditing .cName { grid-area: name; }
   .txRow.isEditing .cDate { display: block; grid-area: date; }
   .txRow.isEditing .cAmt { grid-area: amt; }
+  .txRow.isEditing .cBal { grid-area: bal; }
   .txRow.isEditing .cCat { display: block; grid-area: cat; }
   .txRow.isEditing .cFreq { display: block; grid-area: freq; }
   .txRow.isEditing .cPost { grid-area: post; justify-content: flex-start; }
