@@ -38,3 +38,18 @@ export interface Tag {
   icon: string;
   color: string;
 }
+
+export interface IncomeHistoryEntry {
+  id: string;
+  effectiveDate: string;
+  age?: number;
+  employer: string;
+  title: string;
+  annualIncome: number;
+  notes: string;
+}
+
+export interface IncomeHistoryData {
+  entries: IncomeHistoryEntry[];
+  annualGoals: Record<string, number>;
+}

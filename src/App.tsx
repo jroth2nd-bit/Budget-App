@@ -8,14 +8,15 @@ import Login from './Login';
 import { supabase } from './supabase';
 import type { Session } from '@supabase/supabase-js';
 import DotDayList from './DotDayList';
-import { DashboardIcon, TransactionsIcon, AdminIcon, CalendarIcon } from './NavIcons';
+import { DashboardIcon, TransactionsIcon, AdminIcon, CalendarIcon, IncomeHistoryIcon } from './NavIcons';
 import TransactionsPage from './Transactions';
-import { Income, Expense, Tag } from './types';
+import { Income, Expense, Tag, IncomeHistoryData } from './types';
 import * as XLSX from 'xlsx';
 import { AmountScope, DeleteScope, amountFor, applyAmountChange, applyDelete, dateKey, getPaycheckPeriod, isSkipped, occurrenceDetails, stepDate } from './recurrence';
 import { AmountScopeDialog, DeleteScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
+import IncomeHistory from './IncomeHistory';
 
-type Page = 'dashboard' | 'transactions' | 'admin'
+type Page = 'dashboard' | 'transactions' | 'income-history' | 'admin'
 
 const ICON_OPTIONS = ['💼','💰','💸','🏠','🛒','🍔','🚗','🎓','🎁','🩺','📈','💡','🧾','📦','🪙']
 
@@ -42,6 +43,7 @@ type CloudData = {
   lowBalanceThreshold: number;
   postedMap: Record<string, boolean>;
   background: string;
+  incomeHistory: IncomeHistoryData;
 };
 
 function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => void }) {
@@ -105,6 +107,19 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
     }
     return 0;
   });
+  const [incomeHistory, setIncomeHistory] = useState<IncomeHistoryData>(() => {
+    try {
+      const saved = localStorage.getItem('income_history');
+      if (!saved) return { entries: [], annualGoals: {} };
+      const parsed = JSON.parse(saved) as Partial<IncomeHistoryData>;
+      return {
+        entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+        annualGoals: parsed.annualGoals && typeof parsed.annualGoals === 'object' ? parsed.annualGoals : {},
+      };
+    } catch {
+      return { entries: [], annualGoals: {} };
+    }
+  });
 
   // Low Projected Balance Threshold (persistent)
   const [lowBalanceThreshold, setLowBalanceThreshold] = useState(() => {
@@ -138,6 +153,9 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
         setStartingBalance(Number(d.startingBalance) || 0);
         setLowBalanceThreshold(Number(d.lowBalanceThreshold) || 0);
         setPostedMap(d.postedMap || {});
+        setIncomeHistory(d.incomeHistory && Array.isArray(d.incomeHistory.entries)
+          ? { entries: d.incomeHistory.entries, annualGoals: d.incomeHistory.annualGoals || {} }
+          : { entries: [], annualGoals: {} });
         if (d.background) setBackground(d.background);
       }
       hydrated.current = true;
@@ -151,12 +169,12 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
     if (!userId || !supabase || !hydrated.current) return;
     setSyncState('saving');
     const timer = setTimeout(async () => {
-      const payload: CloudData = { incomes, expenses, tags, startingBalance, lowBalanceThreshold, postedMap, background };
+      const payload: CloudData = { incomes, expenses, tags, startingBalance, lowBalanceThreshold, postedMap, background, incomeHistory };
       const { error } = await supabase!.from('budget_data').upsert({ user_id: userId, data: payload, updated_at: new Date().toISOString() });
       setSyncState(error ? 'error' : 'saved');
     }, 700);
     return () => clearTimeout(timer);
-  }, [userId, incomes, expenses, tags, startingBalance, lowBalanceThreshold, postedMap, background, syncTick]);
+  }, [userId, incomes, expenses, tags, startingBalance, lowBalanceThreshold, postedMap, background, incomeHistory, syncTick]);
 
   // Each label is mapped to a unique, accurate Unsplash image (no people)
   const BACKGROUNDS: Record<string,string> = {
@@ -224,6 +242,10 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
     localStorage.setItem('startingBalance', startingBalance.toString())
   }, [startingBalance])
 
+  useEffect(() => {
+    localStorage.setItem('income_history', JSON.stringify(incomeHistory))
+  }, [incomeHistory])
+
   // Development check: log any missing images for background labels
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -240,6 +262,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
   const navItems: Array<{ id: Page; label: string; icon: JSX.Element }> = [
     { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
     { id: 'transactions', label: 'Transactions', icon: <TransactionsIcon /> },
+    { id: 'income-history', label: 'Salary History', icon: <IncomeHistoryIcon /> },
     { id: 'admin', label: 'Admin', icon: <AdminIcon /> },
   ];
   const renderNavItems = () => navItems.map(item => (
@@ -290,6 +313,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
             onDelete={(kind, id) => kind === 'income' ? setIncomes(prev => prev.filter(i => i.id !== id)) : setExpenses(prev => prev.filter(e => e.id !== id))}
           />
         )}
+        {page === 'income-history' && <IncomeHistory data={incomeHistory} onChange={setIncomeHistory} />}
         {page === 'admin' && (
           <Administration
             background={background}
@@ -310,7 +334,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
             setTags={setTags}
             lowBalanceThreshold={lowBalanceThreshold}
             setLowBalanceThreshold={setLowBalanceThreshold}
-            backup={{ incomes, expenses, tags, startingBalance, lowBalanceThreshold, postedMap, background }}
+            backup={{ incomes, expenses, tags, startingBalance, lowBalanceThreshold, postedMap, background, incomeHistory }}
             onRestoreAll={data => {
               setIncomes(data.incomes.map(income => normalizeIncome(income)));
               setExpenses(data.expenses);
@@ -318,6 +342,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
               setStartingBalance(data.startingBalance);
               setLowBalanceThreshold(data.lowBalanceThreshold);
               setPostedMap(data.postedMap);
+              setIncomeHistory(data.incomeHistory || { entries: [], annualGoals: {} });
               if (data.background && BACKGROUNDS[data.background]) setBackground(data.background);
             }}
             onWipeAll={() => {
@@ -327,6 +352,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
               setStartingBalance(0);
               setLowBalanceThreshold(0);
               setPostedMap({});
+              setIncomeHistory({ entries: [], annualGoals: {} });
             }}
           />
         )}
@@ -2253,7 +2279,7 @@ function App() {
       userId={session.user.id}
       onSignOut={async () => {
         await supabase!.auth.signOut();
-        ['incomes', 'expenses', 'tags', 'startingBalance', 'lowBalanceThreshold', 'posted_map'].forEach(k => localStorage.removeItem(k));
+        ['incomes', 'expenses', 'tags', 'startingBalance', 'lowBalanceThreshold', 'posted_map', 'income_history'].forEach(k => localStorage.removeItem(k));
       }}
     />
   );

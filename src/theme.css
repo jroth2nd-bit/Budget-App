@@ -283,11 +283,116 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 .dataTable .strong { font-weight: 600; }
 .dataTable .nameCell { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+.incomeHistoryHead { align-items: flex-start; }
+.incomeHistoryHead p, .incomeHistoryFormHead p { margin: 6px 0 0; color: var(--muted); font-size: 0.9rem; }
+.salaryWhatIf { display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
+.salaryWhatIfInputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.salaryWhatIfInputs label { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+.salaryWhatIfInputs input, .salaryWhatIfInputs select { width: 100%; }
+.salaryWhatIfResults { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr)); gap: 12px; margin: 0; padding: 14px; background: var(--surface-2); border-radius: var(--radius-sm); }
+.salaryWhatIfResults div { min-width: 0; overflow-wrap: anywhere; }
+.salaryWhatIfResults dt { color: var(--muted); font-size: 0.75rem; font-weight: 600; }
+.salaryWhatIfResults dd { margin: 3px 0 0; font-size: 0.95rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.salaryWhatIfHint, .salaryWhatIfError { margin: 8px 0 0; color: var(--muted); font-size: 0.8rem; }
+.salaryWhatIfError { color: var(--neg); }
+.incomeHistoryKpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.incomeHistoryChart { margin-bottom: 12px; }
+.incomeHistoryChart .recharts-responsive-container { overflow: hidden; }
+.incomeHistoryLegend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 0.78rem; }
+.incomeHistoryLegend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.incomeHistoryLegend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+.incomeBenchmarksControls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-bottom: 10px; }
+.incomeBenchmarksToggle { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.8rem; }
+.incomeBenchmarksStatus { margin: 0 0 10px; color: var(--muted); font-size: 0.8rem; }
+.incomeBenchmarksStatus.error { color: var(--neg); }
+.incomeBenchmarks { border-top: 1px solid var(--border); padding-top: 12px; }
+.incomeBenchmarksLegend { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--text); font-size: 0.78rem; }
+.incomeBenchmarksLegend span { display: inline-flex; align-items: center; gap: 6px; }
+.benchmarkLine { display: inline-block; width: 22px; border-top: 3px dotted; flex: none; }
+.benchmarkLine.cleveland { color: #38bdf8; }
+.benchmarkLine.ohio { color: #fb923c; }
+.benchmarkLine.mean { border-top-style: dashed; }
+.benchmarkBand { display: inline-block; width: 22px; height: 10px; flex: none; }
+.benchmarkBand.cleveland { background: rgba(56,189,248,0.12); border: 1px dotted #38bdf8; }
+.benchmarkBand.ohio { background: rgba(251,146,60,0.12); border: 1px dashed #fb923c; }
+.incomeBenchmarks p { margin: 10px 0 0; color: var(--muted); font-size: 0.76rem; }
+.incomeBenchmarkDetails { margin-top: 12px; }
+.incomeBenchmarkDetails summary { cursor: pointer; color: var(--text); font-size: 0.82rem; font-weight: 600; }
+.incomeBenchmarkDetails summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+.incomeTiers { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-top: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-sm); font-size: 0.8rem; }
+.incomeLegendActual { background: var(--accent); }
+.incomeLegendGoal { background: #8d93a1; }
+.incomeLegendRaise { background: var(--pos); height: 8px !important; }
+.incomeHistoryChartEmpty, .incomeHistoryTableEmpty { display: grid; min-height: 220px; place-items: center; padding: 20px; color: var(--muted); text-align: center; }
+.incomeHistoryTableEmpty { min-height: 96px; }
+.incomeHistoryCollapsible { margin-bottom: 12px; scroll-margin-top: calc(var(--topbar-h) + 12px); }
+.incomeHistoryCollapsible > summary { cursor: pointer; font-size: 1rem; font-weight: 600; }
+.incomeHistoryCollapsible > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+.incomeHistoryForm { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
+.incomeHistoryFormHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.incomeHistoryFormHead h3 { margin: 0; font-size: 1rem; }
+.incomeHistoryFields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.incomeHistoryFields label { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+.incomeHistoryFields input { width: 100%; }
+.incomeHistoryFormFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 0.78rem; }
+.incomeHistoryGoals { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.incomeHistoryGoalForm { display: flex; align-items: flex-end; gap: 10px; }
+.incomeHistoryGoalForm label { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+.incomeHistoryGoalForm input { width: 180px; }
+.incomeHistoryGoalList { display: flex; flex-wrap: wrap; gap: 8px; }
+.incomeHistoryGoalItem { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.incomeHistoryGoalItem > span { display: flex; gap: 8px; align-items: center; font-size: 0.85rem; }
+.incomeHistoryGoalItem > span span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.incomeHistoryGoalItem button { padding: 3px 7px; font-size: 0.75rem; }
+.incomeHistoryTableCard .cardHead { margin-bottom: 8px; }
+.incomeHistoryEstimateNote { margin: 0 0 10px; color: var(--muted); font-size: 0.8rem; }
+.incomeHistoryList { container-type: inline-size; }
+.incomeHistoryRow { border-top: 1px solid var(--border); }
+.incomeHistorySummary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) 16px; align-items: center; gap: 16px; padding: 14px 4px; cursor: pointer; list-style: none; }
+.incomeHistorySummary::-webkit-details-marker { display: none; }
+.incomeHistorySummary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-sm); }
+.incomeHistoryIdentity { display: flex; flex-direction: column; min-width: 0; gap: 2px; overflow-wrap: anywhere; font-size: 0.85rem; }
+.incomeHistoryDate { color: var(--accent); font-size: 0.78rem; font-weight: 600; }
+.incomeHistoryIdentity .muted { font-size: 0.78rem; }
+.incomeHistorySummaryValues { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.incomeHistorySummaryValues > div, .incomeHistoryDetailGrid > div { min-width: 0; overflow-wrap: anywhere; }
+.incomeHistorySummaryValues span, .incomeHistoryDetailGrid dt { display: block; color: var(--muted); font-size: 0.72rem; font-weight: 600; }
+.incomeHistorySummaryValues strong, .incomeHistoryDetailGrid dd { font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+.incomeHistoryChevron { color: var(--muted); font-size: 1.3rem; text-align: center; transition: transform 0.15s; }
+.incomeHistoryRow[open] .incomeHistoryChevron { transform: rotate(180deg); }
+.incomeHistoryDetails { padding: 0 4px 14px; }
+.incomeHistoryDetailGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 0 0 12px; padding: 12px; background: var(--surface-2); border-radius: var(--radius-sm); }
+.incomeHistoryDetailGrid dd { margin: 3px 0 0; }
+.incomeHistoryDetailNotes { grid-column: 1 / -1; white-space: pre-wrap; }
+.incomeHistoryActions { display: flex; gap: 6px; }
+.incomeHistoryActions button { padding: 4px 8px; font-size: 0.78rem; }
+@container (max-width: 650px) {
+  .incomeHistorySummary { grid-template-columns: minmax(0, 1fr) 16px; gap: 8px; }
+  .incomeHistorySummaryValues { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .incomeHistoryChevron { grid-column: 2; grid-row: 1; }
+}
+@container (max-width: 340px) {
+  .incomeHistorySummaryValues { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 1100px) {
   .dashCharts { grid-template-columns: minmax(0, 1fr); }
 }
+@media (max-width: 800px) {
+  .incomeHistoryFields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .incomeHistoryFormFoot { align-items: flex-start; flex-direction: column; }
+}
 @media (max-width: 639px) {
   .kpiGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .incomeHistoryHead { flex-wrap: wrap; }
+  .incomeHistoryKpis { grid-template-columns: 1fr; }
+  .incomeHistoryKpis .kpi { padding: 10px 12px; }
+  .incomeHistoryKpis .kpiValue { font-size: 1.08rem; }
+  .incomeHistoryFormHead { align-items: stretch; flex-direction: column; }
+  .incomeHistoryFields { grid-template-columns: 1fr; }
+  .incomeHistoryGoalForm { align-items: stretch; flex-direction: column; }
+  .incomeHistoryGoalForm input { width: 100%; }
+  .incomeHistoryLegend { gap: 8px; }
   .kpi { padding: 12px; }
   .kpiValue { font-size: 1.15rem; }
   .cardHead { flex-direction: column; align-items: stretch; gap: 8px; }

@@ -18,3 +18,6 @@ export const AdminIcon = () => (
 export const CalendarIcon = () => (
   <svg {...base}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 11h18" /></svg>
 );
+export const IncomeHistoryIcon = () => (
+  <svg {...base}><path d="M4 19V5" /><path d="M4 19h17" /><path d="m7 15 4-4 3 2 6-7" /><path d="M16 6h4v4" /></svg>
+);
