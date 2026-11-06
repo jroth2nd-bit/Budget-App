@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   Bar,
   CartesianGrid,
@@ -147,6 +147,16 @@ export default function IncomeHistory({ data, onChange }: IncomeHistoryProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
   const [refreshError, setRefreshError] = useState(false);
+  const [compactChart, setCompactChart] = useState(() => window.matchMedia('(max-width: 1023px)').matches);
+  const [showAllChartData, setShowAllChartData] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1023px)');
+    const update = () => setCompactChart(media.matches);
+    media.addEventListener('change', update);
+    update();
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   const chartData = useMemo(() => {
     const salaryRows: ChartRow[] = [...data.entries]
@@ -187,6 +197,13 @@ export default function IncomeHistory({ data, onChange }: IncomeHistoryProps) {
   }, [data]);
 
   const historyRows = chartData.filter((entry): entry is ChartRow & { annualIncome: number } => entry.annualIncome !== null);
+  const recentSalaryRows = historyRows.slice(-5);
+  const showingRecent = compactChart && !showAllChartData && recentSalaryRows.length > 0;
+  const displayedChartData = showingRecent
+    ? chartData.filter(row => row.annualIncome !== null
+      ? recentSalaryRows.some(entry => entry.id === row.id)
+      : row.effectiveDate >= recentSalaryRows[0].effectiveDate && row.effectiveDate <= recentSalaryRows[recentSalaryRows.length - 1].effectiveDate)
+    : chartData;
   const latest = historyRows[historyRows.length - 1];
   const sources = benchmarkSources(benchmarks.year);
   const bracketTop = Math.max(
@@ -341,12 +358,20 @@ export default function IncomeHistory({ data, onChange }: IncomeHistoryProps) {
           <label className="incomeBenchmarksToggle"><input type="checkbox" checked={showOhio} onChange={event => setShowOhio(event.target.checked)} /> Ohio data</label>
           <button type="button" onClick={refreshBenchmarks} disabled={refreshing}>{refreshing ? 'Refreshing…' : 'Refresh data'}</button>
         </div>
+        {compactChart && historyRows.length > 0 && (
+          <div className="incomeChartRange">
+            <span>{showingRecent ? `Showing the latest ${recentSalaryRows.length} salary ${recentSalaryRows.length === 1 ? 'change' : 'changes'}` : 'Showing all salary history and goals'}</span>
+            <button type="button" onClick={() => setShowAllChartData(value => !value)}>
+              {showAllChartData ? 'Show recent' : 'Show all'}
+            </button>
+          </div>
+        )}
         {refreshMessage && <p className={refreshError ? 'incomeBenchmarksStatus error' : 'incomeBenchmarksStatus'} role={refreshError ? 'alert' : 'status'}>{refreshMessage}</p>}
         {chartData.length === 0 ? (
           <div className="incomeHistoryChartEmpty">Your salary history and goals will appear here as you add entries.</div>
         ) : (
           <ResponsiveContainer width="100%" height={310}>
-            <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: 8 }}>
+            <ComposedChart data={displayedChartData} margin={{ top: 8, right: 12, bottom: 4, left: 8 }}>
               <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis
                 dataKey="effectiveDate"

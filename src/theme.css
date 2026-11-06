@@ -297,6 +297,8 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 .salaryWhatIfError { color: var(--neg); }
 .incomeHistoryKpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .incomeHistoryChart { margin-bottom: 12px; }
+.incomeChartRange { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 8px 0; color: var(--muted); font-size: 0.85rem; }
+.incomeChartRange button { padding: 5px 10px; }
 .incomeHistoryChart .recharts-responsive-container { overflow: hidden; }
 .incomeHistoryLegend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 0.78rem; }
 .incomeHistoryLegend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
