@@ -2,6 +2,7 @@
 import React, { useRef, useState } from 'react';
 import ImportData from './ImportData';
 import LowBalanceThresholdInput from './LowBalanceThresholdInput';
+import type { IncomeHistoryData } from './types';
 
 export interface BackupData {
   incomes: any[];
@@ -11,6 +12,7 @@ export interface BackupData {
   lowBalanceThreshold: number;
   postedMap: Record<string, boolean>;
   background?: string;
+  incomeHistory?: IncomeHistoryData;
 }
 
 const BACKUP_APP = 'budget-app-backup';
@@ -79,7 +81,10 @@ export default function Administration({
         startingBalance: Number(data.startingBalance) || 0,
         lowBalanceThreshold: Number(data.lowBalanceThreshold) || 0,
         postedMap: data.postedMap && typeof data.postedMap === 'object' ? data.postedMap : {},
-        background: typeof data.background === 'string' ? data.background : undefined
+        background: typeof data.background === 'string' ? data.background : undefined,
+        incomeHistory: data.incomeHistory && Array.isArray(data.incomeHistory.entries)
+          ? data.incomeHistory
+          : { entries: [], annualGoals: {} }
       });
       setBackupMsg({ text: `Backup imported: ${data.incomes.length} incomes, ${data.expenses.length} expenses.` });
     } catch (err) {
