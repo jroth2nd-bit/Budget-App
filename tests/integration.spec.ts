@@ -13,6 +13,69 @@ async function openTracker(page: Page, name: string, mobile = false) {
   return page.locator('.trackerView');
 }
 
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 720 }]) {
+  test(`BJJ column sorting toggles in table and cards at ${viewport.width}px`, async ({ page }) => {
+    const state = tracker.emptyState();
+    state.bjj.skills = [
+      { id: '1', name: 'Zebra', type: 'Position', description: 'Third', link: 'https://youtu.be/z', video: 'unset', practice: 'consistently', live: 'not_yet', preference: 'high', mastered: true },
+      { id: '2', name: 'Alpha', type: 'Escape', description: 'First', link: 'https://youtu.be/a', video: 'liked', practice: 'not_yet', live: 'consistently', preference: 'low', mastered: false },
+      { id: '3', name: 'Middle', type: 'Guard', description: 'Second', link: 'https://youtu.be/m', video: 'replace', practice: 'learning', live: 'learning', preference: 'medium', mastered: false },
+    ];
+    await page.addInitScript(data => localStorage.setItem('mercy-ledger-v1', JSON.stringify(data)), state);
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const bjj = await openTracker(page, 'BJJ Skills', viewport.width < 640);
+    await expect(bjj.locator('#bjj-sort, #bjj-direction')).toHaveCount(0);
+    const cards = viewport.width <= 1350;
+    const sorter = bjj.locator(cards ? '#bjj-card-sort' : '#bjj-head');
+    const names = () => cards
+      ? bjj.locator('#bjj-cards > .bjj-card > summary > strong').allTextContents()
+      : bjj.locator('#bjj-list tr td:first-child input').evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value));
+    const expectations: Array<[string, string[]]> = [
+      ['type', ['Alpha', 'Middle', 'Zebra']],
+      ['description', ['Alpha', 'Middle', 'Zebra']],
+      ['link', ['Alpha', 'Middle', 'Zebra']],
+      ['video', ['Middle', 'Alpha', 'Zebra']],
+      ['practice', ['Alpha', 'Middle', 'Zebra']],
+      ['live', ['Zebra', 'Middle', 'Alpha']],
+      ['preference', ['Alpha', 'Middle', 'Zebra']],
+      ['mastered', ['Zebra', 'Alpha', 'Middle']],
+    ];
+    await expect.poll(names).toEqual(['Alpha', 'Middle', 'Zebra']);
+    const nameSort = sorter.locator('[data-bjj-sort="name"]');
+    await nameSort.focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(names).toEqual(['Zebra', 'Middle', 'Alpha']);
+    for (const [key, ascending] of expectations) {
+      const button = sorter.locator(`[data-bjj-sort="${key}"]`);
+      await button.click();
+      await expect.poll(names).toEqual(ascending);
+      if (cards) {
+        await expect(button).toHaveAttribute('aria-pressed', 'true');
+        await expect(button).toHaveAttribute('aria-label', /sorted ascending/);
+      } else {
+        await expect(button.locator('..')).toHaveAttribute('aria-sort', 'ascending');
+      }
+      await button.click();
+      const reversed = key === 'mastered' ? ['Alpha', 'Middle', 'Zebra'] : [...ascending].reverse();
+      await expect.poll(names).toEqual(reversed);
+      if (cards) await expect(button).toHaveAttribute('aria-label', /sorted descending/);
+      else await expect(button.locator('..')).toHaveAttribute('aria-sort', 'descending');
+    }
+    await bjj.locator('.bjj-filter-details summary').click();
+    await bjj.getByLabel('Filter Type').selectOption({ label: 'Escape' });
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 3 skills.');
+    await expect.poll(names).toEqual(['Alpha']);
+    await bjj.locator('#bjj-clear').click();
+    await expect.poll(names).toEqual(['Alpha', 'Middle', 'Zebra']);
+    expect(await bjj.locator('.bjj-skills-panel').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await page.setViewportSize(cards ? { width: 1440, height: 900 } : { width: 390, height: 844 });
+    const counterpart = bjj.locator(cards ? '#bjj-head' : '#bjj-card-sort').locator('[data-bjj-sort="mastered"]');
+    await expect(counterpart).toBeVisible();
+    await expect(counterpart).toContainText('↓');
+  });
+}
+
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
   test(`tracker headers omit explanatory text without empty spacing at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);

@@ -42,6 +42,8 @@ The tracker uses the existing sidebar; on phones, open **Trackers** in the botto
 
 Tracker filters use the same choices as their editable fields. The BJJ Type filter includes the built-in skill types and custom types currently in use; select All or use Clear filters to remove the selection.
 
+On BJJ Skills, select a table heading to sort, and select it again to reverse the order. In the card layout, use the field buttons above the cards the same way.
+
 Add dialogs let you enter the editable fields before saving a transaction, salary change, champion, or BJJ skill. Clan Boss rewards and annual salary goals also use dialogs. Calculated values such as balances and champion rankings are still calculated automatically; choosing Posted for a new transaction marks only its first dated occurrence.
 
 When Supabase is configured, tracker data syncs separately to the signed-in account in `tracker_data`, with a browser-local recovery cache. The existing budget table and authentication are unchanged. Before deploying this version, run [supabase/tracker.sql](./supabase/tracker.sql) in the existing Supabase project's SQL editor, and verify that row-level security is enabled and each policy restricts access to the signed-in user. The app cannot load account tracker data until that table and its policies exist. No migration is applied automatically.

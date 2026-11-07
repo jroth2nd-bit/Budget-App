@@ -262,11 +262,14 @@ function render() {
     return (direction === "ascending" ? order : -order) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
   });
   $("bjj-count").textContent = `Showing ${visible.length} of ${state.bjj.skills.length} skills.`;
-  $("bjj-sort").value = sort;
-  $("bjj-direction").value = direction;
   for (const button of document.querySelectorAll("[data-bjj-sort]")) {
     const active = button.dataset.bjjSort === sort;
-    button.closest("th").setAttribute("aria-sort", active ? direction : "none");
+    const heading = button.closest("th");
+    if (heading) heading.setAttribute("aria-sort", active ? direction : "none");
+    else {
+      button.setAttribute("aria-pressed", String(active));
+      button.setAttribute("aria-label", `${columns.find(column => column.key === button.dataset.bjjSort).label}${active ? `, sorted ${direction}` : ""}`);
+    }
     button.querySelector("span").textContent = active ? (direction === "ascending" ? " ↑" : " ↓") : "";
   }
   const list = $("bjj-list"), cards = $("bjj-cards");
@@ -316,20 +319,9 @@ function initControls() {
   for (const column of columns) {
     const th = node("th");
     th.scope = "col";
-    const button = node("button", "build-sort-button", column.label);
-    button.type = "button";
-    button.dataset.bjjSort = column.key;
-    button.append(node("span"));
-    button.addEventListener("click", () => {
-      if (sort === column.key) direction = direction === "ascending" ? "descending" : "ascending";
-      else { sort = column.key; direction = "ascending"; }
-      render();
-    });
-    th.append(button);
+    th.append(sortButton(column, "build-sort-button"));
     row.append(th);
-    const option = node("option", "", column.label);
-    option.value = column.key;
-    $("bjj-sort").append(option);
+    $("bjj-card-sort").append(sortButton(column, ""));
     const label = node("label", "", column.label.toUpperCase());
     const input = node(column.key === "type" || options[column.key] ? "select" : "input");
     if (options[column.key]) addOptions(input, { "": "All", ...options[column.key] });
@@ -347,6 +339,19 @@ function initControls() {
   actions.scope = "col";
   row.append(actions);
   $("bjj-head").append(row);
+}
+
+function sortButton(column, className) {
+  const button = node("button", className, column.label);
+  button.type = "button";
+  button.dataset.bjjSort = column.key;
+  button.append(node("span"));
+  button.addEventListener("click", () => {
+    if (sort === column.key) direction = direction === "ascending" ? "descending" : "ascending";
+    else { sort = column.key; direction = "ascending"; }
+    render();
+  });
+  return button;
 }
 
 let addType = "";
@@ -369,8 +374,6 @@ function resetAddType() {
 
 $("bjj-belt").addEventListener("change", event => { if (!save({ ...state.bjj, belt: event.target.value })) event.target.value = state.bjj.belt; });
 $("bjj-stripes").addEventListener("change", event => { if (!save({ ...state.bjj, stripes: Number(event.target.value) })) event.target.value = String(state.bjj.stripes); });
-$("bjj-sort").addEventListener("change", event => { sort = event.target.value; render(); });
-$("bjj-direction").addEventListener("change", event => { direction = event.target.value; render(); });
 $("bjj-clear").addEventListener("click", () => {
   for (const key of Object.keys(filters)) filters[key] = "";
   for (const input of document.querySelectorAll("[data-bjj-filter]")) input.value = "";
