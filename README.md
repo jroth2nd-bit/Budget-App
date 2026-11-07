@@ -42,7 +42,9 @@ The tracker uses the existing sidebar; on phones, open **Trackers** in the botto
 
 Tracker filters use the same choices as their editable fields. The BJJ Type filter includes the built-in skill types and custom types currently in use; select All or use Clear filters to remove the selection.
 
-On BJJ Skills, select a table heading to sort, and select it again to reverse the order. In the card layout, use the field buttons above the cards the same way.
+Champion Builds can be filtered by the number of completed fields, from 0/6 through 6/6; a blessing counts as complete at level 6.
+
+On BJJ Skills, the default sort shows the highest confidence first, followed by skills without enough data. Champion Builds defaults to the most complete first. Select a table heading to sort, and select it again to reverse the order. In the BJJ card layout, use the field buttons above the cards the same way.
 
 BJJ skills can have optional suggested or custom starting positions, which can be added, edited, sorted, and filtered. Confidence is an estimate based on Practice (40%) and Live rolls (60%): Not yet = 0, Learning = 40, Sometimes = 75, and Consistently = 100. If either is Unset, confidence shows Not enough data; mastery remains a separate choice. Tracker backups now use version 13; older backups migrate with no starting positions. After deployment, reload older open tracker pages before making changes because they cannot read version 13.
 

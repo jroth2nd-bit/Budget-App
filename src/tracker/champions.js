@@ -19,7 +19,7 @@ let storedSnapshot = null;
 let loadFailed = false;
 let notesId = null;
 let sortColumn = "completion";
-let sortDirection = "ascending";
+let sortDirection = "descending";
 const filters = Object.fromEntries(columns.map(column => [column.key, ""]));
 const expanded = new Set();
 
@@ -143,7 +143,7 @@ function render() {
   const visible = champions.filter(({ champion, score, rank }) => {
     if (filters.name && !champion.name.toLocaleLowerCase().includes(filters.name)) return false;
     if (filters.rank && String(rank) !== filters.rank) return false;
-    if (filters.completion && String(Math.round(score.percentage)) !== filters.completion.replace(/%$/, "")) return false;
+    if (filters.completion && String(score.complete) !== filters.completion) return false;
     if (filters.notes && (champion.notes.trim() ? "yes" : "no") !== filters.notes) return false;
     return Object.keys(T.buildFields).every(key => {
       const current = key === "blessing" && champion.statuses[key] === null ? "unknown" : String(champion.statuses[key]);
@@ -235,16 +235,25 @@ function render() {
 
 function makeFilter(column) {
   let input;
-  if (["status", "blessing", "notes"].includes(column.filter)) {
+  if (["status", "blessing", "notes", "score"].includes(column.filter)) {
     input = element("select");
-    const options = column.filter === "status" ? statusLabels : column.filter === "blessing" ? blessingLabels : { yes: "Has notes", no: "No notes" };
     addOptions(input, { "": "All" });
-    addOptions(input, options);
+    if (column.filter === "score") {
+      const total = Object.keys(T.buildFields).length;
+      for (let count = 0; count <= total; count++) {
+        const option = element("option", "", `${count}/${total}`);
+        option.value = String(count);
+        input.append(option);
+      }
+    } else {
+      const options = column.filter === "status" ? statusLabels : column.filter === "blessing" ? blessingLabels : { yes: "Has notes", no: "No notes" };
+      addOptions(input, options);
+    }
     input.value = "";
   } else {
     input = element("input");
     input.type = "text";
-    input.placeholder = column.filter === "text" ? "Search" : column.filter === "score" ? "Exact %" : "Exact rank";
+    input.placeholder = column.filter === "text" ? "Search" : "Exact rank";
   }
   input.dataset.buildFilter = column.key;
   input.setAttribute("aria-label", `Filter ${column.label}`);

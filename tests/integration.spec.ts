@@ -14,6 +14,55 @@ async function openTracker(page: Page, name: string, mobile = false) {
 }
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  test(`champion completion filters use counts at ${viewport.width}px`, async ({ page }) => {
+    const state = tracker.emptyState();
+    const fields = ['books', 'masteries', 'gear', 'glyphs', 'relic'];
+    state.champions = Array.from({ length: 7 }, (_, count) => ({
+      id: `champ-${count}`, name: `Champion ${count}`, notes: '',
+      statuses: { blessing: count === 6 ? 6 : count === 0 ? null : 5, ...Object.fromEntries(fields.map((field, index) => [field, index < count ? 'complete' : 'needed'])) },
+    }));
+    await page.addInitScript(data => localStorage.setItem('mercy-ledger-v1', JSON.stringify(data)), state);
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const mobile = viewport.width < 640;
+    const builds = await openTracker(page, 'Champion Builds', mobile);
+    if (mobile) {
+      await expect(builds.locator('.build-mobile-card summary > span')).toHaveText(['Champion 6', 'Champion 5', 'Champion 4', 'Champion 3', 'Champion 2', 'Champion 1', 'Champion 0']);
+    } else {
+      await expect.poll(() => builds.locator('#build-list .build-name-cell input').evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value))).toEqual(['Champion 6', 'Champion 5', 'Champion 4', 'Champion 3', 'Champion 2', 'Champion 1', 'Champion 0']);
+      await expect(builds.locator('[data-sort-column="completion"]').locator('..')).toHaveAttribute('aria-sort', 'descending');
+    }
+    if (mobile) await builds.locator('.build-mobile-controls summary').click();
+    if (mobile) {
+      await expect(builds.locator('#mobile-sort')).toHaveValue('completion');
+      await expect(builds.locator('#mobile-direction')).toHaveValue('descending');
+    }
+    const visibleFilter = builds.locator(mobile ? '#mobile-filters' : '.build-filter-row').getByLabel('Filter Complete');
+    const otherFilter = builds.locator(mobile ? '.build-filter-row' : '#mobile-filters').getByLabel('Filter Complete');
+    await expect(visibleFilter.locator('option')).toHaveText(['All', '0/6', '1/6', '2/6', '3/6', '4/6', '5/6', '6/6']);
+    for (let count = 0; count <= 6; count++) {
+      await visibleFilter.selectOption(String(count));
+      await expect(otherFilter).toHaveValue(String(count));
+      await expect(builds.locator('#build-count')).toHaveText('Showing 1 of 7 champions.');
+      if (mobile) await expect(builds.locator('.build-mobile-card summary')).toContainText(`Champion ${count}`);
+      else await expect(builds.getByLabel(`Name for Champion ${count}`).first()).toBeVisible();
+    }
+    await visibleFilter.selectOption('0');
+    await builds.locator('#build-clear-filters').click();
+    await expect(visibleFilter).toHaveValue('');
+    await expect(otherFilter).toHaveValue('');
+    await expect(builds.locator('#build-count')).toHaveText('Showing 7 of 7 champions.');
+    await visibleFilter.selectOption('1');
+    const row = builds.locator(mobile ? '.build-mobile-card' : '#build-list tr');
+    if (mobile) await row.locator('summary').click();
+    await row.getByLabel('Books for Champion 1').selectOption('needed');
+    await expect(builds.locator('#build-count')).toHaveText('Showing 0 of 7 champions.');
+    await visibleFilter.selectOption('0');
+    await expect(builds.locator('#build-count')).toHaveText('Showing 2 of 7 champions.');
+  });
+}
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
   test(`BJJ confidence and starting positions migrate and remain editable at ${viewport.width}px`, async ({ page }) => {
     const old = tracker.emptyState();
     old.version = 12;
@@ -88,8 +137,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
   test(`BJJ column sorting toggles in table and cards at ${viewport.width}px`, async ({ page }) => {
     const state = tracker.emptyState();
     state.bjj.skills = [
-      { id: '1', name: 'Zebra', type: 'Position', positions: ['Mount'], description: 'Third', link: 'https://youtu.be/z', video: 'unset', practice: 'consistently', live: 'not_yet', preference: 'high', mastered: true },
-      { id: '2', name: 'Alpha', type: 'Escape', positions: ['Closed guard'], description: 'First', link: 'https://youtu.be/a', video: 'liked', practice: 'not_yet', live: 'consistently', preference: 'low', mastered: false },
+      { id: '1', name: 'Zebra', type: 'Position', positions: ['Mount'], description: 'Third', link: 'https://youtu.be/z', video: 'unset', practice: 'consistently', live: 'unset', preference: 'high', mastered: true },
+      { id: '2', name: 'Alpha', type: 'Escape', positions: ['Closed guard'], description: 'First', link: 'https://youtu.be/a', video: 'liked', practice: 'consistently', live: 'consistently', preference: 'low', mastered: false },
       { id: '3', name: 'Middle', type: 'Guard', positions: ['Half guard'], description: 'Second', link: 'https://youtu.be/m', video: 'replace', practice: 'learning', live: 'learning', preference: 'medium', mastered: false },
     ];
     await page.addInitScript(data => localStorage.setItem('mercy-ledger-v1', JSON.stringify(data)), state);
@@ -108,15 +157,20 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       ['description', ['Alpha', 'Middle', 'Zebra']],
       ['link', ['Alpha', 'Middle', 'Zebra']],
       ['video', ['Middle', 'Alpha', 'Zebra']],
-      ['practice', ['Alpha', 'Middle', 'Zebra']],
+      ['practice', ['Middle', 'Alpha', 'Zebra']],
       ['live', ['Zebra', 'Middle', 'Alpha']],
-      ['confidence', ['Middle', 'Zebra', 'Alpha']],
+      ['confidence', ['Middle', 'Alpha', 'Zebra']],
       ['preference', ['Alpha', 'Middle', 'Zebra']],
       ['mastered', ['Zebra', 'Alpha', 'Middle']],
     ];
     await expect.poll(names).toEqual(['Alpha', 'Middle', 'Zebra']);
+    const confidenceSort = sorter.locator('[data-bjj-sort="confidence"]');
+    if (cards) await expect(confidenceSort).toHaveAttribute('aria-label', /sorted descending/);
+    else await expect(confidenceSort.locator('..')).toHaveAttribute('aria-sort', 'descending');
     const nameSort = sorter.locator('[data-bjj-sort="name"]');
     await nameSort.focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(names).toEqual(['Alpha', 'Middle', 'Zebra']);
     await page.keyboard.press('Enter');
     await expect.poll(names).toEqual(['Zebra', 'Middle', 'Alpha']);
     for (const [key, ascending] of expectations) {
@@ -130,7 +184,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
         await expect(button.locator('..')).toHaveAttribute('aria-sort', 'ascending');
       }
       await button.click();
-      const reversed = key === 'mastered' ? ['Alpha', 'Middle', 'Zebra'] : key === 'confidence' ? ['Alpha', 'Middle', 'Zebra'] : [...ascending].reverse();
+      const reversed = key === 'practice' ? ['Alpha', 'Zebra', 'Middle'] : key === 'mastered' || key === 'confidence' ? ['Alpha', 'Middle', 'Zebra'] : [...ascending].reverse();
       await expect.poll(names).toEqual(reversed);
       if (cards) await expect(button).toHaveAttribute('aria-label', /sorted descending/);
       else await expect(button.locator('..')).toHaveAttribute('aria-sort', 'descending');
