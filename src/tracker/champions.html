@@ -1,0 +1,36 @@
+<body>
+  <div class="shell">
+    <div class="tracker-status">
+      <div class="top-actions"><span class="local-label" id="build-status" role="status"><span class="status-dot" aria-hidden="true"></span><span id="build-status-text">LOCAL CACHE</span></span></div>
+      <div id="build-notice" class="notice error" role="alert" hidden></div>
+    </div>
+    <div class="build-page">
+      <div class="build-heading"><p class="section-copy">Track what is complete and what still needs work.</p><button id="build-add" type="button" class="button button-primary">Add champion</button></div>
+      <section class="compact-panel" aria-labelledby="build-list-title">
+        <div class="build-toolbar"><div><h2 id="build-list-title">Build rankings</h2><p class="footnote">Each of six items counts equally. A blessing counts as complete at level 6; unknown levels count as incomplete. Rank 1 is the most complete.</p><p class="footnote">Click or tap a value to edit it.</p></div><button id="build-clear-filters" type="button" class="button button-quiet">Clear filters</button></div>
+        <p class="footnote build-desktop-hint">Select a column heading to sort. Use the filters below the headings to narrow the list. Changes save when you leave a field.</p>
+        <details class="build-mobile-controls"><summary>Sort and filter</summary><div class="build-mobile-sort"><label for="mobile-sort">Sort by</label><select id="mobile-sort"></select><label for="mobile-direction">Direction</label><select id="mobile-direction"><option value="ascending">Ascending</option><option value="descending">Descending</option></select></div><div id="mobile-filters" class="build-mobile-filters"></div></details>
+        <p id="build-count" class="footnote" role="status"></p>
+        <div class="build-table-wrap" role="region" aria-label="Champion builds table" tabindex="0">
+          <table class="build-table"><thead id="build-table-head"></thead><tbody id="build-list"></tbody></table>
+        </div>
+        <div id="build-mobile-list" class="build-mobile-list"></div>
+      </section>
+    </div>
+  </div>
+  <dialog id="build-dialog" aria-labelledby="build-dialog-title">
+    <div class="build-dialog-header"><div><p class="eyebrow">CHAMPION CHECKLIST</p><h2 id="build-dialog-title">Add champion</h2></div><button id="build-close" class="button button-quiet" type="button">Close</button></div>
+    <form id="build-form">
+      <label for="build-name">CHAMPION NAME</label><input id="build-name" type="text" maxlength="100" required autocomplete="off">
+      <p class="footnote">Choose the status for each item; no specific build choices are recorded.</p>
+      <div id="build-fields" class="build-fields"></div>
+      <label for="build-notes">NOTES</label><textarea id="build-notes" maxlength="2000" rows="4"></textarea>
+      <p id="build-form-error" class="clan-form-error" role="alert"></p>
+      <div class="clan-dialog-actions"><button type="button" id="build-cancel" class="button button-quiet">Cancel</button><button type="submit" class="button button-primary">Save champion</button></div>
+    </form>
+  </dialog>
+  <dialog id="build-notes-dialog" aria-labelledby="build-notes-title">
+    <div class="build-dialog-header"><h2 id="build-notes-title">Notes</h2><button id="build-notes-close" class="button button-quiet" type="button">Close</button></div>
+    <form id="build-notes-form"><label for="build-notes-content">NOTES</label><textarea id="build-notes-content" maxlength="2000" rows="6"></textarea><p id="build-notes-error" class="clan-form-error" role="alert"></p><div class="clan-dialog-actions"><button type="button" id="build-notes-cancel" class="button button-quiet">Cancel</button><button type="submit" class="button button-primary">Save notes</button></div></form>
+  </dialog>
+</body>

@@ -1,0 +1,37 @@
+<body class="bjj-theme" data-belt="blue">
+  <div class="shell">
+    <div class="tracker-status">
+      <div class="top-actions"><span class="local-label" id="bjj-status" role="status"><span class="status-dot" aria-hidden="true"></span><span id="bjj-status-text">LOCAL CACHE</span></span></div>
+      <div id="bjj-notice" class="notice error" role="alert" hidden></div>
+    </div>
+    <div class="build-page">
+      <div class="build-heading"><p class="section-copy">Track your learning from practice to live rolls.</p><button id="bjj-add" class="button button-primary" type="button">Add skill</button></div>
+      <section class="compact-panel bjj-belt-panel" aria-labelledby="belt-title">
+        <div><p class="eyebrow">YOUR PROGRESS</p><h2 id="belt-title">Belt and stripes</h2><p id="bjj-next" class="footnote"></p></div>
+        <div><label for="bjj-belt">BELT</label><select id="bjj-belt"></select></div>
+        <div><label for="bjj-stripes">WHITE STRIPES</label><select id="bjj-stripes"></select></div>
+        <div id="bjj-belt-display" class="bjj-belt-display" aria-label="Belt stripes"></div>
+      </section>
+      <section class="compact-panel bjj-skills-panel" aria-labelledby="skills-title">
+        <div class="build-toolbar"><div><p class="eyebrow">YOUR TRAINING</p><h2 id="skills-title">Skill library</h2><p class="footnote">Mastery is your choice. A skill is suggested for mastery when both Practice and Live rolls are Consistently.</p><p class="footnote">Click or tap a value to edit it; select Mastered to toggle it.</p></div><button class="button button-quiet" id="bjj-clear" type="button">Clear filters</button></div>
+        <div class="bjj-controls"><label for="bjj-sort">SORT BY<select id="bjj-sort"></select></label><label for="bjj-direction">DIRECTION<select id="bjj-direction"><option value="ascending">Ascending</option><option value="descending">Descending</option></select></label></div>
+        <details class="bjj-filter-details"><summary>Filter skills</summary><div id="bjj-filters" class="bjj-filters"></div></details>
+        <p id="bjj-count" class="footnote" role="status"></p>
+        <div class="bjj-table-wrap"><table class="bjj-table"><thead id="bjj-head"></thead><tbody id="bjj-list"></tbody></table></div>
+        <div id="bjj-cards" class="bjj-cards"></div>
+      </section>
+    </div>
+  </div>
+  <dialog id="bjj-add-dialog" aria-labelledby="bjj-add-title">
+    <div class="build-dialog-header"><h2 id="bjj-add-title">Add skill</h2><button class="button button-quiet" id="bjj-add-close" type="button">Close</button></div>
+    <form id="bjj-add-form"><label for="bjj-name">SKILL NAME</label><input id="bjj-name" required maxlength="100"><label id="bjj-type-label">TYPE</label><div id="bjj-type-container"></div><div id="bjj-custom-wrap" hidden><label for="bjj-custom-type">CUSTOM TYPE</label><input id="bjj-custom-type" maxlength="100"></div><p class="footnote">Practice and live rolls start at Not yet; preference starts at Low. Video quality starts unset.</p><p id="bjj-add-error" class="clan-form-error" role="alert"></p><div class="clan-dialog-actions"><button class="button button-primary" type="submit">Add skill</button></div></form>
+  </dialog>
+  <dialog id="bjj-type-dialog" aria-labelledby="bjj-type-title">
+    <div class="build-dialog-header"><h2 id="bjj-type-title">Custom skill type</h2><button class="button button-quiet" id="bjj-type-close" type="button">Cancel</button></div>
+    <form id="bjj-type-form"><label for="bjj-type-custom">CUSTOM TYPE</label><input id="bjj-type-custom" maxlength="100" required><p id="bjj-type-error" class="clan-form-error" role="alert"></p><div class="clan-dialog-actions"><button class="button button-primary" type="submit">Save type</button></div></form>
+  </dialog>
+  <dialog id="bjj-text-dialog" aria-labelledby="bjj-text-title">
+    <div class="build-dialog-header"><h2 id="bjj-text-title">Edit description</h2><button class="button button-quiet" id="bjj-text-close" type="button">Close</button></div>
+    <form id="bjj-text-form"><label for="bjj-text">DESCRIPTION</label><textarea id="bjj-text" rows="8" maxlength="4000"></textarea><p id="bjj-text-error" class="clan-form-error" role="alert"></p><div class="clan-dialog-actions"><button class="button button-primary" type="submit">Save description</button></div></form>
+  </dialog>
+</body>

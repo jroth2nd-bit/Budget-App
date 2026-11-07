@@ -312,7 +312,6 @@ export default function IncomeHistory({ data, onChange }: IncomeHistoryProps) {
     <section className="incomeHistory">
       <div className="pageHead incomeHistoryHead">
         <div>
-          <h2>Salary History</h2>
           <p>Track salary changes over time, separate from your budget and transactions.</p>
         </div>
         <button type="button" className="primary" aria-expanded={whatIfOpen} aria-controls={whatIfOpen ? 'salary-what-if' : undefined} onClick={() => setWhatIfOpen(open => !open)}>

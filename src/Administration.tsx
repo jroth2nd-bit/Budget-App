@@ -4,6 +4,8 @@ import ImportData from './ImportData';
 import LowBalanceThresholdInput from './LowBalanceThresholdInput';
 import type { IncomeHistoryData } from './types';
 import { parseSalaryHistoryBackup, SALARY_BACKUP_APP } from './salaryHistoryBackup';
+import tracker from './tracker/tracker.js';
+import type { TrackerBackupHandle } from './TrackerHost';
 
 export interface BackupData {
   incomes: any[];
@@ -18,8 +20,47 @@ export interface BackupData {
 
 const BACKUP_APP = 'budget-app-backup';
 
+// Allow storage updates from other tabs to be observed after the blocking confirmation dialog.
+const settleStorageEvents = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isBudgetItem(value: unknown): boolean {
+  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.name !== 'string' ||
+    typeof value.amount !== 'number' || !Number.isFinite(value.amount) ||
+    typeof value.startDate !== 'string' || Number.isNaN(Date.parse(value.startDate)) ||
+    typeof value.frequency !== 'string' || !['once', 'weekly', 'biweekly', 'bimonthly', 'monthly', 'quarterly', 'semiannual', 'annual'].includes(value.frequency) ||
+    typeof value.isRecurring !== 'boolean') return false;
+  if (value.endDate !== undefined && (typeof value.endDate !== 'string' || (value.endDate !== '' && Number.isNaN(Date.parse(value.endDate))))) return false;
+  if (value.tags !== undefined && (!Array.isArray(value.tags) || !value.tags.every(tag => typeof tag === 'string'))) return false;
+  if (value.icon !== undefined && typeof value.icon !== 'string') return false;
+  if (value.isPaycheck !== undefined && typeof value.isPaycheck !== 'boolean') return false;
+  if (value.skipped !== undefined && (!Array.isArray(value.skipped) || !value.skipped.every(date => typeof date === 'string'))) return false;
+  if (value.overrides !== undefined && (!isRecord(value.overrides) || !Object.values(value.overrides).every(amount => typeof amount === 'number' && Number.isFinite(amount)))) return false;
+  if (value.amountSchedule !== undefined && (!Array.isArray(value.amountSchedule) || !value.amountSchedule.every(entry =>
+    isRecord(entry) && typeof entry.from === 'string' && typeof entry.amount === 'number' && Number.isFinite(entry.amount)))) return false;
+  if (value.occurrenceOverrides !== undefined && (!isRecord(value.occurrenceOverrides) || !Object.values(value.occurrenceOverrides).every(entry =>
+    isRecord(entry) && (entry.name === undefined || typeof entry.name === 'string') &&
+    (entry.tags === undefined || (Array.isArray(entry.tags) && entry.tags.every(tag => typeof tag === 'string'))) &&
+    (entry.isPaycheck === undefined || typeof entry.isPaycheck === 'boolean')))) return false;
+  return true;
+}
+
+function validateFullBudget(data: Record<string, unknown>) {
+  if (!Array.isArray(data.incomes) || !data.incomes.every(isBudgetItem) ||
+    !Array.isArray(data.expenses) || !data.expenses.every(isBudgetItem) ||
+    !Array.isArray(data.tags) || !data.tags.every((tag: unknown) => isRecord(tag) && typeof tag.name === 'string' && typeof tag.icon === 'string' && typeof tag.color === 'string') ||
+    typeof data.startingBalance !== 'number' || !Number.isFinite(data.startingBalance) ||
+    typeof data.lowBalanceThreshold !== 'number' || !Number.isFinite(data.lowBalanceThreshold) ||
+    !isRecord(data.postedMap) || !Object.values(data.postedMap).every(value => typeof value === 'boolean')) {
+    throw new Error('The full Budget App backup is incomplete or invalid.');
+  }
+  return parseSalaryHistoryBackup(data);
+}
+
 export default function Administration({
-  background,
   setBackground,
   BACKGROUNDS,
   addIncomes,
@@ -33,6 +74,7 @@ export default function Administration({
   onRestoreAll = () => {},
   onRestoreSalaryHistory,
   salaryImportReady,
+  trackerBackup,
 }: {
   background: string;
   setBackground: (bg: string) => void;
@@ -48,11 +90,13 @@ export default function Administration({
   onRestoreAll?: (data: BackupData) => void;
   onRestoreSalaryHistory: (data: IncomeHistoryData) => void;
   salaryImportReady: boolean;
+  trackerBackup: React.RefObject<TrackerBackupHandle>;
 }) {
   // Visual feedback for destructive/success actions
   const [successMsg, setSuccessMsg] = useState('');
   const [backupMsg, setBackupMsg] = useState<{ text: string; error?: boolean } | null>(null);
   const [salaryBackupMsg, setSalaryBackupMsg] = useState<{ text: string; error?: boolean } | null>(null);
+  const [backupBusy, setBackupBusy] = useState(false);
   const restoreInput = useRef<HTMLInputElement>(null);
   const salaryRestoreInput = useRef<HTMLInputElement>(null);
 
@@ -91,32 +135,62 @@ export default function Administration({
     }
   };
 
-  const handleExportAll = () => {
-    if (!backup) return;
-    const payload = { app: BACKUP_APP, version: 1, exportedAt: new Date().toISOString(), ...backup };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `budget-app-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    setBackupMsg({ text: 'Backup exported.' });
+  const handleExportAll = async () => {
+    setBackupBusy(true);
+    try {
+      if (!backup || !trackerBackup.current) throw new Error('Backup data is not ready.');
+      if (!salaryImportReady) throw new Error('Wait for budget account sync to finish successfully before exporting.');
+      const { data: trackerData } = await trackerBackup.current.snapshot();
+      const payload = { app: BACKUP_APP, version: 2, exportedAt: new Date().toISOString(), ...backup, tracker: trackerData };
+      validateFullBudget(payload);
+      if (typeof payload.background !== 'string' || !Object.prototype.hasOwnProperty.call(BACKGROUNDS, payload.background)) throw new Error('The saved background is invalid.');
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `budget-app-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setBackupMsg({ text: 'Full backup exported. Keep this file private.' });
+    } catch (err) {
+      setBackupMsg({ text: err instanceof Error ? err.message : 'Could not export backup.', error: true });
+    } finally {
+      setBackupBusy(false);
+    }
   };
 
   const handleRestoreFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    setBackupBusy(true);
     try {
       const data = JSON.parse(await file.text());
-      if (data?.app !== BACKUP_APP || !Array.isArray(data.incomes) || !Array.isArray(data.expenses)) {
-        throw new Error('This is not a Budget App backup file.');
+      if (data?.app !== BACKUP_APP) {
+        const imported = tracker.validateState(data);
+        if (!trackerBackup.current) throw new Error('Tracker data is not ready.');
+        const raw = await trackerBackup.current.current();
+        if (!window.confirm('Replace all tracker data, including Mercy Ledger, Champion Builds and BJJ Skills, with this backup? Budget data will not change.')) return;
+        await settleStorageEvents();
+        await trackerBackup.current.restore(raw, imported);
+        setBackupMsg({ text: 'Tracker backup imported. If signed in, check tracker sync status.' });
+        return;
       }
-      if (!window.confirm('Importing replaces ALL current data with the contents of this backup. Continue?')) return;
-      onRestoreAll({
+      if ((data.version !== 1 && data.version !== 2) || !Array.isArray(data.incomes) || !Array.isArray(data.expenses)) {
+        throw new Error('This is not a supported Budget App backup file.');
+      }
+      if (data.version === 1 && (!data.incomes.every(isBudgetItem) || !data.expenses.every(isBudgetItem))) {
+        throw new Error('The budget backup contains invalid income or expense records.');
+      }
+      if (!salaryImportReady) throw new Error('Wait for budget account sync to finish successfully before importing.');
+      const trackerData = data.version === 2 ? tracker.validateState(data.tracker) : null;
+      const salaryHistory = data.version === 2 ? validateFullBudget(data) : null;
+      if (data.version === 2 && (typeof data.background !== 'string' || !Object.prototype.hasOwnProperty.call(BACKGROUNDS, data.background))) {
+        throw new Error('The backup contains an invalid background.');
+      }
+      const budgetData: BackupData = {
         incomes: data.incomes,
         expenses: data.expenses,
         tags: Array.isArray(data.tags) ? data.tags : [],
@@ -124,13 +198,25 @@ export default function Administration({
         lowBalanceThreshold: Number(data.lowBalanceThreshold) || 0,
         postedMap: data.postedMap && typeof data.postedMap === 'object' ? data.postedMap : {},
         background: typeof data.background === 'string' ? data.background : undefined,
-        incomeHistory: data.incomeHistory && Array.isArray(data.incomeHistory.entries)
+        incomeHistory: salaryHistory || (data.incomeHistory && Array.isArray(data.incomeHistory.entries)
           ? data.incomeHistory
-          : { entries: [], annualGoals: {} }
-      });
-      setBackupMsg({ text: `Backup imported: ${data.incomes.length} incomes, ${data.expenses.length} expenses.` });
+          : { entries: [], annualGoals: {} })
+      };
+      let raw: string | null = null;
+      if (trackerData) {
+        if (!trackerBackup.current) throw new Error('Tracker data is not ready.');
+        raw = await trackerBackup.current.current();
+      }
+      const description = trackerData ? 'budget, salary history, and all tracker data' : 'budget and salary history; current tracker data will be kept';
+      if (!window.confirm(`Importing replaces ${description}. Continue?`)) return;
+      await settleStorageEvents();
+      if (trackerData) await trackerBackup.current!.restore(raw, trackerData);
+      onRestoreAll(budgetData);
+      setBackupMsg({ text: `Backup imported: ${data.incomes.length} incomes, ${data.expenses.length} expenses${trackerData ? ', and tracker data' : '; tracker data unchanged'}. Check account sync if signed in.` });
     } catch (err) {
       setBackupMsg({ text: err instanceof Error ? err.message : 'Could not read backup file.', error: true });
+    } finally {
+      setBackupBusy(false);
     }
   };
 
@@ -144,11 +230,6 @@ export default function Administration({
   };
   return (
     <div className="admin-card">
-      <div className="admin-header">
-        <span className="admin-header-icon" role="img" aria-label="settings">⚙️</span>
-        <h2>Administration</h2>
-      </div>
-      <hr className="admin-divider" />
       <div className="admin-section">
         <div className="admin-section-title">Salary History Transfer</div>
         <p>Export salary entries and annual goals only, or import them without replacing budget or transaction data. Import replaces existing salary history and goals.</p>
@@ -173,12 +254,13 @@ export default function Administration({
       <hr className="admin-divider" />
       <div className="admin-section">
         <div className="admin-section-title">Backup <span style={{ fontSize: '1.1em' }}>💾</span></div>
+        <p>Export budget, salary history, and all trackers together. Import a full backup, an older budget backup, or an original Mercy Ledger backup. Imports replace only the data included in the file after confirmation.</p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="admin-btn" onClick={handleExportAll} title="Download all data as a JSON file">Export Everything</button>
-          <button className="admin-btn" onClick={() => restoreInput.current?.click()} title="Replace all data from a backup file">Import Backup</button>
-          <input ref={restoreInput} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleRestoreFile} />
+          <button className="admin-btn" disabled={backupBusy} onClick={handleExportAll} title="Download all data as a JSON file">Export Everything</button>
+          <button className="admin-btn" disabled={backupBusy} onClick={() => restoreInput.current?.click()} title="Import data from a backup file">Import Backup</button>
+          <input ref={restoreInput} aria-label="Backup file" type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleRestoreFile} />
         </div>
-        {backupMsg && <div className={backupMsg.error ? undefined : 'admin-success'} style={backupMsg.error ? { color: '#ef4444', marginTop: 8 } : undefined}>{backupMsg.text}</div>}
+        {backupMsg && <div role="status" className={backupMsg.error ? undefined : 'admin-success'} style={backupMsg.error ? { color: '#ef4444', marginTop: 8 } : undefined}>{backupMsg.text}</div>}
       </div>
       <hr className="admin-divider" />
       <div className="admin-section">

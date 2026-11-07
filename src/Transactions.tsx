@@ -71,9 +71,11 @@ interface Props {
   onAdd: (kind: Kind, item: Item) => void;
   onUpdate: (kind: Kind, item: Item) => void;
   onDelete: (kind: Kind, id: string) => void;
+  showAdd: boolean;
+  setShowAdd: (show: boolean) => void;
 }
 
-export default function TransactionsPage({ incomes, expenses, tags, startingBalance, postedMap, onPostedChange, onAdd, onUpdate, onDelete }: Props) {
+export default function TransactionsPage({ incomes, expenses, tags, startingBalance, postedMap, onPostedChange, onAdd, onUpdate, onDelete, showAdd, setShowAdd }: Props) {
   const [kindFilter, setKindFilter] = useState<'all' | Kind>('all');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'pending' | 'posted' | 'all'>('all');
@@ -84,7 +86,6 @@ export default function TransactionsPage({ incomes, expenses, tags, startingBala
   const [frequency, setFrequency] = useState('');
   const [amountMin, setAmountMin] = useState('');
   const [amountMax, setAmountMax] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
   const [rangeDays, setRangeDays] = useState<30 | 60 | 90>(30);
 
   const [selected, setSelected] = useState<string[]>([]);
@@ -298,11 +299,6 @@ export default function TransactionsPage({ incomes, expenses, tags, startingBala
 
   return (
     <div className="tx">
-      <div className="pageHead">
-        <h2>Transactions</h2>
-        <button className="primary" onClick={() => setShowAdd(v => !v)}>{showAdd ? 'Close' : '+ Add'}</button>
-      </div>
-
       {showAdd && (
         <AddForm
           tags={tags}

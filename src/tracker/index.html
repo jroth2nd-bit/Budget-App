@@ -1,0 +1,91 @@
+<body>
+  <div class="shell">
+    <div class="tracker-heading">
+      <div class="top-actions"><span class="local-label" id="save-status" role="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="save-status-text">LOCAL CACHE</span></span></div>
+    </div>
+    <div id="notice" class="notice error" role="alert" hidden></div>
+    <div id="dashboard">
+      <section class="section" aria-label="Summon mercy">
+        <div class="cards" id="mercy-cards"></div>
+        <p class="footnote">Alerts mark when mercy boosts the next pull, not a guarantee. Standard estimates only; events and simultaneous mercy chances may change odds. Remnant rates and mercy use the rules you supplied; verify them in-game. Update counts manually. <a href="https://raid-support.plarium.com/hc/en-us/articles/4415727112722-Mercy-system" target="_blank" rel="noopener noreferrer">About mercy ↗</a></p>
+      </section>
+      <div class="dashboard-grid">
+        <section class="section compact-panel soul-panel" aria-labelledby="souls-title">
+          <div class="section-heading"><div><p class="eyebrow">ALTAR OF SOULS</p><h2 id="souls-title">Soulstone coin calculator</h2></div></div>
+          <p class="section-copy">Enter your current inventory. Amounts start at zero.</p>
+          <div class="soul-inventory">
+            <div class="soul-header"><span>TYPE</span><span>STONES</span><span>COINS</span></div>
+            <div class="soul-input-row"><strong>Mortal</strong><input data-inventory="mortalStones" type="number" min="0" max="1000000" step="1" aria-label="Current Mortal Soulstones"><input data-inventory="mortalCoins" type="number" min="0" max="1000000" step="1" aria-label="Current Mortal Soul Coins"></div>
+            <div class="soul-input-row"><strong>Immortal</strong><input data-inventory="immortalStones" type="number" min="0" max="1000000" step="1" aria-label="Current Immortal Soulstones"><input data-inventory="immortalCoins" type="number" min="0" max="1000000" step="1" aria-label="Current Immortal Soul Coins"></div>
+          </div>
+          <div id="soul-projection" aria-live="polite"></div>
+          <p class="footnote">Each Mortal and Immortal stone costs 1,000 coins of its type. The projection buys all whole Mortal stones and pulls them for 20 Immortal coins each, including newly purchased stones. Excludes selling souls, other rewards, and silver costs; no resources are spent. <a href="https://raid-support.plarium.com/hc/en-us/articles/5874868312092-Guide-Altar-of-Souls" target="_blank" rel="noopener noreferrer">Soulstone guide ↗</a></p>
+        </section>
+        <section class="section compact-panel" aria-labelledby="battle-title">
+          <div class="section-heading"><div><p class="eyebrow">PLAN YOUR GRIND</p><h2 id="battle-title">Points calculators</h2></div></div>
+          <div class="points-tabs" role="tablist" aria-label="Points calculators">
+            <button type="button" role="tab" id="tab-event" aria-controls="panel-event" aria-selected="true" tabindex="0">Event</button>
+            <button type="button" role="tab" id="tab-tournament" aria-controls="panel-tournament" aria-selected="false" tabindex="-1">Tournament</button>
+            <button type="button" role="tab" id="tab-shard" aria-controls="panel-shard" aria-selected="false" tabindex="-1">Shards</button>
+            <button type="button" role="tab" id="tab-soul" aria-controls="panel-soul" aria-selected="false" tabindex="-1">Souls</button>
+          </div>
+          <div class="battle-plans" id="battle-plans">
+            <section class="battle-plan" id="panel-event" role="tabpanel" data-plan="event" aria-labelledby="tab-event">
+              <div class="battle-fields">
+                <div><label for="event-points">POINTS / BATTLE</label><input id="event-points" data-field="points" type="number" min="0" max="1000000" step="1"></div>
+                <div><label for="event-battles">BATTLES</label><input id="event-battles" data-field="battles" type="number" min="0" max="1000000" step="1"></div>
+                <div><label for="event-energy">ENERGY / BATTLE</label><input id="event-energy" data-field="energy" type="number" min="0" max="1000000" step="1"></div>
+                <div><label for="event-minutes">TIME / BATTLE · MIN</label><input id="event-minutes" data-field="minutes" type="number" min="0" max="1000000" step="1"></div>
+                <div><label for="event-seconds">TIME / BATTLE · SEC</label><input id="event-seconds" data-field="seconds" type="number" min="0" max="59" step="1"></div>
+              </div>
+              <div class="battle-result" id="event-result" aria-live="polite"></div>
+            </section>
+            <section class="battle-plan" id="panel-tournament" role="tabpanel" data-plan="tournament" aria-labelledby="tab-tournament" hidden>
+              <div class="battle-fields">
+                <div><label for="tournament-points">POINTS / BATTLE</label><input id="tournament-points" data-field="points" type="number" min="0" max="1000000" step="1"></div>
+                <div><label for="tournament-battles">BATTLES</label><input id="tournament-battles" data-field="battles" type="number" min="0" max="1000000" step="1"></div>
+                <div><label for="tournament-energy">ENERGY / BATTLE</label><input id="tournament-energy" data-field="energy" type="number" min="0" max="1000000" step="1"></div>
+                <div><label for="tournament-minutes">TIME / BATTLE · MIN</label><input id="tournament-minutes" data-field="minutes" type="number" min="0" max="1000000" step="1"></div>
+                <div><label for="tournament-seconds">TIME / BATTLE · SEC</label><input id="tournament-seconds" data-field="seconds" type="number" min="0" max="59" step="1"></div>
+              </div>
+              <div class="battle-result" id="tournament-result" aria-live="polite"></div>
+            </section>
+            <section class="battle-plan summon-plan" id="panel-shard" role="tabpanel" data-summon-plan="shard" aria-labelledby="tab-shard" hidden>
+              <div class="summon-head"><span>TYPE</span><span>PULLS</span><span>PTS / PULL</span><span>POINTS</span></div>
+              <div id="shard-summon-rows"></div>
+              <div class="summon-total">TOTAL POINTS <strong id="shard-summon-total" aria-live="polite">0</strong></div>
+            </section>
+            <section class="battle-plan summon-plan" id="panel-soul" role="tabpanel" data-summon-plan="soul" aria-labelledby="tab-soul" hidden>
+              <div class="summon-head"><span>TYPE</span><span>PULLS</span><span>PTS / PULL</span><span>POINTS</span></div>
+              <div id="soul-summon-rows"></div>
+              <div class="summon-total">TOTAL POINTS <strong id="soul-summon-total" aria-live="polite">0</strong></div>
+            </section>
+          </div>
+          <p class="footnote" id="points-battle-note">Battle estimates assume consistent rewards, energy, and time; loading and other delays are excluded.</p>
+          <p class="footnote" id="points-summon-note" hidden>Enter points per summon (not per Prism shard) from the event rules. Remnant is a summon, not a shard.</p>
+        </section>
+      </div>
+      <section class="section compact-panel clan-panel" aria-labelledby="clan-title">
+        <div class="section-heading clan-heading"><div><p class="eyebrow">CLAN BOSS · DEMON LORD</p><h2 id="clan-title">Reward tracker</h2></div><button class="button button-quiet" id="clan-new" type="button">Record rewards</button></div>
+        <div class="clan-filters">
+          <label for="clan-period">PERIOD <select id="clan-period"><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="0">All recorded time</option></select></label>
+          <label for="clan-difficulty">DIFFICULTY <select id="clan-difficulty"><option value="all">All difficulties</option><option value="ultra">Ultra-Nightmare</option><option value="nightmare">Nightmare</option><option value="brutal">Brutal</option><option value="hard">Hard</option></select></label>
+        </div>
+        <div id="clan-summary" aria-live="polite"></div>
+        <p class="footnote">Averages are per recorded day, projected to 7 and 30 days—not drop rates or guarantees. Missing days are excluded; incomplete recorded days are flagged. Epic book averages exclude days with unknown Epic book counts. Dates are local calendar dates.</p>
+        <details class="clan-history"><summary>Recorded days</summary><div id="clan-history"></div></details>
+      </section>
+    </div>
+  </div>
+  <dialog id="clan-dialog" aria-labelledby="clan-dialog-title">
+    <div class="clan-dialog-header"><div><p class="eyebrow">DEMON LORD REWARDS</p><h2 id="clan-dialog-title">Record a day</h2></div><button id="clan-close" class="button button-quiet" type="button" aria-label="Close">Close</button></div>
+    <p class="section-copy">Include only difficulties you claimed. Enter combined rewards from the claimed chests; uncheck a difficulty if not recorded. Zero means none received. Leave Epic books blank if unknown.</p>
+    <form id="clan-form">
+      <div class="clan-date"><label for="clan-date">REWARD DATE</label><input id="clan-date" type="date" required></div>
+      <div class="clan-table-wrap"><table class="clan-table"><thead><tr><th scope="col">Recorded</th><th scope="col">Difficulty</th><th scope="col">Chests</th><th scope="col">Legendary books</th><th scope="col">Epic books</th><th scope="col">Sacred</th><th scope="col">Void</th><th scope="col">Ancient</th></tr></thead><tbody id="clan-rows"></tbody></table></div>
+      <p class="footnote" id="clan-form-note">Two chests per difficulty are preselected; check your actual rewards before saving.</p>
+      <p class="clan-form-error" id="clan-form-error" role="alert"></p>
+      <div class="clan-dialog-actions"><button type="button" id="clan-cancel" class="button button-quiet">Cancel</button><button type="submit" class="button button-primary">Save day</button></div>
+    </form>
+  </dialog>
+</body>

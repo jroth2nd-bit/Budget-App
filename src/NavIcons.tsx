@@ -21,3 +21,15 @@ export const CalendarIcon = () => (
 export const IncomeHistoryIcon = () => (
   <svg {...base}><path d="M4 19V5" /><path d="M4 19h17" /><path d="m7 15 4-4 3 2 6-7" /><path d="M16 6h4v4" /></svg>
 );
+export const MercyIcon = () => (
+  <svg {...base}><path d="M12 2 4 9l8 13 8-13-8-7Z" /><path d="M4 9h16M8 9l4 13 4-13M8 9l4-7 4 7" /></svg>
+);
+export const BuildsIcon = () => (
+  <svg {...base}><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0M16 14l3-3 2 2-3 3" /></svg>
+);
+export const SkillsIcon = () => (
+  <svg {...base}><path d="M3 8h18v8H3zM7 8v8M17 8v8M9 10h6M9 14h6" /></svg>
+);
+export const MoreIcon = () => (
+  <svg {...base}><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></svg>
+);

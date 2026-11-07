@@ -24,7 +24,8 @@ function isEntry(value: unknown): value is IncomeHistoryEntry {
 }
 
 export function parseSalaryHistoryBackup(value: unknown): IncomeHistoryData {
-  if (!isRecord(value) || (value.app !== SALARY_BACKUP_APP && value.app !== FULL_BACKUP_APP) || value.version !== 1) {
+  if (!isRecord(value) || !((value.app === SALARY_BACKUP_APP && value.version === 1) ||
+    (value.app === FULL_BACKUP_APP && (value.version === 1 || value.version === 2)))) {
     throw new Error('Choose a supported Salary History export or Budget App backup.');
   }
   const history = value.incomeHistory;
