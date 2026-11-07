@@ -266,9 +266,9 @@ function populateClanForm() {
     const fields = ["chests", ...Object.keys(T.clanRewards)].map(field => {
       const label = field === "chests" ? "chests" : T.clanRewards[field];
       const value = row ? row[field] : field === "chests" ? 2 : 0;
-      return `<td><input type="number" data-clan-field="${field}" aria-label="${name} ${label}" min="${field === "chests" ? 1 : 0}" max="${field === "chests" ? 2 : 1000}" step="1" value="${value === null ? "" : value}"${field === "epicBooks" ? ' placeholder="Unknown"' : " required"}${row ? "" : " disabled"}></td>`;
+      return `<td data-label="${label}"><input type="number" data-clan-field="${field}" aria-label="${name} ${label}" min="${field === "chests" ? 1 : 0}" max="${field === "chests" ? 2 : 1000}" step="1" value="${value === null ? "" : value}"${field === "epicBooks" ? ' placeholder="Unknown"' : " required"}${row ? "" : " disabled"}></td>`;
     }).join("");
-    return `<tr data-clan-row="${key}"><td><input type="checkbox" data-clan-include aria-label="Record ${name}"${row ? " checked" : ""}></td><th scope="row">${name}</th>${fields}</tr>`;
+    return `<tr data-clan-row="${key}"><td data-label="Recorded"><input type="checkbox" data-clan-include aria-label="Record ${name}"${row ? " checked" : ""}></td><th scope="row">${name}</th>${fields}</tr>`;
   }).join("");
 }
 

@@ -14,6 +14,349 @@ async function openTracker(page: Page, name: string, mobile = false) {
 }
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  test(`tracker headers omit explanatory text without empty spacing at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const mobile = viewport.width < 640;
+    for (const [name, firstPanel] of [
+      ['Champion Builds', '.compact-panel'],
+      ['BJJ Skills', '.bjj-belt-panel'],
+      ['Mercy Ledger', '#dashboard'],
+    ]) {
+      const trackerView = await openTracker(page, name, mobile);
+      await expect(page.locator('.trackerSync')).toHaveCSS('position', 'absolute');
+      await expect(trackerView.locator(firstPanel)).toBeVisible();
+      await expect(trackerView.locator('.build-heading')).toHaveCount(0);
+      expect(await trackerView.locator(firstPanel).evaluate(element => {
+        const surface = element.closest('.tracker-surface')!;
+        return element.getBoundingClientRect().top - surface.getBoundingClientRect().top;
+      })).toBeLessThan(8);
+    }
+    const mercy = page.locator('.trackerView');
+    await expect(mercy.getByText('Enter your current inventory. Amounts start at zero.')).toHaveCount(0);
+    await expect(mercy.locator('#clan-new')).toBeVisible();
+    const builds = await openTracker(page, 'Champion Builds', mobile);
+    await expect(builds.getByRole('heading', { name: 'Build rankings' })).toBeVisible();
+    await expect(builds.locator('#build-clear-filters')).toBeVisible();
+    await expect(builds.getByText('Click or tap a value to edit it.')).toHaveCount(0);
+    await expect(builds.locator('.build-desktop-hint')).toHaveCount(0);
+    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    await expect(bjj.getByRole('heading', { name: 'Skill library' })).toBeVisible();
+    await expect(bjj.locator('#bjj-clear')).toBeVisible();
+    await expect(bjj.getByText('Mastery is your choice.', { exact: false })).toHaveCount(0);
+  });
+}
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 720 }]) {
+  test(`add dialogs save all editable fields at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const mobile = viewport.width < 640;
+    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    await page.getByRole('button', { name: 'Add skill', exact: true }).click();
+    const skill = bjj.locator('#bjj-add-dialog');
+    await expect(skill).toBeVisible();
+    expect(await skill.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await expect(skill.locator('#bjj-add-practice')).toHaveValue('not_yet');
+    await expect(skill.locator('#bjj-add-live')).toHaveValue('not_yet');
+    await expect(skill.locator('#bjj-add-preference')).toHaveValue('low');
+    await skill.locator('#bjj-name').fill('Full skill');
+    await skill.locator('#bjj-type-container summary').click();
+    await skill.getByRole('button', { name: 'Custom type…' }).click();
+    await skill.locator('#bjj-custom-type').fill('Custom guard');
+    await skill.locator('#bjj-add-description').fill('Detailed technique');
+    await skill.locator('#bjj-add-link').fill('https://example.com/video');
+    await skill.locator('#bjj-add-video').selectOption('liked');
+    await skill.locator('#bjj-add-practice').selectOption('consistently');
+    await skill.locator('#bjj-add-live').selectOption('learning');
+    await skill.locator('#bjj-add-preference').selectOption('high');
+    await skill.locator('#bjj-add-mastered').selectOption('true');
+    await skill.locator('button[type=submit]').click();
+    await expect(skill.locator('#bjj-add-error')).toContainText('YouTube or Instagram');
+    await expect(skill).toBeVisible();
+    await skill.locator('#bjj-add-link').fill('https://youtu.be/example');
+    await skill.locator('button[type=submit]').click();
+    await expect(skill).toBeHidden();
+    await page.getByRole('button', { name: 'Add skill', exact: true }).click();
+    await expect(skill.locator('#bjj-add-mastered')).toHaveValue('false');
+    await expect(skill.locator('#bjj-add-description')).toHaveValue('');
+    await skill.locator('#bjj-add-close').click();
+
+    const builds = await openTracker(page, 'Champion Builds', mobile);
+    await page.getByRole('button', { name: 'Add champion', exact: true }).click();
+    const champion = builds.locator('#build-dialog');
+    expect(await champion.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await expect(champion.locator('#build-blessing')).toHaveValue('0');
+    await champion.locator('#build-name').fill('Full champion');
+    await champion.locator('#build-blessing').selectOption('unknown');
+    await champion.locator('#build-books').selectOption('complete');
+    await champion.locator('#build-masteries').selectOption('progress');
+    await champion.locator('#build-gear').selectOption('complete');
+    await champion.locator('#build-glyphs').selectOption('progress');
+    await champion.locator('#build-relic').selectOption('complete');
+    await champion.locator('#build-notes').fill('Build notes');
+    await champion.locator('button[type=submit]').click();
+    await expect(champion).toBeHidden();
+
+    const nav = page.getByRole('navigation', { name: mobile ? 'Mobile navigation' : 'Main navigation' });
+    await nav.getByRole('button', { name: 'Transactions', exact: true }).click();
+    await page.getByRole('button', { name: '+ Add' }).click();
+    const transaction = page.getByRole('dialog', { name: 'Add transaction' });
+    await expect(transaction).toBeVisible();
+    expect(await transaction.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await transaction.getByRole('button', { name: 'Income', exact: true }).click();
+    await transaction.getByLabel('Name', { exact: true }).fill('Posted income');
+    await transaction.getByLabel('Amount', { exact: true }).fill('125');
+    const date = new Date();
+    const startDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    await transaction.getByLabel('Date', { exact: true }).fill(startDate);
+    await transaction.getByLabel('Category').selectOption({ label: 'None' });
+    await transaction.getByLabel('Frequency').selectOption('once');
+    await transaction.getByLabel('Paycheck').check();
+    await transaction.getByLabel('Posted on this date').check();
+    await transaction.getByRole('button', { name: 'Add income' }).click();
+    await expect(transaction).toHaveCount(0);
+    await page.getByLabel('Status', { exact: true }).selectOption('posted');
+    await expect(page.locator('.txRow .txName')).toContainText('Posted income');
+    await expect(page.locator('.txRow:not(.txHead)').getByLabel('Posted')).toBeChecked();
+
+    await nav.getByRole('button', { name: 'Salary History', exact: true }).click();
+    await page.getByRole('button', { name: 'Add salary change' }).click();
+    const salary = page.getByRole('dialog', { name: 'Add salary change' });
+    expect(await salary.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await salary.getByLabel('Effective date').fill('2025-01-01');
+    await salary.getByLabel('Age', { exact: true }).fill('35');
+    await salary.getByLabel('Employer').fill('Example employer');
+    await salary.getByLabel('Title').fill('Engineer');
+    await salary.getByLabel('Actual annual income').fill('85000');
+    await salary.getByLabel('Annual income goal').fill('90000');
+    await salary.getByLabel('Notes').fill('Salary note');
+    await salary.getByRole('button', { name: 'Add entry' }).click();
+    await expect(salary).toHaveCount(0);
+    const row = page.locator('.incomeHistoryRow').filter({ hasText: 'Example employer' });
+    await row.locator('summary').click();
+    await expect(row).toContainText('Salary note');
+    await row.getByRole('button', { name: 'Edit', exact: true }).click();
+    const edit = page.getByRole('dialog', { name: 'Edit salary change' });
+    await expect(edit.getByLabel('Age', { exact: true })).toHaveValue('35');
+    await expect(edit.getByLabel('Annual income goal')).toHaveValue('90000');
+    await edit.getByRole('button', { name: 'Close' }).click();
+    await page.getByRole('button', { name: 'Add salary change' }).click();
+    await salary.getByLabel('Employer').fill('Cancelled entry');
+    await page.keyboard.press('Escape');
+    await expect(salary).toHaveCount(0);
+    await expect(page.locator('.incomeHistoryRow').filter({ hasText: 'Cancelled entry' })).toHaveCount(0);
+    await page.getByText('Annual income goals', { exact: true }).click();
+    await page.getByRole('button', { name: 'Add or update goal' }).click();
+    const goal = page.getByRole('dialog', { name: 'Add or update goal' });
+    await goal.getByLabel('Year').fill('2026');
+    await goal.getByLabel('Annual goal').fill('95000');
+    await goal.getByRole('button', { name: 'Save goal' }).click();
+    await expect(goal).toHaveCount(0);
+    await expect(page.locator('.incomeHistoryGoalItem').filter({ hasText: '2026' })).toContainText('95,000');
+    await page.reload();
+    await nav.getByRole('button', { name: 'Salary History', exact: true }).click();
+    await expect(page.locator('.incomeHistoryRow').filter({ hasText: 'Example employer' })).toBeVisible();
+    await openTracker(page, 'BJJ Skills', mobile);
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 1 skills.');
+    if (mobile) await bjj.locator('.bjj-card > summary').click();
+    const skillList = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
+    await expect(skillList.getByLabel('Practice for Full skill')).toHaveValue('consistently');
+    await skillList.getByLabel('Practice for Full skill').selectOption('sometimes');
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1') || '{}'));
+    expect(saved.bjj.skills[0]).toMatchObject({ name: 'Full skill', type: 'Custom guard', description: 'Detailed technique', link: 'https://youtu.be/example', video: 'liked', practice: 'sometimes', live: 'learning', preference: 'high', mastered: true });
+    expect(saved.champions[0]).toMatchObject({ name: 'Full champion', notes: 'Build notes', statuses: { blessing: null, books: 'complete', masteries: 'progress', gear: 'complete', glyphs: 'progress', relic: 'complete' } });
+  });
+}
+
+test('posting a new recurring transaction posts only its first occurrence', async ({ page }) => {
+  await page.goto(localUrl);
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Transactions' }).click();
+  await page.getByRole('button', { name: '+ Add' }).click();
+  const form = page.getByRole('dialog', { name: 'Add transaction' });
+  const date = new Date();
+  const start = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  await form.getByRole('button', { name: 'Income', exact: true }).click();
+  await form.getByLabel('Name', { exact: true }).fill('Recurring posted');
+  await form.getByLabel('Amount', { exact: true }).fill('50');
+  await form.getByLabel('Date', { exact: true }).fill(start);
+  await form.getByLabel('Category').selectOption({ label: 'None' });
+  await form.getByLabel('Frequency').selectOption('weekly');
+  await form.getByLabel('Posted on this date').check();
+  await form.getByRole('button', { name: 'Add income' }).click();
+  await expect.poll(() => page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('posted_map') || '{}')).filter(Boolean).length)).toBe(1);
+  await expect(page.locator('.txRow .txName').filter({ hasText: 'Recurring posted' }).first()).toBeVisible();
+  await page.getByLabel('Status', { exact: true }).selectOption('posted');
+  await expect(page.locator('.txRow .txName').filter({ hasText: 'Recurring posted' })).toHaveCount(1);
+});
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  test(`dropdown filters match editable values at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const mobile = viewport.width < 640;
+    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    const addSkill = async (name: string, type: string, custom = false) => {
+      await page.getByRole('button', { name: 'Add skill', exact: true }).click();
+      await bjj.locator('#bjj-name').fill(name);
+      await bjj.locator('#bjj-type-container summary').click();
+      await bjj.locator('#bjj-type-container').getByRole('button', { name: custom ? 'Custom type…' : type, exact: true }).click();
+      if (custom) await bjj.locator('#bjj-custom-type').fill(type);
+      await bjj.locator('#bjj-add-form button[type=submit]').click();
+    };
+    await addSkill('Normal escape', 'Escape');
+    await addSkill('Custom skill', 'Leg <entanglement>', true);
+    await addSkill('Similar custom skill', 'Leg <entanglement> advanced', true);
+    await bjj.locator('.bjj-filter-details summary').click();
+    const typeFilter = bjj.getByLabel('Filter Type');
+    await expect(typeFilter).toHaveJSProperty('tagName', 'SELECT');
+    await expect(typeFilter.locator('option')).toHaveText(['All', ...tracker.bjjTypes, 'Leg <entanglement>', 'Leg <entanglement> advanced']);
+    for (const field of ['Video quality', 'Practice', 'Live rolls', 'Preference']) {
+      const filterChoices = await bjj.getByLabel(`Filter ${field}`).locator('option').allTextContents();
+      const cellChoices = await bjj.getByLabel(`${field} for Normal escape`).first().locator('option').allTextContents();
+      expect(filterChoices).toEqual(['All', ...cellChoices]);
+    }
+    await typeFilter.selectOption({ label: 'Leg <entanglement>' });
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 3 skills.');
+    if (mobile) await expect(bjj.locator('.bjj-card:visible')).toContainText('Custom skill');
+    else await expect(bjj.getByLabel('Skill for Custom skill').first()).toHaveValue('Custom skill');
+    await typeFilter.selectOption({ label: 'Escape' });
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 3 skills.');
+    await bjj.getByLabel('Filter Practice').selectOption('not_yet');
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 3 skills.');
+    await bjj.locator('#bjj-clear').click();
+    await expect(typeFilter).toHaveValue('');
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 3 of 3 skills.');
+    const skillView = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
+    if (mobile) {
+      const card = skillView.locator('.bjj-card').filter({ has: page.getByText('Custom skill', { exact: true }) });
+      if (!await card.evaluate(element => (element as HTMLDetailsElement).open)) await card.locator('summary').first().click();
+    }
+    const typePicker = skillView.locator('details.bjj-type-picker').filter({ has: page.getByLabel('Type for Custom skill: Leg <entanglement>') });
+    await typePicker.locator('summary').click();
+    await typePicker.getByRole('button', { name: 'Custom type…' }).click();
+    await bjj.locator('#bjj-type-custom').fill('Revised & type');
+    await bjj.locator('#bjj-type-form button[type=submit]').click();
+    await expect(typeFilter.locator('option')).toHaveText(['All', ...tracker.bjjTypes, 'Revised & type', 'Leg <entanglement> advanced']);
+    await typeFilter.selectOption({ label: 'Revised & type' });
+    if (mobile) {
+      const card = skillView.locator('.bjj-card').filter({ has: page.getByText('Custom skill', { exact: true }) });
+      if (!await card.evaluate(element => (element as HTMLDetailsElement).open)) await card.locator('summary').first().click();
+    }
+    page.once('dialog', dialog => dialog.accept());
+    await skillView.getByRole('button', { name: 'Delete Custom skill' }).click();
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 0 of 2 skills.');
+    await expect(typeFilter).toHaveValue('Revised & type');
+    await bjj.locator('#bjj-clear').click();
+    await expect(typeFilter.locator('option')).toHaveText(['All', ...tracker.bjjTypes, 'Leg <entanglement> advanced']);
+    await page.reload();
+    await openTracker(page, 'BJJ Skills', mobile);
+    await bjj.locator('.bjj-filter-details summary').click();
+    await expect(typeFilter.locator('option')).toHaveText(['All', ...tracker.bjjTypes, 'Leg <entanglement> advanced']);
+
+    const builds = await openTracker(page, 'Champion Builds', mobile);
+    await page.getByRole('button', { name: 'Add champion', exact: true }).click();
+    await builds.locator('#build-name').fill('Filter champion');
+    await builds.locator('#build-books').selectOption('complete');
+    await builds.locator('#build-form button[type=submit]').click();
+    if (mobile) await builds.locator('.build-mobile-controls summary').click();
+    const visibleFilters = builds.locator(mobile ? '#mobile-filters' : '.build-filter-row');
+    const books = visibleFilters.getByLabel('Filter Books');
+    const blessing = visibleFilters.getByLabel('Filter Blessing');
+    await expect(books.locator('option')).toHaveText(['All', 'Needed', 'In Progress', 'Complete']);
+    await expect(blessing.locator('option')).toHaveText(['All', '0', '1', '2', '3', '4', '5', '6', 'Unknown']);
+    for (const field of ['Books', 'Blessing']) {
+      const filterChoices = await visibleFilters.getByLabel(`Filter ${field}`).locator('option').allTextContents();
+      const cellChoices = await builds.getByLabel(`${field} for Filter champion`).first().locator('option').allTextContents();
+      expect(filterChoices).toEqual(['All', ...cellChoices]);
+    }
+    await books.selectOption('complete');
+    await expect(builds.locator('#build-count')).toHaveText('Showing 1 of 1 champions.');
+    await books.selectOption('progress');
+    await expect(builds.locator('#build-count')).toHaveText('Showing 0 of 1 champions.');
+    await builds.locator('#build-clear-filters').click();
+    await expect(books).toHaveValue('');
+    await expect(builds.locator('#build-count')).toHaveText('Showing 1 of 1 champions.');
+  });
+}
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+test(`transaction dropdown filters match editing at ${viewport.width}px`, async ({ page }) => {
+  await page.setViewportSize(viewport);
+  await page.addInitScript(() => {
+    const date = new Date();
+    const startDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    localStorage.setItem('incomes', JSON.stringify([
+      { id: 'a', name: 'Categorized', amount: 10, startDate, frequency: 'once', isRecurring: false, tags: ['Work'] },
+      { id: 'b', name: 'Uncategorized', amount: 20, startDate, frequency: 'once', isRecurring: false, tags: [] },
+    ]));
+    localStorage.setItem('tags', JSON.stringify([{ name: 'Work', icon: '', color: '#ffffff' }, { name: 'all', icon: '', color: '#ffffff' }, { name: 'category:', icon: '', color: '#ffffff' }]));
+  });
+  await page.goto(localUrl);
+  await page.getByRole('navigation', { name: viewport.width < 640 ? 'Mobile navigation' : 'Main navigation' }).getByRole('button', { name: 'Transactions' }).click();
+  await page.getByRole('button', { name: 'Filters', exact: true }).click();
+  const filter = page.locator('.txFilters').getByLabel('Category');
+  await page.getByRole('button', { name: 'Edit all' }).click();
+  const editRow = page.locator('.txRow.isEditing').first();
+  expect(await filter.locator('option').allTextContents()).toEqual(['All', ...await editRow.locator('.cCat select option').allTextContents()]);
+  expect(await page.locator('.txFilters').getByLabel('Frequency').locator('option').allTextContents()).toEqual(['All', ...await editRow.locator('.cFreq select option').allTextContents()]);
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await filter.selectOption({ label: 'all' });
+  await expect(page.locator('.txRow .txName')).toHaveCount(0);
+  await filter.selectOption({ label: 'None' });
+  await expect(page.locator('.txRow .txName')).toHaveText(['Uncategorized']);
+  await filter.selectOption({ label: 'Work' });
+  await expect(page.locator('.txRow .txName')).toHaveText(['Categorized']);
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(page.locator('.txRow .txName')).toHaveCount(2);
+});
+}
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1351, height: 800 }, { width: 1280, height: 800 }, { width: 390, height: 844 }, { width: 320, height: 720 }]) {
+  test(`tracker tables and reward editor stay readable without horizontal scrolling at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const mobile = viewport.width < 640;
+    const builds = await openTracker(page, 'Champion Builds', mobile);
+    await page.getByRole('button', { name: 'Add champion', exact: true }).click();
+    await builds.locator('#build-name').fill('Readability champion');
+    await builds.locator('#build-form button[type=submit]').click();
+    if (viewport.width > 1350) {
+      await expect(builds.locator('.build-table')).toHaveCSS('font-size', '13px');
+      await expect(builds.locator('#build-list .build-cell-control').first()).toHaveCSS('font-size', '13px');
+      expect(await builds.locator('.build-table-wrap').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    } else {
+      await expect(builds.locator('.build-table-wrap')).toBeHidden();
+      await expect(builds.locator('.build-mobile-card').first()).toBeVisible();
+    }
+    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    await page.getByRole('button', { name: 'Add skill', exact: true }).click();
+    await bjj.locator('#bjj-name').fill('Readability escape');
+    await bjj.locator('#bjj-type-container summary').click();
+    await bjj.getByRole('button', { name: 'Escape', exact: true }).click();
+    await bjj.locator('#bjj-add-form button[type=submit]').click();
+    if (viewport.width > 1350) {
+      await expect(bjj.locator('.bjj-table')).toHaveCSS('font-size', '13px');
+      await expect(bjj.locator('#bjj-list .bjj-inline-control').first()).toHaveCSS('font-size', '13px');
+      expect(await bjj.locator('.bjj-table-wrap').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    } else {
+      await expect(bjj.locator('.bjj-table-wrap')).toBeHidden();
+      await expect(bjj.locator('.bjj-card').first()).toBeVisible();
+    }
+    const mercy = await openTracker(page, 'Mercy Ledger', mobile);
+    await mercy.locator('#clan-new').click();
+    const dialog = mercy.locator('#clan-dialog');
+    await expect(dialog.locator('.clan-table')).toHaveCSS('font-size', '13px');
+    await dialog.getByLabel('Ultra-Nightmare Epic books').fill('3');
+    expect(await dialog.locator('.clan-table-wrap').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await dialog.locator('button[type=submit]').click();
+    await expect(mercy.locator('#clan-summary .clan-metric').filter({ hasText: 'Epic books' }).locator('strong')).toHaveText('3');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+  });
+}
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
   test(`tracker shell colors follow page and belt at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.goto(localUrl);
@@ -107,7 +450,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await nav.getByRole('button', { name: 'Transactions', exact: true }).click();
     await actionArea.getByRole('button', { name: '+ Add' }).click();
     await expect(page.locator('form.txAdd')).toBeVisible();
-    await actionArea.getByRole('button', { name: 'Close' }).click();
+    await page.getByRole('dialog', { name: 'Add transaction' }).getByRole('button', { name: 'Close' }).click();
     await expect(page.locator('form.txAdd')).toHaveCount(0);
     const builds = await openTracker(page, 'Champion Builds', mobile);
     await actionArea.getByRole('button', { name: 'Add champion' }).click();
@@ -121,6 +464,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
 }
 
 test('desktop and mobile navigation, editing, reload and budget isolation', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(() => {
     if (!sessionStorage.getItem('seeded')) {
       localStorage.setItem('startingBalance', '2468');
@@ -172,7 +516,7 @@ test('desktop and mobile navigation, editing, reload and budget isolation', asyn
   await page.getByLabel('Name', { exact: true }).fill('Budget test income');
   await page.getByLabel('Amount', { exact: true }).fill('125');
   await page.getByLabel('Date', { exact: true }).fill('2026-01-01');
-  await page.locator('form.txAdd label').filter({ hasText: 'Category' }).locator('select').selectOption('Test category');
+  await page.locator('form.txAdd label').filter({ hasText: 'Category' }).locator('select').selectOption('category:Test category');
   await page.getByRole('button', { name: 'Add income' }).click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('incomes') || '[]').some((item: { name: string }) => item.name === 'Budget test income'))).toBe(true);
   await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'Dashboard' }).click();
@@ -224,6 +568,7 @@ test('backup migration, invalid and cancelled imports preserve both datasets', a
 });
 
 test('full backup round trips budget and every tracker; older budget backups leave trackers intact', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(() => {
     if (sessionStorage.getItem('backup-seeded')) return;
     sessionStorage.setItem('backup-seeded', 'yes');
@@ -490,7 +835,7 @@ test('account sync saves separately and rejects a stale cloud write with recover
   await mercy.locator('#count-Ancient-Legendary').fill('9');
   await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
   await expect.poll(() => cloud.row?.data.current.shards.Ancient.Legendary).toBe(9);
-  await expect(page.getByText('Tracker: account sync ready')).toBeVisible();
+  await expect(page.locator('.trackerSync')).toHaveText('Tracker: account sync ready');
   await expect.poll(() => cloud.budgetWrites.length).toBeGreaterThan(0);
   expect(cloud.budgetWrites.every(write => {
     if (!write || typeof write !== 'object' || !('data' in write)) return false;
@@ -539,7 +884,7 @@ test('rapid cloud edits are queued without losing the latest value', async ({ pa
   await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
   release();
   await expect.poll(() => cloud.row?.data.current.shards.Ancient.Legendary).toBe(3);
-  await expect(page.getByText('Tracker: account sync ready')).toBeVisible();
+  await expect(page.locator('.trackerSync')).toHaveText('Tracker: account sync ready');
   expect(writes).toBe(2);
 });
 

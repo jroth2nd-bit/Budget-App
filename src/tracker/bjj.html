@@ -5,7 +5,7 @@
       <div id="bjj-notice" class="notice error" role="alert" hidden></div>
     </div>
     <div class="build-page">
-      <div class="build-heading"><p class="section-copy">Track your learning from practice to live rolls.</p><button id="bjj-add" class="button button-primary" type="button">Add skill</button></div>
+      <button id="bjj-add" class="button button-primary" type="button">Add skill</button>
       <section class="compact-panel bjj-belt-panel" aria-labelledby="belt-title">
         <div><p class="eyebrow">YOUR PROGRESS</p><h2 id="belt-title">Belt and stripes</h2><p id="bjj-next" class="footnote"></p></div>
         <div><label for="bjj-belt">BELT</label><select id="bjj-belt"></select></div>
@@ -13,7 +13,7 @@
         <div id="bjj-belt-display" class="bjj-belt-display" aria-label="Belt stripes"></div>
       </section>
       <section class="compact-panel bjj-skills-panel" aria-labelledby="skills-title">
-        <div class="build-toolbar"><div><p class="eyebrow">YOUR TRAINING</p><h2 id="skills-title">Skill library</h2><p class="footnote">Mastery is your choice. A skill is suggested for mastery when both Practice and Live rolls are Consistently.</p><p class="footnote">Click or tap a value to edit it; select Mastered to toggle it.</p></div><button class="button button-quiet" id="bjj-clear" type="button">Clear filters</button></div>
+        <div class="build-toolbar"><div><p class="eyebrow">YOUR TRAINING</p><h2 id="skills-title">Skill library</h2></div><button class="button button-quiet" id="bjj-clear" type="button">Clear filters</button></div>
         <div class="bjj-controls"><label for="bjj-sort">SORT BY<select id="bjj-sort"></select></label><label for="bjj-direction">DIRECTION<select id="bjj-direction"><option value="ascending">Ascending</option><option value="descending">Descending</option></select></label></div>
         <details class="bjj-filter-details"><summary>Filter skills</summary><div id="bjj-filters" class="bjj-filters"></div></details>
         <p id="bjj-count" class="footnote" role="status"></p>
@@ -24,7 +24,22 @@
   </div>
   <dialog id="bjj-add-dialog" aria-labelledby="bjj-add-title">
     <div class="build-dialog-header"><h2 id="bjj-add-title">Add skill</h2><button class="button button-quiet" id="bjj-add-close" type="button">Close</button></div>
-    <form id="bjj-add-form"><label for="bjj-name">SKILL NAME</label><input id="bjj-name" required maxlength="100"><label id="bjj-type-label">TYPE</label><div id="bjj-type-container"></div><div id="bjj-custom-wrap" hidden><label for="bjj-custom-type">CUSTOM TYPE</label><input id="bjj-custom-type" maxlength="100"></div><p class="footnote">Practice and live rolls start at Not yet; preference starts at Low. Video quality starts unset.</p><p id="bjj-add-error" class="clan-form-error" role="alert"></p><div class="clan-dialog-actions"><button class="button button-primary" type="submit">Add skill</button></div></form>
+    <form id="bjj-add-form">
+      <label for="bjj-name">SKILL NAME</label><input id="bjj-name" required maxlength="100">
+      <label id="bjj-type-label">TYPE</label><div id="bjj-type-container"></div>
+      <div id="bjj-custom-wrap" hidden><label for="bjj-custom-type">CUSTOM TYPE</label><input id="bjj-custom-type" maxlength="100"></div>
+      <label for="bjj-add-description">DESCRIPTION</label><textarea id="bjj-add-description" rows="3" maxlength="4000"></textarea>
+      <label for="bjj-add-link">VIDEO LINK</label><input id="bjj-add-link" type="url" maxlength="2048" placeholder="HTTPS YouTube or Instagram link">
+      <div class="bjj-add-fields">
+        <div><label for="bjj-add-video">VIDEO QUALITY</label><select id="bjj-add-video"></select></div>
+        <div><label for="bjj-add-practice">PRACTICE</label><select id="bjj-add-practice"></select></div>
+        <div><label for="bjj-add-live">LIVE ROLLS</label><select id="bjj-add-live"></select></div>
+        <div><label for="bjj-add-preference">PREFERENCE</label><select id="bjj-add-preference"></select></div>
+        <div><label for="bjj-add-mastered">MASTERY</label><select id="bjj-add-mastered"></select></div>
+      </div>
+      <p id="bjj-add-error" class="clan-form-error" role="alert"></p>
+      <div class="clan-dialog-actions"><button class="button button-primary" type="submit">Add skill</button></div>
+    </form>
   </dialog>
   <dialog id="bjj-type-dialog" aria-labelledby="bjj-type-title">
     <div class="build-dialog-header"><h2 id="bjj-type-title">Custom skill type</h2><button class="button button-quiet" id="bjj-type-close" type="button">Cancel</button></div>
