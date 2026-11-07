@@ -238,7 +238,8 @@ function makeFilter(column) {
   if (["status", "blessing", "notes"].includes(column.filter)) {
     input = element("select");
     const options = column.filter === "status" ? statusLabels : column.filter === "blessing" ? blessingLabels : { yes: "Has notes", no: "No notes" };
-    addOptions(input, { "": "All", ...options });
+    addOptions(input, { "": "All" });
+    addOptions(input, options);
     input.value = "";
   } else {
     input = element("input");
@@ -307,7 +308,7 @@ for (const [key, labelText] of Object.entries(T.buildFields)) {
   const select = element("select");
   select.id = label.htmlFor;
   select.name = key;
-  addOptions(select, key === "blessing" ? Object.fromEntries(Object.entries(blessingLabels).filter(([value]) => value !== "unknown")) : statusLabels);
+  addOptions(select, key === "blessing" ? blessingLabels : statusLabels);
   wrapper.append(label, select);
   $("build-fields").append(wrapper);
 }
@@ -335,7 +336,7 @@ $("mobile-direction").addEventListener("change", event => { sortDirection = even
 $("build-form").addEventListener("submit", event => {
   event.preventDefault();
   try {
-    const statuses = Object.fromEntries([...$("build-fields").querySelectorAll("select")].map(select => [select.name, select.name === "blessing" ? Number(select.value) : select.value]));
+    const statuses = Object.fromEntries([...$("build-fields").querySelectorAll("select")].map(select => [select.name, select.name === "blessing" ? select.value === "unknown" ? null : Number(select.value) : select.value]));
     const champion = T.validateChampion({ id: crypto.randomUUID(), name: $("build-name").value, statuses, notes: $("build-notes").value });
     if (save({ ...state, champions: [...state.champions, champion] }, "build-form-error")) $("build-dialog").close();
   } catch (error) {

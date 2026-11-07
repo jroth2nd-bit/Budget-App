@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   Bar,
   CartesianGrid,
@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import type { IncomeHistoryData, IncomeHistoryEntry } from './types';
 import { benchmarkSources, fetchLatestBenchmarks, incomeTier, loadBenchmarks, saveBenchmarks } from './householdIncomeBenchmarks';
+import FormDialog from './FormDialog';
 
 const money = (value: number) => value.toLocaleString(undefined, {
   style: 'currency',
@@ -139,7 +140,8 @@ export default function IncomeHistory({ data, onChange }: IncomeHistoryProps) {
   const [annualGoal, setAnnualGoal] = useState('');
   const [notes, setNotes] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const salaryFormSection = useRef<HTMLDetailsElement>(null);
+  const [salaryFormOpen, setSalaryFormOpen] = useState(false);
+  const [goalFormOpen, setGoalFormOpen] = useState(false);
   const [whatIfOpen, setWhatIfOpen] = useState(false);
   const [showCleveland, setShowCleveland] = useState(true);
   const [showOhio, setShowOhio] = useState(true);
@@ -256,10 +258,7 @@ export default function IncomeHistory({ data, onChange }: IncomeHistoryProps) {
     setAnnualIncome(String(entry.annualIncome));
     setAnnualGoal(data.annualGoals[entry.effectiveDate.slice(0, 4)]?.toString() || '');
     setNotes(entry.notes);
-    if (salaryFormSection.current) {
-      salaryFormSection.current.open = true;
-      salaryFormSection.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    setSalaryFormOpen(true);
   };
 
   const saveEntry = (event: FormEvent<HTMLFormElement>) => {
@@ -286,6 +285,7 @@ export default function IncomeHistory({ data, onChange }: IncomeHistoryProps) {
       annualGoals: nextGoals,
     });
     resetForm();
+    setSalaryFormOpen(false);
   };
 
   const saveGoal = (event: FormEvent<HTMLFormElement>) => {
@@ -294,6 +294,7 @@ export default function IncomeHistory({ data, onChange }: IncomeHistoryProps) {
     if (!/^\d{4}$/.test(goalYear) || !Number.isFinite(amount) || amount < 0) return;
     onChange({ ...data, annualGoals: { ...data.annualGoals, [goalYear]: amount } });
     setGoalAmount('');
+    setGoalFormOpen(false);
   };
 
   const deleteGoal = (year: string) => {
@@ -454,14 +455,16 @@ export default function IncomeHistory({ data, onChange }: IncomeHistoryProps) {
         )}
       </div>
 
-      <details className="chartCard incomeHistoryCollapsible" ref={salaryFormSection}>
-        <summary>{editingId ? 'Edit salary change' : 'Add salary change'}</summary>
+      <div className="chartCard">
+        <button type="button" className="primary" onClick={() => { resetForm(); setSalaryFormOpen(true); }}>Add salary change</button>
+      </div>
+      {salaryFormOpen && <FormDialog title={editingId ? 'Edit salary change' : 'Add salary change'} onClose={() => { resetForm(); setSalaryFormOpen(false); }}>
       <form className="incomeHistoryForm" onSubmit={saveEntry}>
         <div className="incomeHistoryFormHead">
           <div>
             <p>Record annualized salary and the goal for that calendar year.</p>
           </div>
-          {editingId && <button type="button" onClick={resetForm}>Cancel edit</button>}
+          {editingId && <button type="button" onClick={() => { resetForm(); setSalaryFormOpen(false); }}>Cancel edit</button>}
         </div>
         <div className="incomeHistoryFields">
           <label>Effective date<input type="date" required value={effectiveDate} onChange={event => {
@@ -481,7 +484,7 @@ export default function IncomeHistory({ data, onChange }: IncomeHistoryProps) {
           <button type="submit" className="primary">{editingId ? 'Save changes' : 'Add entry'}</button>
         </div>
       </form>
-      </details>
+      </FormDialog>}
 
       <details className="chartCard incomeHistoryCollapsible">
         <summary>Annual income goals</summary>
@@ -491,11 +494,14 @@ export default function IncomeHistory({ data, onChange }: IncomeHistoryProps) {
             <p>Goals can be recorded for future years before a salary entry exists.</p>
           </div>
         </div>
+        <button type="button" className="primary" onClick={() => setGoalFormOpen(true)}>Add or update goal</button>
+        {goalFormOpen && <FormDialog title="Add or update goal" onClose={() => { setGoalAmount(''); setGoalFormOpen(false); }}>
         <form className="incomeHistoryGoalForm" onSubmit={saveGoal}>
           <label>Year<input type="number" min="1900" max="9999" step="1" required value={goalYear} onChange={event => setGoalYear(event.target.value)} /></label>
           <label>Annual goal<input type="number" min="0" step="0.01" required value={goalAmount} onChange={event => setGoalAmount(event.target.value)} placeholder="150000" /></label>
           <button type="submit" className="primary">Save goal</button>
         </form>
+        </FormDialog>}
         <div className="incomeHistoryGoalList">
           {Object.entries(data.annualGoals).sort(([a], [b]) => a.localeCompare(b)).map(([year, goal]) => (
             <div className="incomeHistoryGoalItem" key={year}>

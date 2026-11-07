@@ -28,6 +28,7 @@ let sort = "name";
 let direction = "ascending";
 const filters = Object.fromEntries(columns.map(column => [column.key, ""]));
 const expanded = new Set();
+let typeFilterChoices = [];
 
 function node(tag, className, text) {
   const result = document.createElement(tag);
@@ -220,6 +221,25 @@ function deleteControl(skill) {
 function render() {
   document.body.dataset.belt = state.bjj.belt.toLowerCase();
   onBeltChange(document.body.dataset.belt);
+  const typeFilter = document.querySelector('[data-bjj-filter="type"]');
+  if (typeFilter) {
+    const types = [...T.bjjTypes];
+    for (const skill of state.bjj.skills) {
+      if (!types.includes(skill.type)) types.push(skill.type);
+    }
+    if (filters.type && !types.includes(filters.type)) types.push(filters.type);
+    if (types.length !== typeFilterChoices.length || types.some((type, index) => type !== typeFilterChoices[index])) {
+      typeFilter.replaceChildren();
+      addOptions(typeFilter, { "": "All" });
+      for (const type of types) {
+        const option = node("option", "", type);
+        option.value = type;
+        typeFilter.append(option);
+      }
+      typeFilter.value = filters.type;
+      typeFilterChoices = types;
+    }
+  }
   $("bjj-belt").value = state.bjj.belt;
   $("bjj-stripes").value = String(state.bjj.stripes);
   const belt = $("bjj-belt-display");
@@ -232,7 +252,7 @@ function render() {
   const visible = state.bjj.skills.filter(skill => values(skill).every(([key, value]) => {
     const filter = filters[key];
     if (!filter) return true;
-    return options[key] ? String(value) === filter : value.toLocaleLowerCase().includes(filter);
+    return key === "type" || options[key] ? String(value) === filter : value.toLocaleLowerCase().includes(filter);
   }));
   visible.sort((a, b) => {
     const label = skill => options[sort] ? options[sort][String(skill[sort])] : skill[sort];
@@ -291,6 +311,7 @@ function render() {
 function initControls() {
   addOptions($("bjj-belt"), Object.fromEntries(T.bjjBelts.map(belt => [belt, belt])));
   addOptions($("bjj-stripes"), Object.fromEntries([0, 1, 2, 3, 4].map(count => [count, String(count)])));
+  for (const key of ["video", "practice", "live", "preference", "mastered"]) addOptions($(`bjj-add-${key}`), options[key]);
   const row = node("tr");
   for (const column of columns) {
     const th = node("th");
@@ -310,12 +331,15 @@ function initControls() {
     option.value = column.key;
     $("bjj-sort").append(option);
     const label = node("label", "", column.label.toUpperCase());
-    const input = node(options[column.key] ? "select" : "input");
+    const input = node(column.key === "type" || options[column.key] ? "select" : "input");
     if (options[column.key]) addOptions(input, { "": "All", ...options[column.key] });
-    else { input.type = "text"; input.placeholder = "Search"; }
+    else if (column.key !== "type") { input.type = "text"; input.placeholder = "Search"; }
     input.setAttribute("aria-label", `Filter ${column.label}`);
     input.dataset.bjjFilter = column.key;
-    input.addEventListener("input", () => { filters[column.key] = input.value.trim().toLocaleLowerCase(); render(); });
+    input.addEventListener("input", () => {
+      filters[column.key] = column.key === "type" || options[column.key] ? input.value : input.value.trim().toLocaleLowerCase();
+      render();
+    });
     label.append(input);
     $("bjj-filters").append(label);
   }
@@ -354,6 +378,7 @@ $("bjj-clear").addEventListener("click", () => {
 });
 $("bjj-add").addEventListener("click", () => {
   $("bjj-add-form").reset();
+  for (const [key, value] of Object.entries({ video: "unset", practice: "not_yet", live: "not_yet", preference: "low", mastered: "false" })) $(`bjj-add-${key}`).value = value;
   resetAddType();
   $("bjj-custom-wrap").hidden = true;
   $("bjj-custom-type").required = false;
@@ -371,7 +396,7 @@ $("bjj-add-form").addEventListener("submit", event => {
       return;
     }
     const type = addCustomType ? $("bjj-custom-type").value : addType;
-    const skill = T.validateBjjSkill({ id: crypto.randomUUID(), name: $("bjj-name").value, type, description: "", link: "", video: "unset", practice: "not_yet", live: "not_yet", preference: "low", mastered: false });
+    const skill = T.validateBjjSkill({ id: crypto.randomUUID(), name: $("bjj-name").value, type, description: $("bjj-add-description").value, link: $("bjj-add-link").value.trim(), video: $("bjj-add-video").value, practice: $("bjj-add-practice").value, live: $("bjj-add-live").value, preference: $("bjj-add-preference").value, mastered: $("bjj-add-mastered").value === "true" });
     if (save({ ...state.bjj, skills: [...state.bjj.skills, skill] }, "bjj-add-error")) $("bjj-add-dialog").close();
   } catch (error) { $("bjj-add-error").textContent = error.message; }
 });

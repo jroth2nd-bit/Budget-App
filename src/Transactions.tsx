@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Income, Expense, Tag } from './types';
 import { AmountScope, DeleteScope, FREQUENCIES, amountFor, applyAmountChange, applyDelete, dateKey, getPaycheckPeriod, isSkipped, occurrenceDetails, stepDate } from './recurrence';
 import { AmountScopeDialog, DeleteScopeDialog, EditScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
+import FormDialog from './FormDialog';
 
 type Kind = 'income' | 'expense';
 type Item = Income | Expense;
@@ -82,7 +83,7 @@ export default function TransactionsPage({ incomes, expenses, tags, startingBala
   const [showFilters, setShowFilters] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState<string | null>(null);
   const [frequency, setFrequency] = useState('');
   const [amountMin, setAmountMin] = useState('');
   const [amountMax, setAmountMax] = useState('');
@@ -125,7 +126,7 @@ export default function TransactionsPage({ incomes, expenses, tags, startingBala
       (!search || row.name.toLowerCase().includes(search.toLowerCase())) &&
       (!dateFrom || day >= dateFrom) &&
       (!dateTo || day <= dateTo) &&
-      (!category || row.category === category) &&
+      (category === null || row.category === category) &&
       (!frequency || row.frequency === frequency) &&
       (!amountMin || row.amount >= parseFloat(amountMin)) &&
       (!amountMax || row.amount <= parseFloat(amountMax)) &&
@@ -133,8 +134,8 @@ export default function TransactionsPage({ incomes, expenses, tags, startingBala
     );
   });
 
-  const activeFilters = [dateFrom, dateTo, category, frequency, amountMin, amountMax].filter(Boolean).length;
-  const clearFilters = () => { setDateFrom(''); setDateTo(''); setCategory(''); setFrequency(''); setAmountMin(''); setAmountMax(''); };
+  const activeFilters = [dateFrom, dateTo, frequency, amountMin, amountMax].filter(Boolean).length + (category === null ? 0 : 1);
+  const clearFilters = () => { setDateFrom(''); setDateTo(''); setCategory(null); setFrequency(''); setAmountMin(''); setAmountMax(''); };
 
   const toEdit = (row: Row): EditRow => ({ date: dateKey(row.date), name: row.name, category: row.category, amount: String(row.amount), frequency: row.frequency, isPaycheck: row.isPaycheck });
   const startEditAll = () => {
@@ -300,11 +301,18 @@ export default function TransactionsPage({ incomes, expenses, tags, startingBala
   return (
     <div className="tx">
       {showAdd && (
+        <FormDialog title="Add transaction" onClose={() => setShowAdd(false)}>
         <AddForm
           tags={tags}
+          categories={categories}
           defaultKind={kindFilter === 'income' ? 'income' : 'expense'}
-          onAdd={(kind, item) => { onAdd(kind, item); setShowAdd(false); }}
+          onAdd={(kind, item, posted) => {
+            onAdd(kind, item);
+            if (posted) onPostedChange(item.id + new Date(item.startDate).toISOString());
+            setShowAdd(false);
+          }}
         />
+        </FormDialog>
       )}
 
       <div className="txRangeFilter" role="group" aria-label="Transaction date range">
@@ -346,14 +354,15 @@ export default function TransactionsPage({ incomes, expenses, tags, startingBala
           <label>From<input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); if (dateTo && e.target.value > dateTo) setDateTo(e.target.value); }} /></label>
           <label>To<input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); if (dateFrom && e.target.value < dateFrom) setDateFrom(e.target.value); }} /></label>
           <label>Category
-            <select value={category} onChange={e => setCategory(e.target.value)}>
-              <option value="">Any</option>
-              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            <select value={category === null ? 'all' : `category:${category}`} onChange={e => setCategory(e.target.value === 'all' ? null : e.target.value.slice('category:'.length))}>
+              <option value="all">All</option>
+              <option value="category:">None</option>
+              {categories.map(c => <option key={c} value={`category:${c}`}>{c}</option>)}
             </select>
           </label>
           <label>Frequency
             <select value={frequency} onChange={e => setFrequency(e.target.value)}>
-              <option value="">Any</option>
+              <option value="">All</option>
               {FREQUENCIES.map(f => <option key={f} value={f}>{cap(f)}</option>)}
             </select>
           </label>
@@ -490,7 +499,7 @@ export default function TransactionsPage({ incomes, expenses, tags, startingBala
   );
 }
 
-function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind; onAdd: (kind: Kind, item: Item) => void }) {
+function AddForm({ tags, categories, defaultKind, onAdd }: { tags: Tag[]; categories: string[]; defaultKind: Kind; onAdd: (kind: Kind, item: Item, posted: boolean) => void }) {
   const [kind, setKind] = useState<Kind>(defaultKind);
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
@@ -498,9 +507,10 @@ function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind;
   const [startDate, setStartDate] = useState('');
   const [isRecurring, setIsRecurring] = useState(true);
   const [isPaycheck, setIsPaycheck] = useState(false);
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState<string | null>(null);
   const [icon, setIcon] = useState(ICON_OPTIONS[0]);
   const [customIcon, setCustomIcon] = useState('');
+  const [posted, setPosted] = useState(false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -515,7 +525,7 @@ function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind;
       ...(kind === 'income' ? { isPaycheck } : {}),
     };
     if (kind === 'income') item.icon = customIcon.trim() || icon;
-    onAdd(kind, item);
+    onAdd(kind, item, posted);
   };
 
   return (
@@ -533,9 +543,10 @@ function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind;
         <label>Amount<input type="number" step="0.01" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} required /></label>
         <label>Date<input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required /></label>
         <label>Category
-          <select value={category} onChange={e => setCategory(e.target.value)} required>
+          <select value={category === null ? '' : `category:${category}`} onChange={e => setCategory(e.target.value.slice('category:'.length))} required>
             <option value="" disabled>Select</option>
-            {tags.map(t => <option key={t.name} value={t.name}>{t.icon} {t.name}</option>)}
+            <option value="category:">None</option>
+            {categories.map(name => <option key={name} value={`category:${name}`}>{tags.find(tag => tag.name === name)?.icon} {name}</option>)}
           </select>
         </label>
         <label>Frequency
@@ -556,6 +567,7 @@ function AddForm({ tags, defaultKind, onAdd }: { tags: Tag[]; defaultKind: Kind;
           </label>
         )}
         {kind === 'income' && <label className="paycheckEdit"><input type="checkbox" checked={isPaycheck} onChange={e => setIsPaycheck(e.target.checked)} /> Paycheck</label>}
+        <label className="paycheckEdit"><input type="checkbox" checked={posted} onChange={e => setPosted(e.target.checked)} /> Posted on this date</label>
         {kind === 'income' && icon === 'custom' && (
           <label>Custom icon<input value={customIcon} onChange={e => setCustomIcon(e.target.value)} /></label>
         )}
