@@ -8,15 +8,32 @@ import Login from './Login';
 import { supabase } from './supabase';
 import type { Session } from '@supabase/supabase-js';
 import DotDayList from './DotDayList';
-import { DashboardIcon, TransactionsIcon, AdminIcon, CalendarIcon, IncomeHistoryIcon } from './NavIcons';
+import { DashboardIcon, TransactionsIcon, AdminIcon, CalendarIcon, IncomeHistoryIcon, MercyIcon, BuildsIcon, SkillsIcon, MoreIcon } from './NavIcons';
 import TransactionsPage from './Transactions';
 import { Income, Expense, Tag, IncomeHistoryData } from './types';
 import * as XLSX from 'xlsx';
 import { AmountScope, DeleteScope, amountFor, applyAmountChange, applyDelete, dateKey, getPaycheckPeriod, isSkipped, occurrenceDetails, stepDate } from './recurrence';
 import { AmountScopeDialog, DeleteScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
 import IncomeHistory from './IncomeHistory';
+import TrackerHost, { type TrackerBackupHandle } from './TrackerHost';
+import type { BeltTheme } from './tracker/bjj.js';
 
-type Page = 'dashboard' | 'transactions' | 'income-history' | 'admin'
+type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills';
+type Page = 'dashboard' | 'transactions' | 'income-history' | 'admin' | TrackerPage
+
+const PAGE_HEADERS: Record<Page, { title: string; eyebrow: string }> = {
+  dashboard: { title: 'Dashboard', eyebrow: 'YOUR FINANCES' },
+  transactions: { title: 'Transactions', eyebrow: 'YOUR ACTIVITY' },
+  'income-history': { title: 'Salary History', eyebrow: 'YOUR CAREER' },
+  admin: { title: 'Administration', eyebrow: 'YOUR SETTINGS' },
+  'mercy-ledger': { title: 'Mercy Ledger', eyebrow: 'RAID COMPANION' },
+  'champion-builds': { title: 'Champion Builds', eyebrow: 'YOUR CHAMPIONS' },
+  'bjj-skills': { title: 'BJJ Skills', eyebrow: 'BRAZILIAN JIU-JITSU' },
+};
+
+function isTrackerPage(page: Page): page is TrackerPage {
+  return page === 'mercy-ledger' || page === 'champion-builds' || page === 'bjj-skills';
+}
 
 const ICON_OPTIONS = ['💼','💰','💸','🏠','🛒','🍔','🚗','🎓','🎁','🩺','📈','💡','🧾','📦','🪙']
 
@@ -63,6 +80,12 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
       setPostedMap(prev => ({ ...prev, [id]: !prev[id] }));
     };
   const [page, setPage] = useState<Page>('dashboard')
+  const [trackerOpened, setTrackerOpened] = useState(false);
+  const trackerBackup = useRef<TrackerBackupHandle>(null);
+  const [trackerActionReady, setTrackerActionReady] = useState(false);
+  const [beltTheme, setBeltTheme] = useState<BeltTheme>('blue');
+  const [showTransactionAdd, setShowTransactionAdd] = useState(false);
+  const [trackerMenuOpen, setTrackerMenuOpen] = useState(false);
   const [incomes, setIncomes] = useState<Income[]>(() => {
     const saved = localStorage.getItem('incomes');
     if (saved) {
@@ -265,23 +288,49 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
     { id: 'income-history', label: 'Salary History', icon: <IncomeHistoryIcon /> },
     { id: 'admin', label: 'Admin', icon: <AdminIcon /> },
   ];
-  const renderNavItems = () => navItems.map(item => (
-    <button key={item.id} className={`navItem${page === item.id ? ' active' : ''}`} onClick={() => setPage(item.id)} title={item.label} aria-current={page === item.id ? 'page' : undefined}>
+  const trackerNavItems: Array<{ id: TrackerPage; label: string; icon: JSX.Element }> = [
+    { id: 'mercy-ledger', label: 'Mercy Ledger', icon: <MercyIcon /> },
+    { id: 'champion-builds', label: 'Champion Builds', icon: <BuildsIcon /> },
+    { id: 'bjj-skills', label: 'BJJ Skills', icon: <SkillsIcon /> },
+  ];
+  const navigate = (next: Page) => {
+    if (isTrackerPage(next) || next === 'admin') setTrackerOpened(true);
+    if (next !== page) {
+      setTrackerActionReady(false);
+      setShowTransactionAdd(false);
+    }
+    setPage(next);
+    setTrackerMenuOpen(false);
+  };
+  const renderNavItems = (items: typeof navItems) => items.map(item => (
+    <button key={item.id} className={`navItem${page === item.id ? ' active' : ''}`} onClick={() => navigate(item.id)} title={item.label} aria-label={item.label} aria-current={page === item.id ? 'page' : undefined}>
       {item.icon}<span className="navLabel">{item.label}</span>
     </button>
   ));
   const syncLabel = syncState === 'loading' ? 'Loading…' : syncState === 'saving' ? 'Saving…' : syncState === 'error' ? 'Sync failed' : 'Synced';
+  const pageAction = page === 'transactions'
+    ? <button className="primary" onClick={() => setShowTransactionAdd(value => !value)}>{showTransactionAdd ? 'Close' : '+ Add'}</button>
+    : page === 'champion-builds' || page === 'bjj-skills'
+      ? <button className="primary" disabled={!trackerActionReady} onClick={() => trackerBackup.current?.openAdd()}>{page === 'champion-builds' ? 'Add champion' : 'Add skill'}</button>
+      : null;
 
   return (
-    <div className="appRoot">
-      <nav className="sideNav">
+    <div className="appRoot" data-theme={page === 'champion-builds' ? 'champions' : page === 'bjj-skills' ? `bjj-${beltTheme}` : undefined}>
+      <nav className="sideNav" aria-label="Main navigation">
         <div className="brand"><span className="brandMark">$</span><span className="brandName">Budget App</span></div>
-        {renderNavItems()}
+        {renderNavItems(navItems)}
+        <div className="navGroupLabel">Trackers</div>
+        {renderNavItems(trackerNavItems)}
       </nav>
 
       <div className="mainArea">
         <header className="topBar">
           <div className="brand"><span className="brandMark">$</span><span>Budget App</span></div>
+          <div className="topBarTitle">
+            <p className="pageEyebrow">{PAGE_HEADERS[page].eyebrow}</p>
+            <h1>{PAGE_HEADERS[page].title}</h1>
+          </div>
+          {pageAction && <div className="desktopPageAction">{pageAction}</div>}
           <span className="spacer" />
           {userId && <span className={`syncBadge${syncState === 'error' ? ' err' : ''}`}>{syncLabel}</span>}
           <button className="upcomingToggle navItem" style={{ width: 'auto' }} onClick={() => setUpcomingOpen(true)}><CalendarIcon /><span>Upcoming</span></button>
@@ -289,6 +338,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
         </header>
 
       <main className="mainContent">
+        {pageAction && <div className="mobilePageAction">{pageAction}</div>}
 
         {page === 'dashboard' && (
           <DashboardPage
@@ -303,6 +353,8 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
         )}
         {page === 'transactions' && (
           <TransactionsPage
+            showAdd={showTransactionAdd}
+            setShowAdd={setShowTransactionAdd}
             incomes={incomes}
             expenses={expenses}
             tags={tags}
@@ -315,6 +367,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
           />
         )}
         {page === 'income-history' && <IncomeHistory data={incomeHistory} onChange={setIncomeHistory} />}
+        {trackerOpened && <TrackerHost ref={trackerBackup} page={isTrackerPage(page) ? page : null} showRecovery={page === 'admin'} userId={userId} onActionReady={setTrackerActionReady} onBeltChange={setBeltTheme} />}
         {page === 'admin' && (
           <Administration
             background={background}
@@ -336,6 +389,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
             lowBalanceThreshold={lowBalanceThreshold}
             setLowBalanceThreshold={setLowBalanceThreshold}
             backup={{ incomes, expenses, tags, startingBalance, lowBalanceThreshold, postedMap, background, incomeHistory }}
+            trackerBackup={trackerBackup}
             onRestoreSalaryHistory={setIncomeHistory}
             salaryImportReady={syncState === 'off' || syncState === 'saved'}
             onRestoreAll={data => {
@@ -371,7 +425,13 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
         <DotDayList incomes={incomes} expenses={expenses} postedMap={postedMap} onPostedChange={handlePostedChange} />
       </aside>
 
-      <nav className="bottomNav">{renderNavItems()}</nav>
+      <nav className="bottomNav" aria-label="Mobile navigation">
+        {renderNavItems(navItems)}
+        <button className={`navItem${isTrackerPage(page) ? ' active' : ''}`} onClick={() => setTrackerMenuOpen(open => !open)} aria-expanded={trackerMenuOpen} aria-controls="mobile-tracker-menu">
+          <MoreIcon /><span className="navLabel">Trackers</span>
+        </button>
+        {trackerMenuOpen && <div id="mobile-tracker-menu" className="mobileTrackerMenu">{renderNavItems(trackerNavItems)}</div>}
+      </nav>
     </div>
   )
 }
@@ -547,10 +607,6 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
 
   return (
     <div className="dash">
-      <div className="pageHead">
-        <h2>Dashboard</h2>
-      </div>
-
       <div className="kpiGrid">
         <div className="kpi">
           <span className="kpiLabel">Current Balance</span>

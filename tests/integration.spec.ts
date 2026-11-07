@@ -1,0 +1,637 @@
+import { test, expect, type Page, type Route } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import tracker from '../src/tracker/tracker.js';
+const localUrl = 'http://127.0.0.1:5188';
+const cloudUrl = 'http://127.0.0.1:5189';
+const userId = '00000000-0000-4000-8000-000000000001';
+
+async function openTracker(page: Page, name: string, mobile = false) {
+  const nav = page.getByRole('navigation', { name: mobile ? 'Mobile navigation' : 'Main navigation' });
+  if (mobile) await nav.getByRole('button', { name: 'Trackers' }).click();
+  await nav.getByRole('button', { name, exact: true }).click();
+  await expect(page.locator('iframe')).toHaveCount(0);
+  return page.locator('.trackerView');
+}
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  test(`tracker shell colors follow page and belt at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const mobile = viewport.width < 640;
+    const nav = page.getByRole('navigation', { name: mobile ? 'Mobile navigation' : 'Main navigation' });
+    const eyebrow = page.locator('.topBar .pageEyebrow');
+    const activeNav = () => nav.locator('.navItem.active:visible');
+    const action = page.locator(mobile ? '.mobilePageAction button' : '.desktopPageAction button');
+    const assertTheme = async (accent: string, navBackground: string) => {
+      await expect(eyebrow).toHaveCSS('color', accent);
+      await expect(activeNav()).toHaveCSS('color', accent);
+      await expect(nav).toHaveCSS('background-color', navBackground);
+    };
+    await openTracker(page, 'Champion Builds', mobile);
+    await assertTheme('rgb(138, 245, 160)', mobile ? 'rgba(12, 23, 17, 0.97)' : 'rgb(12, 23, 17)');
+    await expect(action).toHaveCSS('background-color', 'rgb(138, 245, 160)');
+    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    for (const [belt, color] of [
+      ['Blue', 'rgb(120, 197, 255)'],
+      ['White', 'rgb(231, 238, 240)'],
+      ['Purple', 'rgb(211, 166, 255)'],
+      ['Brown', 'rgb(231, 180, 135)'],
+      ['Black', 'rgb(214, 220, 229)'],
+    ]) {
+      await bjj.locator('#bjj-belt').selectOption(belt);
+      await expect(bjj.locator('.tracker-surface')).toHaveAttribute('data-belt', belt.toLowerCase());
+      await expect(page.locator('.appRoot')).toHaveAttribute('data-theme', `bjj-${belt.toLowerCase()}`);
+      await assertTheme(color, mobile ? 'rgba(16, 25, 30, 0.97)' : 'rgb(16, 25, 30)');
+      await expect(action).toHaveCSS('background-color', color);
+      await expect(bjj.locator('.bjj-belt-panel .eyebrow')).toHaveCSS('color', color);
+    }
+    await openTracker(page, 'Mercy Ledger', mobile);
+    await assertTheme('rgb(250, 204, 21)', mobile ? 'rgba(17, 16, 12, 0.97)' : 'rgb(17, 16, 12)');
+    for (const name of ['Dashboard', 'Transactions', 'Salary History', 'Admin']) {
+      await nav.getByRole('button', { name, exact: true }).click();
+      await assertTheme('rgb(250, 204, 21)', mobile ? 'rgba(17, 16, 12, 0.97)' : 'rgb(17, 16, 12)');
+    }
+    await page.reload();
+    const restored = await openTracker(page, 'BJJ Skills', mobile);
+    await expect(restored.locator('#bjj-belt')).toHaveValue('Black');
+    await expect(page.locator('.appRoot')).toHaveAttribute('data-theme', 'bjj-black');
+    await expect(eyebrow).toHaveCSS('color', 'rgb(214, 220, 229)');
+  });
+
+  test(`budget styling and navigation remain usable at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const mobile = viewport.width < 640;
+    const nav = page.getByRole('navigation', { name: mobile ? 'Mobile navigation' : 'Main navigation' });
+    for (const [label, heading, eyebrow] of [
+      ['Dashboard', 'Dashboard', 'YOUR FINANCES'],
+      ['Transactions', 'Transactions', 'YOUR ACTIVITY'],
+      ['Salary History', 'Salary History', 'YOUR CAREER'],
+      ['Admin', 'Administration', 'YOUR SETTINGS'],
+    ]) {
+      await nav.getByRole('button', { name: label, exact: true }).click();
+      const title = page.locator('.topBar').getByRole('heading', { name: heading, exact: true });
+      await expect(title).toBeVisible();
+      await expect(page.getByRole('heading', { name: heading, exact: true })).toHaveCount(1);
+      await expect(title).toHaveCSS('font-family', /Georgia/);
+      await expect(page.locator('.topBar .pageEyebrow')).toHaveText(eyebrow);
+      await expect(page.locator('.topBar .pageEyebrow')).toHaveCSS('color', 'rgb(250, 204, 21)');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+    }
+    for (const [name, eyebrow] of [
+      ['Mercy Ledger', 'RAID COMPANION'],
+      ['Champion Builds', 'YOUR CHAMPIONS'],
+      ['BJJ Skills', 'BRAZILIAN JIU-JITSU'],
+    ]) {
+      await openTracker(page, name, mobile);
+      await expect(page.locator('.topBar').getByRole('heading', { name, exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { name, exact: true })).toHaveCount(1);
+      await expect(page.locator('.topBar .pageEyebrow')).toHaveText(eyebrow);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+    }
+    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    await expect(bjj.locator('.tracker-surface')).toHaveAttribute('data-belt', 'blue');
+    await bjj.locator('#bjj-belt').selectOption('Purple');
+    await expect(bjj.locator('.tracker-surface')).toHaveAttribute('data-belt', 'purple');
+    await expect(page.locator('.topBar').getByRole('heading', { name: 'BJJ Skills' })).toBeVisible();
+  });
+}
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  test(`page actions open the correct forms at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const mobile = viewport.width < 640;
+    const actionArea = page.locator(mobile ? '.mobilePageAction' : '.topBar');
+    const nav = page.getByRole('navigation', { name: mobile ? 'Mobile navigation' : 'Main navigation' });
+    await nav.getByRole('button', { name: 'Transactions', exact: true }).click();
+    await actionArea.getByRole('button', { name: '+ Add' }).click();
+    await expect(page.locator('form.txAdd')).toBeVisible();
+    await actionArea.getByRole('button', { name: 'Close' }).click();
+    await expect(page.locator('form.txAdd')).toHaveCount(0);
+    const builds = await openTracker(page, 'Champion Builds', mobile);
+    await actionArea.getByRole('button', { name: 'Add champion' }).click();
+    await expect(builds.locator('#build-dialog')).toBeVisible();
+    await builds.locator('#build-close').click();
+    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    await actionArea.getByRole('button', { name: 'Add skill' }).click();
+    await expect(bjj.locator('#bjj-add-dialog')).toBeVisible();
+    await bjj.locator('#bjj-add-close').click();
+  });
+}
+
+test('desktop and mobile navigation, editing, reload and budget isolation', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem('seeded')) {
+      localStorage.setItem('startingBalance', '2468');
+      localStorage.setItem('tags', JSON.stringify([{ name: 'Test category', icon: 'T', color: '#ffffff' }]));
+      sessionStorage.setItem('seeded', 'yes');
+    }
+  });
+  await page.goto(localUrl);
+  await expect(page.getByText('$2,468.00').first()).toBeVisible();
+  const mercy = await openTracker(page, 'Mercy Ledger');
+  await mercy.locator('#count-Ancient-Legendary').fill('201');
+  await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
+  const builds = await openTracker(page, 'Champion Builds');
+  await page.getByRole('button', { name: 'Add champion', exact: true }).click();
+  await builds.locator('#build-name').fill('Integration champion');
+  await builds.locator('#build-form button[type=submit]').click();
+  const bjj = await openTracker(page, 'BJJ Skills');
+  await page.getByRole('button', { name: 'Add skill', exact: true }).click();
+  await bjj.locator('#bjj-name').fill('Integration escape');
+  await bjj.locator('#bjj-type-container summary').click();
+  await bjj.getByRole('button', { name: 'Escape', exact: true }).click();
+  await bjj.locator('#bjj-add-form button[type=submit]').click();
+  await bjj.locator('#bjj-belt').selectOption('Purple');
+  await bjj.locator('#bjj-list').getByRole('button', { name: 'Mastered: Integration escape' }).click();
+  await expect(bjj.locator('#bjj-list').getByRole('button', { name: 'Mastered: Integration escape' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(bjj.locator('#bjj-list > tr')).toHaveClass(/bjj-mastered/);
+  await bjj.locator('.bjj-filter-details summary').click();
+  await bjj.getByLabel('Filter Skill').fill('not a matching skill');
+  await expect(bjj.locator('#bjj-count')).toContainText('Showing 0 of 1');
+  await bjj.locator('#bjj-clear').click();
+  await expect(bjj.locator('#bjj-count')).toContainText('Showing 1 of 1');
+  await page.reload();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileBjj = await openTracker(page, 'BJJ Skills', true);
+  await expect(mobileBjj.getByText('Integration escape', { exact: true }).first()).toBeVisible();
+  await expect(mobileBjj.locator('.tracker-surface')).toHaveAttribute('data-belt', 'purple');
+  await mobileBjj.getByText('Integration escape', { exact: true }).first().click();
+  await expect(mobileBjj.getByRole('button', { name: 'Mastered: Integration escape' }).last()).toHaveAttribute('aria-pressed', 'true');
+  const mobileBuilds = await openTracker(page, 'Champion Builds', true);
+  await expect(mobileBuilds.getByText('Integration champion', { exact: true }).last()).toBeVisible();
+  const mobileMercy = await openTracker(page, 'Mercy Ledger', true);
+  await expect(mobileMercy.locator('#count-Ancient-Legendary')).toHaveValue('201');
+  await expect(mobileMercy.locator('#import-button')).toHaveCount(0);
+  await expect(mobileMercy.locator('#export-button')).toHaveCount(0);
+  await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'Transactions' }).click();
+  await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible();
+  await page.getByRole('button', { name: '+ Add' }).click();
+  await page.locator('form.txAdd').getByRole('button', { name: 'Income', exact: true }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Budget test income');
+  await page.getByLabel('Amount', { exact: true }).fill('125');
+  await page.getByLabel('Date', { exact: true }).fill('2026-01-01');
+  await page.locator('form.txAdd label').filter({ hasText: 'Category' }).locator('select').selectOption('Test category');
+  await page.getByRole('button', { name: 'Add income' }).click();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('incomes') || '[]').some((item: { name: string }) => item.name === 'Budget test income'))).toBe(true);
+  await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'Dashboard' }).click();
+  await expect(page.getByText('$2,468.00').first()).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('startingBalance'))).toBe('2468');
+});
+
+test('backup migration, invalid and cancelled imports preserve both datasets', async ({ page }) => {
+  await page.goto(localUrl);
+  const mercy = await openTracker(page, 'Mercy Ledger');
+  await mercy.locator('#clan-new').click();
+  await mercy.getByLabel('Ultra-Nightmare Epic books').fill('3');
+  await mercy.locator('#clan-form button[type=submit]').click();
+  await expect(mercy.locator('#clan-summary .clan-metric').filter({ hasText: 'Epic books' }).locator('strong')).toHaveText('3');
+  await mercy.locator('#count-Ancient-Legendary').fill('55');
+  await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
+  const before = await page.evaluate(() => localStorage.getItem('mercy-ledger-v1'));
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+  const input = page.getByLabel('Backup file');
+  await input.setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{"version":12}') });
+  await expect(page.getByRole('status').filter({ hasText: 'Not a valid Mercy Ledger backup' })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('mercy-ledger-v1'))).toBe(before);
+  const legacy = tracker.emptyState();
+  legacy.version = 1;
+  delete legacy.current;
+  delete legacy.soulInventory;
+  delete legacy.battlePlans;
+  delete legacy.summonPlans;
+  delete legacy.clanBoss;
+  delete legacy.champions;
+  delete legacy.bjj;
+  legacy.starting.Ancient.Legendary = 99;
+  const file = { name: 'legacy.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(legacy)) };
+  const cancelDialog = page.waitForEvent('dialog');
+  await input.setInputFiles(file);
+  await (await cancelDialog).dismiss();
+  await expect(input).toHaveValue('');
+  expect(await page.evaluate(() => localStorage.getItem('mercy-ledger-v1'))).toBe(before);
+  const importDialog = page.waitForEvent('dialog');
+  await input.setInputFiles(file);
+  await (await importDialog).accept();
+  await expect(page.getByText('Tracker backup imported.')).toBeVisible();
+  const reloadedMercy = await openTracker(page, 'Mercy Ledger');
+  await expect(reloadedMercy.locator('#count-Ancient-Legendary')).toHaveValue('99');
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+  expect(saved.version).toBe(12);
+  expect(saved.starting.Ancient.Legendary).toBe(99);
+  expect(saved.bjj.skills).toEqual([]);
+});
+
+test('full backup round trips budget and every tracker; older budget backups leave trackers intact', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('backup-seeded')) return;
+    sessionStorage.setItem('backup-seeded', 'yes');
+    localStorage.setItem('startingBalance', '2468');
+    localStorage.setItem('incomes', JSON.stringify([{ id: 'pay', name: 'Paycheck', amount: 125, startDate: '2026-01-01', frequency: 'monthly', isRecurring: true, tags: ['Work'], overrides: { '2026-02-01': 150 } }]));
+    localStorage.setItem('tags', JSON.stringify([{ name: 'Work', icon: '', color: '#ffffff' }]));
+  });
+  await page.goto(localUrl);
+  const mercy = await openTracker(page, 'Mercy Ledger');
+  await mercy.locator('#count-Ancient-Legendary').fill('55');
+  await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
+  const builds = await openTracker(page, 'Champion Builds');
+  await page.getByRole('button', { name: 'Add champion', exact: true }).click();
+  await builds.locator('#build-name').fill('Backup champion');
+  await builds.locator('#build-form button[type=submit]').click();
+  const bjj = await openTracker(page, 'BJJ Skills');
+  await page.getByRole('button', { name: 'Add skill', exact: true }).click();
+  await bjj.locator('#bjj-name').fill('Backup escape');
+  await bjj.locator('#bjj-type-container summary').click();
+  await bjj.getByRole('button', { name: 'Escape', exact: true }).click();
+  await bjj.locator('#bjj-add-form button[type=submit]').click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export Everything' }).click();
+  const download = await downloadPromise;
+  const full = JSON.parse(await readFile(await download.path(), 'utf8'));
+  expect(full.version).toBe(2);
+  expect(full.startingBalance).toBe(2468);
+  expect(full.incomes[0].overrides['2026-02-01']).toBe(150);
+  expect(full.tracker.current.shards.Ancient.Legendary).toBe(55);
+  expect(full.tracker.champions[0].name).toBe('Backup champion');
+  expect(full.tracker.bjj.skills[0].name).toBe('Backup escape');
+  const input = page.getByLabel('Backup file');
+  const corrupt = { ...full, startingBalance: 9999, tracker: { version: 12 } };
+  await input.setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(corrupt)) });
+  await expect(page.getByText('Not a valid Mercy Ledger backup', { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('startingBalance'))).toBe('2468');
+  expect(JSON.parse((await page.evaluate(() => localStorage.getItem('mercy-ledger-v1')))!).current.shards.Ancient.Legendary).toBe(55);
+  const invalidBudget = { ...full, incomes: [null] };
+  await input.setInputFiles({ name: 'invalid-budget.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalidBudget)) });
+  await expect(page.getByText('full Budget App backup is incomplete or invalid', { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('startingBalance'))).toBe('2468');
+  const old = { ...full, version: 1, startingBalance: 1357 };
+  delete old.tracker;
+  const oldDialog = page.waitForEvent('dialog');
+  await input.setInputFiles({ name: 'old-budget.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(old)) });
+  await (await oldDialog).accept();
+  await expect(page.getByText('tracker data unchanged', { exact: false })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('startingBalance'))).toBe('1357');
+  const changedMercy = await openTracker(page, 'Mercy Ledger');
+  await changedMercy.locator('#count-Ancient-Legendary').fill('13');
+  await changedMercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+  const cancelledDialog = page.waitForEvent('dialog');
+  await input.setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(full)) });
+  await (await cancelledDialog).dismiss();
+  expect(await page.evaluate(() => localStorage.getItem('startingBalance'))).toBe('1357');
+  expect(JSON.parse((await page.evaluate(() => localStorage.getItem('mercy-ledger-v1')))!).current.shards.Ancient.Legendary).toBe(13);
+  const fullDialog = page.waitForEvent('dialog');
+  await input.setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(full)) });
+  await (await fullDialog).accept();
+  await expect(page.getByText('and tracker data', { exact: false })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('startingBalance'))).toBe('2468');
+  expect(JSON.parse((await page.evaluate(() => localStorage.getItem('mercy-ledger-v1')))!).current.shards.Ancient.Legendary).toBe(55);
+  const salaryDialog = page.waitForEvent('dialog');
+  await page.locator('input[accept="application/json,.json"]').first().setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(full)) });
+  await (await salaryDialog).accept();
+  await expect(page.getByText('Salary history imported.', { exact: false })).toBeVisible();
+  await page.reload();
+  const restored = await openTracker(page, 'BJJ Skills');
+  await expect(restored.getByRole('textbox', { name: 'Skill for Backup escape' })).toHaveValue('Backup escape');
+  const restoredBuilds = await openTracker(page, 'Champion Builds');
+  await expect(restoredBuilds.locator('#build-count')).toContainText('1');
+});
+
+test('a valid original tracker backup can repair corrupt local tracker data', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('mercy-ledger-v1', '{invalid'));
+  await page.goto(localUrl);
+  const mercy = await openTracker(page, 'Mercy Ledger');
+  await expect(mercy.locator('#notice')).toContainText('Could not load saved data');
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+  const valid = tracker.emptyState();
+  valid.current.shards.Void = { Legendary: 21 };
+  const dialog = page.waitForEvent('dialog');
+  await page.getByLabel('Backup file').setInputFiles({ name: 'tracker.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(valid)) });
+  await (await dialog).accept();
+  await expect(page.getByText('Tracker backup imported.', { exact: false })).toBeVisible();
+  const restored = await openTracker(page, 'Mercy Ledger');
+  await expect(restored.locator('#count-Void-Legendary')).toHaveValue('21');
+});
+
+test('a stale tracker tab cannot overwrite a newer local edit', async ({ context }) => {
+  const first = await context.newPage();
+  await first.goto(localUrl);
+  const firstTracker = await openTracker(first, 'Mercy Ledger');
+  await firstTracker.locator('#count-Void-Legendary').fill('2');
+  await firstTracker.locator('#count-Void-Legendary').dispatchEvent('change');
+  const second = await context.newPage();
+  await second.goto(localUrl);
+  const secondTracker = await openTracker(second, 'Mercy Ledger');
+  await expect(secondTracker.locator('#count-Void-Legendary')).toHaveValue('2');
+  await firstTracker.locator('#count-Void-Legendary').fill('7');
+  await firstTracker.locator('#count-Void-Legendary').dispatchEvent('change');
+  await secondTracker.locator('#count-Void-Legendary').fill('3');
+  await secondTracker.locator('#count-Void-Legendary').dispatchEvent('change');
+  await expect(secondTracker.locator('#notice')).toContainText('Data changed in another page');
+  const saved = await first.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+  expect(saved.current.shards.Void.Legendary).toBe(7);
+});
+
+test('tracker import rejects data changed in another tab during confirmation', async ({ context }) => {
+  const first = await context.newPage();
+  await first.goto(localUrl);
+  const firstTracker = await openTracker(first, 'Mercy Ledger');
+  await firstTracker.locator('#count-Void-Legendary').fill('2');
+  await firstTracker.locator('#count-Void-Legendary').dispatchEvent('change');
+  const second = await context.newPage();
+  await second.goto(localUrl);
+  const secondTracker = await openTracker(second, 'Mercy Ledger');
+  await first.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+  const imported = tracker.emptyState();
+  imported.current.shards.Void = { Legendary: 99 };
+  const dialog = first.waitForEvent('dialog');
+  const upload = first.getByLabel('Backup file').setInputFiles({ name: 'tracker.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(imported)) });
+  const prompt = await dialog;
+  await secondTracker.locator('#count-Void-Legendary').fill('7');
+  await secondTracker.locator('#count-Void-Legendary').dispatchEvent('change');
+  await expect.poll(() => second.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!).current.shards.Void.Legendary)).toBe(7);
+  await prompt.accept();
+  await upload;
+  await expect(first.getByText('Tracker data changed while importing', { exact: false })).toBeVisible();
+  expect(JSON.parse((await first.evaluate(() => localStorage.getItem('mercy-ledger-v1')))!).current.shards.Void.Legendary).toBe(7);
+});
+
+type CloudRow = { revision: string; data: ReturnType<typeof tracker.emptyState> };
+type MockCloud = { row: CloudRow | null; budgetWrites: unknown[]; beforeWrite?: () => Promise<void> };
+
+async function mockCloud(page: Page, cloud: MockCloud) {
+  const session = {
+    access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer',
+    expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600,
+    user: { id: userId, aud: 'authenticated', role: 'authenticated', email: 'test@example.invalid' },
+  };
+  await page.addInitScript(value => localStorage.setItem('sb-127-auth-token', JSON.stringify(value)), session);
+  await page.route('http://127.0.0.1:5190/**', async (route: Route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    if (url.pathname.endsWith('/budget_data')) {
+      if (request.method() === 'GET') return route.fulfill({ json: [], headers });
+      cloud.budgetWrites.push(request.postDataJSON());
+      return route.fulfill({ json: [], headers });
+    }
+    if (url.pathname.endsWith('/tracker_data')) {
+      if (request.method() === 'GET') return route.fulfill({ json: cloud.row ? [cloud.row] : [], headers });
+      const body = request.postDataJSON();
+      if (cloud.beforeWrite) await cloud.beforeWrite();
+      if (request.method() === 'POST' && cloud.row) return route.fulfill({ status: 409, json: { message: 'duplicate key' }, headers });
+      if (request.method() === 'PATCH' && url.searchParams.get('revision') !== `eq.${cloud.row?.revision}`) {
+        return route.fulfill({ json: [], headers });
+      }
+      cloud.row = { revision: body.revision, data: body.data };
+      return route.fulfill({ json: [{ revision: body.revision }], headers });
+    }
+    return route.fulfill({ status: 404, json: { message: `Unexpected endpoint ${url.pathname}` }, headers });
+  });
+}
+
+test('signed-in mobile header keeps all page titles and account controls visible', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await mockCloud(page, { row: { revision: 'original', data: tracker.emptyState() }, budgetWrites: [] });
+  await page.goto(cloudUrl);
+  const nav = page.getByRole('navigation', { name: 'Mobile navigation' });
+  for (const [label, heading, trackerPage] of [
+    ['Dashboard', 'Dashboard', false],
+    ['Transactions', 'Transactions', false],
+    ['Salary History', 'Salary History', false],
+    ['Admin', 'Administration', false],
+    ['Mercy Ledger', 'Mercy Ledger', true],
+    ['Champion Builds', 'Champion Builds', true],
+    ['BJJ Skills', 'BJJ Skills', true],
+  ] as const) {
+    if (trackerPage) await openTracker(page, label, true);
+    else await nav.getByRole('button', { name: label, exact: true }).click();
+    const header = page.locator('.topBar');
+    await expect(header.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+    await expect(header.locator('.syncBadge')).toBeVisible();
+    await expect(header.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    const layout = await header.evaluate(el => {
+      const bounds = el.getBoundingClientRect();
+      const title = el.querySelector('.topBarTitle')!.getBoundingClientRect();
+      const heading = el.querySelector('h1')!;
+      const eyebrow = el.querySelector('.pageEyebrow')!;
+      const badge = el.querySelector('.syncBadge')!.getBoundingClientRect();
+      const signOut = Array.from(el.querySelectorAll('button')).find(button => button.textContent === 'Sign out')!.getBoundingClientRect();
+      return { headerHeight: bounds.height, titleRight: title.right, badgeLeft: badge.left, badgeRight: badge.right, signOutLeft: signOut.left, signOutRight: signOut.right, headingFits: heading.scrollWidth <= heading.clientWidth, eyebrowFits: eyebrow.scrollWidth <= eyebrow.clientWidth };
+    });
+    expect(layout.headerHeight).toBeLessThanOrEqual(72);
+    expect(layout.titleRight).toBeLessThanOrEqual(layout.badgeLeft);
+    expect(layout.badgeRight).toBeLessThanOrEqual(layout.signOutLeft);
+    expect(layout.signOutRight).toBeLessThanOrEqual(320);
+    expect(layout.headingFits).toBe(true);
+    expect(layout.eyebrowFits).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  }
+});
+
+test('mobile header accommodates a budget sync error', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await mockCloud(page, { row: { revision: 'original', data: tracker.emptyState() }, budgetWrites: [] });
+  await page.route('**/budget_data*', route => route.fulfill({
+    status: 500,
+    json: { message: 'Test sync failure' },
+    headers: { 'access-control-allow-origin': '*' },
+  }));
+  await page.goto(cloudUrl);
+  await expect(page.locator('.syncBadge')).toHaveText('Sync failed');
+  await openTracker(page, 'Champion Builds', true);
+  const layout = await page.locator('.topBar').evaluate(el => {
+    const header = el.getBoundingClientRect();
+    const title = el.querySelector('h1')!;
+    const eyebrow = el.querySelector('.pageEyebrow')!;
+    const badge = el.querySelector('.syncBadge')!.getBoundingClientRect();
+    const titleContainer = el.querySelector('.topBarTitle')!.getBoundingClientRect();
+    const signOut = Array.from(el.querySelectorAll('button')).find(button => button.textContent === 'Sign out')!.getBoundingClientRect();
+    return { height: header.height, titleFits: title.scrollWidth <= title.clientWidth, eyebrowFits: eyebrow.scrollWidth <= eyebrow.clientWidth, titleRight: titleContainer.right, badgeLeft: badge.left, badgeRight: badge.right, signOutLeft: signOut.left, signOutRight: signOut.right };
+  });
+  expect(layout.height).toBeLessThanOrEqual(72);
+  expect(layout.titleFits && layout.eyebrowFits).toBe(true);
+  expect(layout.titleRight).toBeLessThanOrEqual(layout.badgeLeft);
+  expect(layout.badgeRight).toBeLessThanOrEqual(layout.signOutLeft);
+  expect(layout.signOutRight).toBeLessThanOrEqual(320);
+});
+
+test('signed-in tablet keeps page actions and controls visible without header overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 800 });
+  await mockCloud(page, { row: { revision: 'original', data: tracker.emptyState() }, budgetWrites: [] });
+  await page.goto(cloudUrl);
+  for (const [label, action] of [['Transactions', '+ Add'], ['Champion Builds', 'Add champion'], ['BJJ Skills', 'Add skill']]) {
+    await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: label, exact: true }).click();
+    const header = page.locator('.topBar');
+    await expect(page.locator('.mobilePageAction').getByRole('button', { name: action, exact: true })).toBeVisible();
+    const boxes = await header.evaluate(el => {
+      const bounds = el.getBoundingClientRect();
+      const children = [...el.children].filter(child => getComputedStyle(child).display !== 'none').map(child => child.getBoundingClientRect());
+      return { height: bounds.height, overflow: children.some(child => child.left < bounds.left || child.right > bounds.right || child.bottom > bounds.bottom) };
+    });
+    expect(boxes.height).toBeLessThanOrEqual(72);
+    expect(boxes.overflow).toBe(false);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(640);
+  }
+});
+
+test('account sync saves separately and rejects a stale cloud write with recovery', async ({ page }) => {
+  const state = tracker.emptyState();
+  state.current.shards.Ancient = { Legendary: 8 };
+  const cloud = { row: { revision: 'original', data: state } as CloudRow | null, budgetWrites: [] as unknown[] };
+  await page.addInitScript(() => localStorage.setItem('mercy-ledger-v1', 'legacy data must not be changed'));
+  await mockCloud(page, cloud);
+  await page.goto(cloudUrl);
+  const mercy = await openTracker(page, 'Mercy Ledger');
+  await expect(mercy.locator('#count-Ancient-Legendary')).toHaveValue('8');
+  await mercy.locator('#count-Ancient-Legendary').fill('9');
+  await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
+  await expect.poll(() => cloud.row?.data.current.shards.Ancient.Legendary).toBe(9);
+  await expect(page.getByText('Tracker: account sync ready')).toBeVisible();
+  await expect.poll(() => cloud.budgetWrites.length).toBeGreaterThan(0);
+  expect(cloud.budgetWrites.every(write => {
+    if (!write || typeof write !== 'object' || !('data' in write)) return false;
+    return !!write.data && typeof write.data === 'object' && !('tracker' in write.data);
+  })).toBe(true);
+  cloud.row = { revision: 'other-device', data: { ...cloud.row!.data, current: { ...cloud.row!.data.current, shards: { Ancient: { Legendary: 42 } } } } };
+  await mercy.locator('#count-Ancient-Legendary').fill('10');
+  await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
+  await expect(page.getByRole('alert')).toContainText('changed on another device');
+  await expect(page.getByRole('button', { name: 'Export recovery backup' })).toBeVisible();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export recovery backup' }).click();
+  expect((await downloadPromise).suggestedFilename()).toBe('mercy-ledger-recovery.json');
+  expect(cloud.row.data.current.shards.Ancient.Legendary).toBe(42);
+  const cached = await page.evaluate(id => JSON.parse(localStorage.getItem(`budget-app-tracker-cache:${id}`)!), userId);
+  expect(cached.dirty).toBe(true);
+  expect(JSON.parse(cached.data).current.shards.Ancient.Legendary).toBe(10);
+  expect(await page.evaluate(() => localStorage.getItem('mercy-ledger-v1'))).toBe('legacy data must not be changed');
+  await page.reload();
+  await openTracker(page, 'Mercy Ledger');
+  await expect(page.getByRole('alert')).toContainText('unsynced tracker changes');
+  await expect(page.getByRole('button', { name: 'Export recovery backup' })).toBeVisible();
+  expect(cloud.row.data.current.shards.Ancient.Legendary).toBe(42);
+});
+
+test('rapid cloud edits are queued without losing the latest value', async ({ page }) => {
+  const state = tracker.emptyState();
+  state.current.shards.Ancient = { Legendary: 1 };
+  let release!: () => void;
+  let started!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const firstWrite = new Promise<void>(resolve => { started = resolve; });
+  let writes = 0;
+  const cloud: MockCloud = {
+    row: { revision: 'original', data: state },
+    budgetWrites: [],
+    beforeWrite: async () => { if (++writes === 1) { started(); await gate; } },
+  };
+  await mockCloud(page, cloud);
+  await page.goto(cloudUrl);
+  const mercy = await openTracker(page, 'Mercy Ledger');
+  await mercy.locator('#count-Ancient-Legendary').fill('2');
+  await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
+  await firstWrite;
+  await mercy.locator('#count-Ancient-Legendary').fill('3');
+  await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
+  release();
+  await expect.poll(() => cloud.row?.data.current.shards.Ancient.Legendary).toBe(3);
+  await expect(page.getByText('Tracker: account sync ready')).toBeVisible();
+  expect(writes).toBe(2);
+});
+
+test('cloud backup import validates and confirms before replacing tracker data', async ({ page }) => {
+  const state = tracker.emptyState();
+  state.current.shards.Void = { Legendary: 15 };
+  const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
+  await mockCloud(page, cloud);
+  await page.goto(cloudUrl);
+  const mercy = await openTracker(page, 'Mercy Ledger');
+  await expect(mercy.locator('#count-Void-Legendary')).toHaveValue('15');
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+  const input = page.getByLabel('Backup file');
+  await input.setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
+  await expect(page.getByText('Not a valid Mercy Ledger backup', { exact: false })).toBeVisible();
+  expect(cloud.row!.data.current.shards.Void.Legendary).toBe(15);
+  const legacy = tracker.emptyState();
+  legacy.version = 1;
+  delete legacy.current;
+  legacy.starting.Void.Legendary = 77;
+  const file = { name: 'original.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(legacy)) };
+  const cancelDialog = page.waitForEvent('dialog');
+  await input.setInputFiles(file);
+  await (await cancelDialog).dismiss();
+  await expect(input).toHaveValue('');
+  expect(cloud.row!.data.current.shards.Void.Legendary).toBe(15);
+  const importDialog = page.waitForEvent('dialog');
+  await input.setInputFiles(file);
+  await (await importDialog).accept();
+  await expect.poll(() => cloud.row!.data.starting.Void.Legendary).toBe(77);
+  await expect(page.getByText('Tracker backup imported.')).toBeVisible();
+  expect(cloud.row!.data.version).toBe(12);
+});
+
+test('full restore keeps budget unchanged if tracker cloud write conflicts', async ({ page }) => {
+  const state = tracker.emptyState();
+  state.current.shards.Void = { Legendary: 15 };
+  const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
+  await mockCloud(page, cloud);
+  await page.goto(cloudUrl);
+  await openTracker(page, 'Mercy Ledger');
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+  await expect(page.locator('.syncBadge')).toHaveText('Synced');
+  const importedTracker = tracker.emptyState();
+  importedTracker.current.shards.Void = { Legendary: 33 };
+  const full = { app: 'budget-app-backup', version: 2, incomes: [], expenses: [], tags: [], startingBalance: 8888, lowBalanceThreshold: 0, postedMap: {}, background: 'forest', incomeHistory: { entries: [], annualGoals: {} }, tracker: importedTracker };
+  cloud.beforeWrite = async () => {
+    cloud.row = { revision: 'another-device', data: state };
+  };
+  const dialog = page.waitForEvent('dialog');
+  await page.getByLabel('Backup file').setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(full)) });
+  await (await dialog).accept();
+  await expect(page.getByText('Budget data was not replaced', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Export recovery backup' })).toBeVisible();
+  expect(cloud.row!.data.current.shards.Void.Legendary).toBe(15);
+  expect(await page.evaluate(() => localStorage.getItem('startingBalance'))).not.toBe('8888');
+});
+
+test('signed-in full backup restores tracker and budget to their separate account stores', async ({ page }) => {
+  const state = tracker.emptyState();
+  state.current.shards.Void = { Legendary: 15 };
+  const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
+  await mockCloud(page, cloud);
+  await page.goto(cloudUrl);
+  await openTracker(page, 'Mercy Ledger');
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+  await expect(page.locator('.syncBadge')).toHaveText('Synced');
+  const exported = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export Everything' }).click();
+  const full = JSON.parse(await readFile(await (await exported).path(), 'utf8'));
+  expect(full.tracker.current.shards.Void.Legendary).toBe(15);
+  full.startingBalance = 4321;
+  full.tracker.current.shards.Void.Legendary = 44;
+  const dialog = page.waitForEvent('dialog');
+  await page.getByLabel('Backup file').setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(full)) });
+  await (await dialog).accept();
+  await expect(page.getByText('and tracker data', { exact: false })).toBeVisible();
+  expect(cloud.row!.data.current.shards.Void.Legendary).toBe(44);
+  await expect.poll(() => cloud.budgetWrites.some(write => !!write && typeof write === 'object' && 'data' in write && typeof write.data === 'object' && write.data !== null && 'startingBalance' in write.data && write.data.startingBalance === 4321)).toBe(true);
+});
+
+test('a missing account row never silently replaces an existing cached tracker', async ({ page }) => {
+  const cachedState = tracker.emptyState();
+  cachedState.starting.Sacred.Legendary = 12;
+  const cached = JSON.stringify({ revision: 'previous-revision', data: JSON.stringify(cachedState), dirty: false });
+  await page.addInitScript(({ id, value }) => localStorage.setItem(`budget-app-tracker-cache:${id}`, value), { id: userId, value: cached });
+  const cloud: MockCloud = { row: null, budgetWrites: [] };
+  await mockCloud(page, cloud);
+  await page.goto(cloudUrl);
+  await openTracker(page, 'Mercy Ledger');
+  await expect(page.getByRole('alert')).toContainText('account tracker is missing');
+  await expect(page.getByRole('button', { name: 'Export recovery backup' })).toBeVisible();
+  expect(await page.evaluate(id => localStorage.getItem(`budget-app-tracker-cache:${id}`), userId)).toBe(cached);
+  expect(cloud.row).toBeNull();
+});

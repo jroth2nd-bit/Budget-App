@@ -1,0 +1,16 @@
+:host { display: block; min-width: 0; background: transparent; }
+.tracker-surface { background: transparent; color: #edf5ef; }
+.shell { max-width: none; margin: 0; padding: 0; }
+.tracker-heading { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-bottom: 18px; }
+.local-label { display: none; }
+.tracker-heading, .tracker-status:has(.notice[hidden]) { margin-bottom: 0; }
+.notice { position: static; width: 100%; margin: 0 0 12px; }
+.notice[hidden] { display: none; }
+.build-page { padding-top: 0; }
+.section:first-child { padding-top: 0; }
+#build-add, #bjj-add { display: none; }
+@media (max-width: 1050px) { .shell { padding: 0; } }
+@media (max-width: 650px) {
+  .shell { padding: 0; }
+  .tracker-heading { justify-content: flex-start; }
+}
