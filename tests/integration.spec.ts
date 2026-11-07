@@ -563,9 +563,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     const eyebrow = page.locator('.topBar .pageEyebrow');
     const activeNav = () => nav.locator('.navItem.active:visible');
     const action = page.locator(mobile ? '.mobilePageAction button' : '.desktopPageAction button');
-    const assertTheme = async (accent: string, navBackground: string) => {
+    const assertTheme = async (accent: string, navBackground: string, navAccent = accent) => {
       await expect(eyebrow).toHaveCSS('color', accent);
-      await expect(activeNav()).toHaveCSS('color', accent);
+      await expect(activeNav()).toHaveCSS('color', navAccent);
       await expect(nav).toHaveCSS('background-color', navBackground);
     };
     await openTracker(page, 'Champion Builds', mobile);
@@ -590,7 +590,11 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await assertTheme('rgb(250, 204, 21)', mobile ? 'rgba(17, 16, 12, 0.97)' : 'rgb(17, 16, 12)');
     for (const name of ['Dashboard', 'Transactions', 'Salary History', 'Admin']) {
       await nav.getByRole('button', { name, exact: true }).click();
-      await assertTheme('rgb(250, 204, 21)', mobile ? 'rgba(17, 16, 12, 0.97)' : 'rgb(17, 16, 12)');
+      await assertTheme(
+        name === 'Admin' ? 'rgb(180, 35, 54)' : 'rgb(250, 204, 21)',
+        mobile ? 'rgba(17, 16, 12, 0.97)' : 'rgb(17, 16, 12)',
+        'rgb(250, 204, 21)'
+      );
     }
     await page.reload();
     const restored = await openTracker(page, 'BJJ Skills', mobile);
@@ -616,7 +620,11 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await expect(page.getByRole('heading', { name: heading, exact: true })).toHaveCount(1);
       await expect(title).toHaveCSS('font-family', /Georgia/);
       await expect(page.locator('.topBar .pageEyebrow')).toHaveText(eyebrow);
-      await expect(page.locator('.topBar .pageEyebrow')).toHaveCSS('color', 'rgb(250, 204, 21)');
+      await expect(page.locator('.topBar .pageEyebrow')).toHaveCSS('color', label === 'Admin' ? 'rgb(180, 35, 54)' : 'rgb(250, 204, 21)');
+      if (label === 'Admin') {
+        const columns = await page.locator('.adminPage').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+        expect(columns).toBe(mobile ? 1 : 2);
+      }
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     }
     for (const [name, eyebrow] of [
@@ -637,6 +645,98 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(page.locator('.topBar').getByRole('heading', { name: 'BJJ Skills' })).toBeVisible();
   });
 }
+
+test('admin CSV imports map columns and update only the selected destination', async ({ page }) => {
+  const initial = tracker.emptyState();
+  initial.champions = [{
+    id: 'existing-champion',
+    name: 'Keep existing build',
+    statuses: { blessing: null, books: 'needed', masteries: 'needed', gear: 'needed', glyphs: 'needed', relic: 'needed' },
+    notes: '',
+  }];
+  await page.addInitScript(data => localStorage.setItem('mercy-ledger-v1', JSON.stringify(data)), initial);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(localUrl);
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin', exact: true }).click();
+
+  await page.getByLabel('Import to').selectOption('bjj-skills');
+  await page.locator('.adminImportControls input[type="file"]').setInputFiles({
+    name: 'skills.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Skill Name,Type,Starting position,Practice,Live rolls,Mastered\nArmbar,Submission,Closed guard,learning,sometimes,no\n'),
+  });
+  const mapping = page.locator('.adminMappingGrid');
+  await mapping.getByLabel('Skill name *').selectOption({ label: 'Skill Name' });
+  await page.getByRole('button', { name: 'Import 1 row' }).click();
+  await expect(page.getByRole('status')).toContainText('Imported 1 row to BJJ Skills');
+
+  let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+  expect(saved.champions.map((champion: { name: string }) => champion.name)).toEqual(['Keep existing build']);
+  expect(saved.bjj.skills).toMatchObject([{ name: 'Armbar', type: 'Submission', positions: ['Closed guard'], practice: 'learning', live: 'sometimes', mastered: false }]);
+
+  await page.getByLabel('Import to').selectOption('income');
+  await page.locator('.adminImportControls input[type="file"]').setInputFiles({
+    name: 'income.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Name,Amount,Frequency,Date,Category\nPaycheck,2500,biweekly,2026-11-07,Work\n'),
+  });
+  await page.getByRole('button', { name: 'Import 1 row' }).click();
+  await expect(page.getByRole('status')).toContainText('Imported 1 income transactions');
+  const incomes = await page.evaluate(() => JSON.parse(localStorage.getItem('incomes')!));
+  expect(incomes).toMatchObject([{ name: 'Paycheck', amount: 2500, frequency: 'biweekly', startDate: '2026-11-07', tags: ['Work'] }]);
+  saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+  expect(saved.bjj.skills).toHaveLength(1);
+
+  await page.getByLabel('Import to').selectOption('salary');
+  await page.locator('.adminImportControls input[type="file"]').setInputFiles({
+    name: 'salary.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Effective Date,Annual Income,Employer,Title,Age,Notes,Goal\n2025-03-01,80000,Acme,Engineer,35,Promotion,90000\n'),
+  });
+  await page.getByRole('button', { name: 'Import 1 row' }).click();
+  await expect(page.getByRole('status')).toContainText('Imported 1 salary entry');
+  const salary = await page.evaluate(() => JSON.parse(localStorage.getItem('income_history')!));
+  expect(salary.entries).toMatchObject([{ effectiveDate: '2025-03-01', annualIncome: 80000, employer: 'Acme', title: 'Engineer', age: 35 }]);
+  expect(salary.annualGoals['2025']).toBe(90000);
+
+  await page.getByLabel('Import to').selectOption('mercy-pulls');
+  await page.locator('.adminImportControls input[type="file"]').setInputFiles({
+    name: 'pulls.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Date,Pull Type,Source,Rarity,Quantity\n2026-11-06,shard,Ancient,Rare,1\n'),
+  });
+  await page.getByRole('button', { name: 'Import 1 row' }).click();
+  await expect(page.getByRole('status')).toContainText('Imported 1 row to Mercy Ledger pulls');
+  saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+  expect(saved.entries).toMatchObject([{ kind: 'shard', source: 'Ancient', rarity: 'Rare', quantity: 1 }]);
+  expect(saved.champions.map((champion: { name: string }) => champion.name)).toEqual(['Keep existing build']);
+
+  await page.getByLabel('Import to').selectOption('demon-lord');
+  await page.locator('.adminImportControls input[type="file"]').setInputFiles({
+    name: 'rewards.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Date,Difficulty,Chests,Legendary books,Epic books,Sacred shards,Void shards,Ancient shards\n2026-11-07,Ultra-Nightmare,2,1,,2,3,4\n'),
+  });
+  await page.getByRole('button', { name: 'Import 1 row' }).click();
+  await expect(page.getByRole('status')).toContainText('Imported 1 row to Mercy Ledger reward days');
+  saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+  expect(saved.clanBoss[0].difficulties.ultra).toMatchObject({ chests: 2, books: 1, epicBooks: null, sacred: 2, void: 3, ancient: 4 });
+  expect(saved.entries).toHaveLength(1);
+
+  await page.getByLabel('Import to').selectOption('champions');
+  await page.locator('.adminImportControls input[type="file"]').setInputFiles({
+    name: 'champions.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Champion,Blessing,Books,Gear,Notes\nNew champion,3,complete,progress,Imported build\n'),
+  });
+  await page.getByRole('button', { name: 'Import 1 row' }).click();
+  await expect(page.getByRole('status')).toContainText('Imported 1 row to Champion Builds');
+  saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+  expect(saved.champions).toMatchObject([
+    { name: 'Keep existing build' },
+    { name: 'New champion', statuses: { blessing: 3, books: 'complete', gear: 'progress' }, notes: 'Imported build' },
+  ]);
+});
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
   test(`page actions open the correct forms at ${viewport.width}px`, async ({ page }) => {

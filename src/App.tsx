@@ -327,7 +327,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
         <header className="topBar">
           <div className="brand"><span className="brandMark">$</span><span>Budget App</span></div>
           <div className="topBarTitle">
-            <p className="pageEyebrow">{PAGE_HEADERS[page].eyebrow}</p>
+            <p className={`pageEyebrow${page === 'admin' ? ' adminPageEyebrow' : ''}`}>{PAGE_HEADERS[page].eyebrow}</p>
             <h1>{PAGE_HEADERS[page].title}</h1>
           </div>
           {pageAction && <div className="desktopPageAction">{pageAction}</div>}

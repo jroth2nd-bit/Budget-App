@@ -4,15 +4,16 @@ import TrackerView, { type TrackerViewHandle } from './tracker/TrackerView';
 import type { TrackerPage } from './tracker/TrackerView';
 import type { BeltTheme } from './tracker/bjj.js';
 import tracker from './tracker/tracker.js';
+import type { TrackerState } from './tracker/tracker.js';
 
 type Cache = { revision: string | null; data: string | null; dirty: boolean };
 export type TrackerStorage = { getItem(key: string): string | null; setItem(key: string, value: string): void };
 
 const LEGACY_KEY = 'mercy-ledger-v1';
 export type TrackerBackupHandle = {
-  snapshot: () => Promise<{ raw: string | null; data: ReturnType<typeof tracker.validateState> }>;
+  snapshot: () => Promise<{ raw: string | null; data: TrackerState }>;
   current: () => Promise<string | null>;
-  restore: (expected: string | null, data: ReturnType<typeof tracker.validateState>) => Promise<void>;
+  restore: (expected: string | null, data: TrackerState) => Promise<void>;
   openAdd: () => void;
 };
 function readCache(raw: string): Cache {
