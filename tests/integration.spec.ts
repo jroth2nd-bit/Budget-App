@@ -160,10 +160,12 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       ['practice', ['Middle', 'Alpha', 'Zebra']],
       ['live', ['Zebra', 'Middle', 'Alpha']],
       ['confidence', ['Middle', 'Alpha', 'Zebra']],
-      ['preference', ['Alpha', 'Middle', 'Zebra']],
       ['mastered', ['Zebra', 'Alpha', 'Middle']],
     ];
     await expect.poll(names).toEqual(['Alpha', 'Middle', 'Zebra']);
+    await expect(bjj.locator('[data-bjj-sort="preference"], [data-bjj-filter="preference"]')).toHaveCount(0);
+    await expect(bjj.locator('#bjj-head')).not.toContainText('Preference');
+    await expect(bjj.locator('#bjj-cards')).not.toContainText('PREFERENCE');
     const confidenceSort = sorter.locator('[data-bjj-sort="confidence"]');
     if (cards) await expect(confidenceSort).toHaveAttribute('aria-label', /sorted descending/);
     else await expect(confidenceSort.locator('..')).toHaveAttribute('aria-sort', 'descending');
@@ -200,6 +202,12 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     const counterpart = bjj.locator(cards ? '#bjj-head' : '#bjj-card-sort').locator('[data-bjj-sort="mastered"]');
     await expect(counterpart).toBeVisible();
     await expect(counterpart).toContainText('↓');
+    await page.setViewportSize(viewport);
+    const list = bjj.locator(cards ? '#bjj-cards' : '#bjj-list');
+    if (cards) await list.locator('.bjj-card').filter({ hasText: 'Zebra' }).locator('summary').first().click();
+    await list.getByLabel('Live rolls for Zebra').selectOption('sometimes');
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+    expect(saved.bjj.skills.find((item: { id: string }) => item.id === '1').preference).toBe('high');
   });
 }
 
@@ -401,7 +409,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     const typeFilter = bjj.getByLabel('Filter Type');
     await expect(typeFilter).toHaveJSProperty('tagName', 'SELECT');
     await expect(typeFilter.locator('option')).toHaveText(['All', ...tracker.bjjTypes, 'Leg <entanglement>', 'Leg <entanglement> advanced']);
-    for (const field of ['Video quality', 'Practice', 'Live rolls', 'Preference']) {
+    for (const field of ['Video quality', 'Practice', 'Live rolls']) {
       const filterChoices = await bjj.getByLabel(`Filter ${field}`).locator('option').allTextContents();
       const cellChoices = await bjj.getByLabel(`${field} for Normal escape`).first().locator('option').allTextContents();
       expect(filterChoices).toEqual(['All', ...cellChoices]);

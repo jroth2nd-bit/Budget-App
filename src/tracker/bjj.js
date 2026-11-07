@@ -16,7 +16,7 @@ const columns = [
   { key: "name", label: "Skill" }, { key: "type", label: "Type" }, { key: "positions", label: "Starting position" },
   { key: "description", label: "Description" }, { key: "link", label: "Video link" },
   { key: "video", label: "Video quality" }, { key: "practice", label: "Practice" },
-  { key: "live", label: "Live rolls" }, { key: "confidence", label: "Confidence" }, { key: "preference", label: "Preference" },
+  { key: "live", label: "Live rolls" }, { key: "confidence", label: "Confidence" },
   { key: "mastered", label: "Mastery" }
 ];
 let state = T.emptyState();
@@ -340,7 +340,7 @@ function render() {
       return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
     }
     const label = skill => sort === "positions" ? skill.positions.join(", ") : options[sort] ? options[sort][String(skill[sort])] : skill[sort];
-    const order = ["practice", "live", "preference"].includes(sort)
+    const order = ["practice", "live"].includes(sort)
       ? Object.keys(options[sort]).indexOf(a[sort]) - Object.keys(options[sort]).indexOf(b[sort])
       : label(a).localeCompare(label(b), undefined, { sensitivity: "base" });
     return (direction === "ascending" ? order : -order) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
