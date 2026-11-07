@@ -94,7 +94,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(editor).toBeHidden();
     await expect(list.getByLabel('Edit starting positions for Legacy skill')).toContainText('Custom <guard>');
     let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
-    expect(saved.version).toBe(13);
+    expect(saved.version).toBe(14);
     expect(saved.current.shards.Void.Legendary).toBe(21);
     expect(saved.bjj.skills[0].positions).toEqual(['Closed guard', 'Mount', 'Custom <guard>', 'Butterfly guard']);
     await bjj.locator('.bjj-filter-details summary').click();
@@ -134,12 +134,47 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
 }
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 720 }]) {
+  test(`BJJ work-on-next checkbox defaults, saves and reloads at ${viewport.width}px`, async ({ page }) => {
+    const state = tracker.emptyState();
+    state.version = 13;
+    state.bjj.skills = [{
+      id: 'legacy', name: 'Guard pass', type: 'Pass', positions: [], description: '', link: '',
+      video: 'liked', practice: 'learning', live: 'sometimes', preference: 'low', mastered: false,
+    }];
+    await page.addInitScript(data => {
+      if (!sessionStorage.getItem('work-next-seeded')) {
+        sessionStorage.setItem('work-next-seeded', '1');
+        localStorage.setItem('mercy-ledger-v1', JSON.stringify(data));
+      }
+    }, state);
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const mobile = viewport.width < 640;
+    let bjj = await openTracker(page, 'BJJ Skills', mobile);
+    let list = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
+    if (mobile) await list.locator('.bjj-card > summary').click();
+    const workNext = list.getByLabel('Work on next: Guard pass');
+    await expect(workNext).not.toBeChecked();
+    await workNext.check();
+    let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+    expect(saved.bjj.skills[0]).toMatchObject({ workOnNext: true });
+    expect(saved.bjj.skills[0]).not.toHaveProperty('video');
+
+    await page.reload();
+    bjj = await openTracker(page, 'BJJ Skills', mobile);
+    list = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
+    if (mobile) await list.locator('.bjj-card > summary').click();
+    await expect(list.getByLabel('Work on next: Guard pass')).toBeChecked();
+  });
+}
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 720 }]) {
   test(`BJJ column sorting toggles in table and cards at ${viewport.width}px`, async ({ page }) => {
     const state = tracker.emptyState();
     state.bjj.skills = [
-      { id: '1', name: 'Zebra', type: 'Position', positions: ['Mount'], description: 'Third', link: 'https://youtu.be/z', video: 'unset', practice: 'consistently', live: 'unset', preference: 'high', mastered: true },
-      { id: '2', name: 'Alpha', type: 'Escape', positions: ['Closed guard'], description: 'First', link: 'https://youtu.be/a', video: 'liked', practice: 'consistently', live: 'consistently', preference: 'low', mastered: false },
-      { id: '3', name: 'Middle', type: 'Guard', positions: ['Half guard'], description: 'Second', link: 'https://youtu.be/m', video: 'replace', practice: 'learning', live: 'learning', preference: 'medium', mastered: false },
+      { id: '1', name: 'Zebra', type: 'Position', positions: ['Mount'], description: 'Third', link: 'https://youtu.be/z', practice: 'consistently', live: 'unset', preference: 'high', mastered: true, workOnNext: true },
+      { id: '2', name: 'Alpha', type: 'Escape', positions: ['Closed guard'], description: 'First', link: 'https://youtu.be/a', practice: 'consistently', live: 'consistently', preference: 'low', mastered: false, workOnNext: false },
+      { id: '3', name: 'Middle', type: 'Guard', positions: ['Half guard'], description: 'Second', link: 'https://youtu.be/m', practice: 'learning', live: 'learning', preference: 'medium', mastered: false, workOnNext: false },
     ];
     await page.addInitScript(data => localStorage.setItem('mercy-ledger-v1', JSON.stringify(data)), state);
     await page.setViewportSize(viewport);
@@ -156,7 +191,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       ['positions', ['Alpha', 'Middle', 'Zebra']],
       ['description', ['Alpha', 'Middle', 'Zebra']],
       ['link', ['Alpha', 'Middle', 'Zebra']],
-      ['video', ['Middle', 'Alpha', 'Zebra']],
+      ['workOnNext', ['Alpha', 'Middle', 'Zebra']],
       ['practice', ['Middle', 'Alpha', 'Zebra']],
       ['live', ['Zebra', 'Middle', 'Alpha']],
       ['confidence', ['Middle', 'Alpha', 'Zebra']],
@@ -166,6 +201,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(bjj.locator('[data-bjj-sort="preference"], [data-bjj-filter="preference"]')).toHaveCount(0);
     await expect(bjj.locator('#bjj-head')).not.toContainText('Preference');
     await expect(bjj.locator('#bjj-cards')).not.toContainText('PREFERENCE');
+    await expect(bjj.locator('#bjj-head')).not.toContainText('Video quality');
+    await expect(bjj.locator('#bjj-cards')).not.toContainText('VIDEO QUALITY');
     const confidenceSort = sorter.locator('[data-bjj-sort="confidence"]');
     if (cards) await expect(confidenceSort).toHaveAttribute('aria-label', /sorted descending/);
     else await expect(confidenceSort.locator('..')).toHaveAttribute('aria-sort', 'descending');
@@ -186,7 +223,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
         await expect(button.locator('..')).toHaveAttribute('aria-sort', 'ascending');
       }
       await button.click();
-      const reversed = key === 'practice' ? ['Alpha', 'Zebra', 'Middle'] : key === 'mastered' || key === 'confidence' ? ['Alpha', 'Middle', 'Zebra'] : [...ascending].reverse();
+      const reversed = key === 'practice' ? ['Alpha', 'Zebra', 'Middle'] : key === 'workOnNext' ? ['Zebra', 'Alpha', 'Middle'] : key === 'mastered' || key === 'confidence' ? ['Alpha', 'Middle', 'Zebra'] : [...ascending].reverse();
       await expect.poll(names).toEqual(reversed);
       if (cards) await expect(button).toHaveAttribute('aria-label', /sorted descending/);
       else await expect(button.locator('..')).toHaveAttribute('aria-sort', 'descending');
@@ -197,6 +234,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect.poll(names).toEqual(['Alpha']);
     await bjj.locator('#bjj-clear').click();
     await expect.poll(names).toEqual(['Alpha', 'Middle', 'Zebra']);
+    await bjj.getByLabel('Filter Work on next').selectOption('true');
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 3 skills.');
+    await expect.poll(names).toEqual(['Zebra']);
     expect(await bjj.locator('.bjj-skills-panel').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     await page.setViewportSize(cards ? { width: 1440, height: 900 } : { width: 390, height: 844 });
     const counterpart = bjj.locator(cards ? '#bjj-head' : '#bjj-card-sort').locator('[data-bjj-sort="mastered"]');
@@ -264,7 +304,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await skill.locator('#bjj-custom-type').fill('Custom guard');
     await skill.locator('#bjj-add-description').fill('Detailed technique');
     await skill.locator('#bjj-add-link').fill('https://example.com/video');
-    await skill.locator('#bjj-add-video').selectOption('liked');
+    await skill.locator('#bjj-add-work-next').check();
     await skill.locator('#bjj-add-practice').selectOption('consistently');
     await skill.locator('#bjj-add-live').selectOption('learning');
     await skill.locator('#bjj-add-preference').selectOption('high');
@@ -277,6 +317,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(skill).toBeHidden();
     await page.getByRole('button', { name: 'Add skill', exact: true }).click();
     await expect(skill.locator('#bjj-add-mastered')).toHaveValue('false');
+    await expect(skill.locator('#bjj-add-work-next')).not.toBeChecked();
     await expect(skill.locator('#bjj-add-description')).toHaveValue('');
     await skill.locator('#bjj-add-close').click();
 
@@ -362,7 +403,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(skillList.getByLabel('Practice for Full skill')).toHaveValue('consistently');
     await skillList.getByLabel('Practice for Full skill').selectOption('sometimes');
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1') || '{}'));
-    expect(saved.bjj.skills[0]).toMatchObject({ name: 'Full skill', type: 'Custom guard', description: 'Detailed technique', link: 'https://youtu.be/example', video: 'liked', practice: 'sometimes', live: 'learning', preference: 'high', mastered: true });
+    expect(saved.bjj.skills[0]).toMatchObject({ name: 'Full skill', type: 'Custom guard', description: 'Detailed technique', link: 'https://youtu.be/example', practice: 'sometimes', live: 'learning', preference: 'high', mastered: true, workOnNext: true });
+    expect(saved.bjj.skills[0]).not.toHaveProperty('video');
     expect(saved.champions[0]).toMatchObject({ name: 'Full champion', notes: 'Build notes', statuses: { blessing: null, books: 'complete', masteries: 'progress', gear: 'complete', glyphs: 'progress', relic: 'complete' } });
   });
 }
@@ -409,7 +451,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     const typeFilter = bjj.getByLabel('Filter Type');
     await expect(typeFilter).toHaveJSProperty('tagName', 'SELECT');
     await expect(typeFilter.locator('option')).toHaveText(['All', ...tracker.bjjTypes, 'Leg <entanglement>', 'Leg <entanglement> advanced']);
-    for (const field of ['Video quality', 'Practice', 'Live rolls']) {
+    for (const field of ['Practice', 'Live rolls']) {
       const filterChoices = await bjj.getByLabel(`Filter ${field}`).locator('option').allTextContents();
       const cellChoices = await bjj.getByLabel(`${field} for Normal escape`).first().locator('option').allTextContents();
       expect(filterChoices).toEqual(['All', ...cellChoices]);
@@ -663,7 +705,7 @@ test('admin CSV imports map columns and update only the selected destination', a
   await page.locator('.adminImportControls input[type="file"]').setInputFiles({
     name: 'skills.csv',
     mimeType: 'text/csv',
-    buffer: Buffer.from('Skill Name,Type,Starting position,Practice,Live rolls,Mastered\nArmbar,Submission,Closed guard,learning,sometimes,no\n'),
+    buffer: Buffer.from('Skill Name,Type,Starting position,Practice,Live rolls,Mastered,Work on next\nArmbar,Submission,Closed guard,learning,sometimes,no,yes\n'),
   });
   const mapping = page.locator('.adminMappingGrid');
   await mapping.getByLabel('Skill name *').selectOption({ label: 'Skill Name' });
@@ -672,7 +714,7 @@ test('admin CSV imports map columns and update only the selected destination', a
 
   let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
   expect(saved.champions.map((champion: { name: string }) => champion.name)).toEqual(['Keep existing build']);
-  expect(saved.bjj.skills).toMatchObject([{ name: 'Armbar', type: 'Submission', positions: ['Closed guard'], practice: 'learning', live: 'sometimes', mastered: false }]);
+  expect(saved.bjj.skills).toMatchObject([{ name: 'Armbar', type: 'Submission', positions: ['Closed guard'], practice: 'learning', live: 'sometimes', mastered: false, workOnNext: true }]);
 
   await page.getByLabel('Import to').selectOption('income');
   await page.locator('.adminImportControls input[type="file"]').setInputFiles({
@@ -860,7 +902,7 @@ test('backup migration, invalid and cancelled imports preserve both datasets', a
   const reloadedMercy = await openTracker(page, 'Mercy Ledger');
   await expect(reloadedMercy.locator('#count-Ancient-Legendary')).toHaveValue('99');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
-  expect(saved.version).toBe(13);
+  expect(saved.version).toBe(14);
   expect(saved.starting.Ancient.Legendary).toBe(99);
   expect(saved.bjj.skills).toEqual([]);
 });
@@ -1053,7 +1095,7 @@ test('account sync migrates old BJJ skills and persists positions without changi
   const dialog = bjj.locator('#bjj-positions-dialog');
   await dialog.getByLabel('Mount', { exact: true }).check();
   await dialog.getByRole('button', { name: 'Save positions' }).click();
-  await expect.poll(() => cloud.row?.data.version).toBe(13);
+  await expect.poll(() => cloud.row?.data.version).toBe(14);
   expect(cloud.row!.data.bjj.skills[0].positions).toEqual(['Mount']);
   expect(cloud.budgetWrites.every(write => !!write && typeof write === 'object' && 'data' in write && !!write.data && typeof write.data === 'object' && !('tracker' in write.data))).toBe(true);
 });
@@ -1236,7 +1278,7 @@ test('cloud backup import validates and confirms before replacing tracker data',
   await (await importDialog).accept();
   await expect.poll(() => cloud.row!.data.starting.Void.Legendary).toBe(77);
   await expect(page.getByText('Tracker backup imported.')).toBeVisible();
-  expect(cloud.row!.data.version).toBe(13);
+  expect(cloud.row!.data.version).toBe(14);
 });
 
 test('full restore keeps budget unchanged if tracker cloud write conflicts', async ({ page }) => {

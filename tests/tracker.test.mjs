@@ -81,7 +81,7 @@ test("battle plans migrate older backups and remain independent in new backups",
   old.current.shards.Ancient = { Legendary: 123 };
   old.soulInventory.mortalStones = 204;
   const migrated = T.validateState(old);
-  assert.equal(migrated.version, 13);
+  assert.equal(migrated.version, 14);
   assert.equal(migrated.battlePlans.event.battles, 0);
   assert.equal(migrated.current.shards.Ancient.Legendary, 123);
   assert.equal(migrated.soulInventory.mortalStones, 204);
@@ -101,7 +101,7 @@ test("legacy backups migrate without losing history or calculated counters", () 
   legacy.starting.Ancient.Legendary = 200;
   legacy.entries = [entry("old", "Ancient", "Rare", 2), { id: "soul", createdAt: "2026-01-01T00:00:00Z", kind: "soul", source: "Mortal", rarity: "Rare", rank: 1, quantity: 3 }];
   const migrated = T.validateState(legacy);
-  assert.equal(migrated.version, 13);
+  assert.equal(migrated.version, 14);
   assert.equal(migrated.entries.length, 2);
   assert.equal(T.calculate(migrated).counters.Ancient.Legendary.count, 202);
   assert.equal(T.calculate(migrated).souls.Mortal, 3);
@@ -235,7 +235,7 @@ test("version 6 backups migrate without losing existing data and version 7 round
   old.current.shards.Void = { Legendary: 123 };
   old.summonPlans.shard.Ancient = { pulls: 10, points: 20 };
   const state = T.validateState(old);
-  assert.equal(state.version, 13);
+  assert.equal(state.version, 14);
   assert.deepEqual(state.clanBoss, []);
   assert.equal(state.current.shards.Void.Legendary, 123);
   assert.deepEqual(state.summonPlans.shard.Ancient, { pulls: 10, points: 20 });
@@ -332,7 +332,7 @@ test("champion builds migrate version 7, validate and round trip alongside exist
   old.clanBoss = [{ date: "2026-03-01", difficulties: { ultra: clanRow(2, 1) } }];
   old.current.shards.Void = { Legendary: 123 };
   const state = T.validateState(old);
-  assert.equal(state.version, 13);
+  assert.equal(state.version, 14);
   assert.deepEqual(state.champions, []);
   assert.equal(state.clanBoss[0].difficulties.ultra.books, 1);
   assert.equal(state.current.shards.Void.Legendary, 123);
@@ -389,10 +389,13 @@ test("BJJ data migrates old backups, validates skills and preserves other tracke
   assert.deepEqual(state.bjj, { belt: "Blue", stripes: 1, skills: [] });
   assert.equal(state.current.shards.Void.Legendary, 123);
   assert.equal(state.clanBoss[0].difficulties.ultra.epicBooks, 2);
-  const skill = { id: "1", name: "Armbar", type: "Custom type", positions: [], description: "Details", link: "https://youtu.be/abc", video: "liked", practice: "consistently", live: "consistently", preference: "high", mastered: false };
-  state.bjj.skills.push(skill);
+  const skill = { id: "1", name: "Armbar", type: "Custom type", positions: [], description: "Details", link: "https://youtu.be/abc", video: "liked", practice: "consistently", live: "consistently", preference: "high", mastered: false, workOnNext: true };
+  state.bjj.skills.push(T.validateBjjSkill(skill));
   assert.deepEqual(T.validateState(JSON.parse(JSON.stringify(state))), state);
   assert.equal(T.validateState(state).bjj.skills[0].mastered, false);
+  assert.equal(T.validateState(state).bjj.skills[0].workOnNext, true);
+  assert.equal("video" in T.validateState(state).bjj.skills[0], false);
+  assert.throws(() => T.validateState({ ...state, bjj: { ...state.bjj, skills: [{ ...skill, workOnNext: undefined }] } }), /Work on next/);
   state.bjj.skills.push({ ...skill });
   assert.throws(() => T.validateState(state), /Duplicate BJJ/);
   state.bjj.skills.pop();
@@ -404,6 +407,7 @@ test("BJJ data migrates old backups, validates skills and preserves other tracke
   assert.throws(() => T.validateState({ ...state, bjj: { ...state.bjj, belt: "Red" } }), /BJJ belt/);
   assert.throws(() => T.validateBjjSkill({ ...skill, practice: "maybe" }), /consistency/);
   assert.throws(() => T.validateBjjSkill({ ...skill, mastered: "yes" }), /mastery/);
+  assert.throws(() => T.validateBjjSkill({ ...skill, workOnNext: "yes" }), /Work on next/);
 });
 
 test("version 11 BJJ progression migrates without guessing unset values", () => {
@@ -413,7 +417,7 @@ test("version 11 BJJ progression migrates without guessing unset values", () => 
   old.bjj.skills = [skill, { ...skill, id: "two", practice: "no", live: "unset" }];
   old.current.shards.Void = { Legendary: 123 };
   const state = T.validateState(old);
-  assert.equal(state.version, 13);
+  assert.equal(state.version, 14);
   assert.deepEqual(state.bjj.skills.map(({ practice, live }) => [practice, live]), [["consistently", "sometimes"], ["not_yet", "unset"]]);
   assert.equal(state.bjj.skills[0].mastered, true);
   assert.equal(state.bjj.skills[0].preference, "unset");
@@ -439,16 +443,18 @@ test("BJJ confidence uses weighted consistency and requires both answers", () =>
   assert.throws(() => T.bjjConfidence({ practice: "invalid", live: "learning" }), /consistency/);
 });
 
-test("version 12 skills migrate without positions and version 13 validates and preserves positions", () => {
+test("version 12 skills migrate without positions and version 13 defaults work-on-next while preserving positions", () => {
   const old = T.emptyState();
   old.version = 12;
   old.bjj.skills = [{ id: "1", name: "Armbar", type: "Submission", description: "", link: "", video: "unset", practice: "learning", live: "sometimes", preference: "low", mastered: false }];
   old.current.shards.Void = { Legendary: 123 };
   const migrated = T.validateState(old);
-  assert.equal(migrated.version, 13);
+  assert.equal(migrated.version, 14);
   assert.deepEqual(migrated.bjj.skills[0].positions, []);
+  assert.equal(migrated.bjj.skills[0].workOnNext, false);
   assert.equal(migrated.current.shards.Void.Legendary, 123);
   migrated.bjj.skills[0].positions = ["Closed guard", "Custom <position>"];
+  migrated.bjj.skills[0].workOnNext = true;
   assert.deepEqual(T.validateState(JSON.parse(JSON.stringify(migrated))), migrated);
   for (const positions of [null, ["", "Mount"], ["Mount", " mount "], ["x".repeat(101)], Array(31).fill("a")]) {
     assert.throws(() => T.validateState({ ...migrated, bjj: { ...migrated.bjj, skills: [{ ...migrated.bjj.skills[0], positions }] } }), /positions/);

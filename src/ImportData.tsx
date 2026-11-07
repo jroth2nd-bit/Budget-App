@@ -87,11 +87,11 @@ const fieldsByTarget: Record<ImportTarget, ImportField[]> = {
     { key: 'positions', label: 'Starting positions', aliases: ['position', 'starting position'] },
     { key: 'description', label: 'Description' },
     { key: 'link', label: 'Video link', aliases: ['url'] },
-    { key: 'video', label: 'Video quality' },
     { key: 'practice', label: 'Practice' },
     { key: 'live', label: 'Live rolls' },
     { key: 'preference', label: 'Preference' },
     { key: 'mastered', label: 'Mastered' },
+    { key: 'workOnNext', label: 'Work on next', aliases: ['work next', 'next'] },
   ],
 };
 
@@ -393,7 +393,6 @@ export default function ImportData({
           const name = getValue(row, mapping, 'name');
           if (!name) throw new Error(`Row ${rowNumber}: enter a skill name.`);
           const positions = getValue(row, mapping, 'positions').split(/[;,|]/).map(value => value.trim()).filter(Boolean);
-          const video = normalizeStatus(getValue(row, mapping, 'video'), 'video quality', ['unset', 'liked', 'replace'], 'unset');
           const practice = normalizeStatus(getValue(row, mapping, 'practice'), 'practice', ['unset', 'not_yet', 'learning', 'sometimes', 'consistently'], 'unset');
           const live = normalizeStatus(getValue(row, mapping, 'live'), 'live rolls', ['unset', 'not_yet', 'learning', 'sometimes', 'consistently'], 'unset');
           const preference = normalizeStatus(getValue(row, mapping, 'preference'), 'preference', ['unset', 'low', 'medium', 'high'], 'unset');
@@ -404,11 +403,11 @@ export default function ImportData({
             positions,
             description: getValue(row, mapping, 'description'),
             link: getValue(row, mapping, 'link'),
-            video,
             practice,
             live,
             preference,
             mastered: parseBoolean(getValue(row, mapping, 'mastered'), 'Mastered', rowNumber),
+            workOnNext: parseBoolean(getValue(row, mapping, 'workOnNext'), 'Work on next', rowNumber),
           };
         });
         next = tracker.validateState({ ...current, bjj: { ...current.bjj, skills: [...current.bjj.skills, ...imported] } });

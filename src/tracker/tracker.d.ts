@@ -41,11 +41,11 @@ export type BjjSkill = {
   positions: string[];
   description: string;
   link: string;
-  video: 'unset' | 'liked' | 'replace';
   practice: 'unset' | 'not_yet' | 'learning' | 'sometimes' | 'consistently';
   live: 'unset' | 'not_yet' | 'learning' | 'sometimes' | 'consistently';
   preference: 'unset' | 'low' | 'medium' | 'high';
   mastered: boolean;
+  workOnNext: boolean;
 };
 
 export type TrackerState = {

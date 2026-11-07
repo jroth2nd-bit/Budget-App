@@ -40,11 +40,11 @@ const MercyTracker = (function () {
     }
     const emptyBattle = () => ({ points: 0, battles: 0, energy: 0, minutes: 0, seconds: 0 });
     const summonPlans = Object.fromEntries(Object.entries(summonTypes).map(([kind, types]) => [kind, Object.fromEntries(types.map(type => [type, { pulls: 0, points: 0 }]))]));
-    return { version: 13, starting, entries: [], current: { shards: {}, souls: {} }, soulInventory: { mortalStones: 0, mortalCoins: 0, immortalStones: 0, immortalCoins: 0, eternalStones: 0, eternalCoins: 0 }, battlePlans: { event: emptyBattle(), tournament: emptyBattle() }, summonPlans, clanBoss: [], champions: [], bjj: { belt: "Blue", stripes: 1, skills: [] } };
+    return { version: 14, starting, entries: [], current: { shards: {}, souls: {} }, soulInventory: { mortalStones: 0, mortalCoins: 0, immortalStones: 0, immortalCoins: 0, eternalStones: 0, eternalCoins: 0 }, battlePlans: { event: emptyBattle(), tournament: emptyBattle() }, summonPlans, clanBoss: [], champions: [], bjj: { belt: "Blue", stripes: 1, skills: [] } };
   }
 
   function validateState(data) {
-    if (!data || typeof data !== "object" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(data.version) || !data.starting || !Array.isArray(data.entries)) throw new Error("Not a valid Mercy Ledger backup (version 1 through 13 required).");
+    if (!data || typeof data !== "object" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(data.version) || !data.starting || !Array.isArray(data.entries)) throw new Error("Not a valid Mercy Ledger backup (version 1 through 14 required).");
     const clean = emptyState();
     for (const [source, rarities] of Object.entries(rules)) {
       if (source === "Remnant" && data.version < 4) continue;
@@ -139,7 +139,7 @@ const MercyTracker = (function () {
       if (!data.bjj || !bjjBelts.includes(data.bjj.belt) || !Number.isInteger(data.bjj.stripes) || data.bjj.stripes < 0 || data.bjj.stripes > 4 || !Array.isArray(data.bjj.skills)) throw new Error("Invalid BJJ belt or skills.");
       const skillIds = new Set();
       clean.bjj = { belt: data.bjj.belt, stripes: data.bjj.stripes, skills: data.bjj.skills.map(skill => {
-        const valid = validateBjjSkill(data.version < 13 ? { ...skill, positions: [] } : skill, data.version === 11);
+        const valid = validateBjjSkill(data.version < 13 ? { ...skill, positions: [] } : skill, data.version === 11, data.version >= 14);
         if (skillIds.has(valid.id)) throw new Error("Duplicate BJJ skill ID.");
         skillIds.add(valid.id);
         return valid;
@@ -148,7 +148,7 @@ const MercyTracker = (function () {
     return clean;
   }
 
-  function validateBjjSkill(skill, legacy = false) {
+  function validateBjjSkill(skill, legacy = false, workOnNextRequired = false) {
     if (!skill || typeof skill !== "object" || typeof skill.id !== "string" || !skill.id.trim() || skill.id.length > 100) throw new Error("Invalid BJJ skill ID.");
     if (typeof skill.name !== "string" || !skill.name.trim() || skill.name.length > 100) throw new Error("Skill name must be between 1 and 100 characters.");
     if (typeof skill.type !== "string" || !skill.type.trim() || skill.type.length > 100) throw new Error("Skill type must be between 1 and 100 characters.");
@@ -163,12 +163,12 @@ const MercyTracker = (function () {
       const hosts = ["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "instagram.com", "www.instagram.com", "m.instagram.com"];
       if (url.protocol !== "https:" || !hosts.includes(url.hostname.toLowerCase()) || url.username || url.password) throw new Error("Enter a valid YouTube or Instagram HTTPS link.");
     }
-    if (!["unset", "liked", "replace"].includes(skill.video)) throw new Error("Invalid video quality.");
     const levels = legacy ? ["unset", "yes", "no", "inconsistent"] : ["unset", "not_yet", "learning", "sometimes", "consistently"];
     if (!levels.includes(skill.practice) || !levels.includes(skill.live)) throw new Error("Invalid skill consistency.");
     if (!["unset", "low", "medium", "high"].includes(skill.preference) || typeof skill.mastered !== "boolean") throw new Error("Invalid skill preference or mastery.");
+    if ((workOnNextRequired && typeof skill.workOnNext !== "boolean") || (skill.workOnNext !== undefined && typeof skill.workOnNext !== "boolean")) throw new Error("Work on next must be checked or unchecked.");
     const migratedLevels = { unset: "unset", yes: "consistently", no: "not_yet", inconsistent: "sometimes" };
-    return { id: skill.id, name: skill.name.trim(), type: skill.type.trim(), positions, description: skill.description, link: skill.link, video: skill.video, practice: legacy ? migratedLevels[skill.practice] : skill.practice, live: legacy ? migratedLevels[skill.live] : skill.live, preference: skill.preference, mastered: skill.mastered };
+    return { id: skill.id, name: skill.name.trim(), type: skill.type.trim(), positions, description: skill.description, link: skill.link, practice: legacy ? migratedLevels[skill.practice] : skill.practice, live: legacy ? migratedLevels[skill.live] : skill.live, preference: skill.preference, mastered: skill.mastered, workOnNext: skill.workOnNext ?? false };
   }
 
   function bjjConfidence(skill) {
