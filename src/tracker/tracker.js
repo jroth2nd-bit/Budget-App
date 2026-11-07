@@ -30,6 +30,7 @@ const MercyTracker = (function () {
   const legacyBuildStatuses = ["unset", "complete", "needed", "na"];
   const bjjBelts = ["White", "Blue", "Purple", "Brown", "Black"];
   const bjjTypes = ["Position", "Submission", "Escape", "Sweep", "Takedown", "Pass", "Guard", "Transition", "Defense", "Other"];
+  const bjjPositions = ["Closed guard", "Open guard", "Half guard", "Side control", "Mount", "Back control", "North-south", "Knee on belly", "Turtle", "Standing"];
 
   function emptyState() {
     const starting = {};
@@ -39,11 +40,11 @@ const MercyTracker = (function () {
     }
     const emptyBattle = () => ({ points: 0, battles: 0, energy: 0, minutes: 0, seconds: 0 });
     const summonPlans = Object.fromEntries(Object.entries(summonTypes).map(([kind, types]) => [kind, Object.fromEntries(types.map(type => [type, { pulls: 0, points: 0 }]))]));
-    return { version: 12, starting, entries: [], current: { shards: {}, souls: {} }, soulInventory: { mortalStones: 0, mortalCoins: 0, immortalStones: 0, immortalCoins: 0, eternalStones: 0, eternalCoins: 0 }, battlePlans: { event: emptyBattle(), tournament: emptyBattle() }, summonPlans, clanBoss: [], champions: [], bjj: { belt: "Blue", stripes: 1, skills: [] } };
+    return { version: 13, starting, entries: [], current: { shards: {}, souls: {} }, soulInventory: { mortalStones: 0, mortalCoins: 0, immortalStones: 0, immortalCoins: 0, eternalStones: 0, eternalCoins: 0 }, battlePlans: { event: emptyBattle(), tournament: emptyBattle() }, summonPlans, clanBoss: [], champions: [], bjj: { belt: "Blue", stripes: 1, skills: [] } };
   }
 
   function validateState(data) {
-    if (!data || typeof data !== "object" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(data.version) || !data.starting || !Array.isArray(data.entries)) throw new Error("Not a valid Mercy Ledger backup (version 1 through 12 required).");
+    if (!data || typeof data !== "object" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(data.version) || !data.starting || !Array.isArray(data.entries)) throw new Error("Not a valid Mercy Ledger backup (version 1 through 13 required).");
     const clean = emptyState();
     for (const [source, rarities] of Object.entries(rules)) {
       if (source === "Remnant" && data.version < 4) continue;
@@ -138,7 +139,7 @@ const MercyTracker = (function () {
       if (!data.bjj || !bjjBelts.includes(data.bjj.belt) || !Number.isInteger(data.bjj.stripes) || data.bjj.stripes < 0 || data.bjj.stripes > 4 || !Array.isArray(data.bjj.skills)) throw new Error("Invalid BJJ belt or skills.");
       const skillIds = new Set();
       clean.bjj = { belt: data.bjj.belt, stripes: data.bjj.stripes, skills: data.bjj.skills.map(skill => {
-        const valid = validateBjjSkill(skill, data.version === 11);
+        const valid = validateBjjSkill(data.version < 13 ? { ...skill, positions: [] } : skill, data.version === 11);
         if (skillIds.has(valid.id)) throw new Error("Duplicate BJJ skill ID.");
         skillIds.add(valid.id);
         return valid;
@@ -151,6 +152,9 @@ const MercyTracker = (function () {
     if (!skill || typeof skill !== "object" || typeof skill.id !== "string" || !skill.id.trim() || skill.id.length > 100) throw new Error("Invalid BJJ skill ID.");
     if (typeof skill.name !== "string" || !skill.name.trim() || skill.name.length > 100) throw new Error("Skill name must be between 1 and 100 characters.");
     if (typeof skill.type !== "string" || !skill.type.trim() || skill.type.length > 100) throw new Error("Skill type must be between 1 and 100 characters.");
+    if (!Array.isArray(skill.positions) || skill.positions.length > 30 || skill.positions.some(position => typeof position !== "string" || !position.trim() || position.trim().length > 100)) throw new Error("Starting positions must contain at most 30 names of 1 to 100 characters.");
+    const positions = skill.positions.map(position => position.trim());
+    if (new Set(positions.map(position => position.toLocaleLowerCase())).size !== positions.length) throw new Error("Starting positions must not contain duplicates.");
     if (typeof skill.description !== "string" || skill.description.length > 4000) throw new Error("Skill description must be 4,000 characters or fewer.");
     if (typeof skill.link !== "string" || skill.link.length > 2048) throw new Error("Invalid video link.");
     if (skill.link) {
@@ -164,7 +168,14 @@ const MercyTracker = (function () {
     if (!levels.includes(skill.practice) || !levels.includes(skill.live)) throw new Error("Invalid skill consistency.");
     if (!["unset", "low", "medium", "high"].includes(skill.preference) || typeof skill.mastered !== "boolean") throw new Error("Invalid skill preference or mastery.");
     const migratedLevels = { unset: "unset", yes: "consistently", no: "not_yet", inconsistent: "sometimes" };
-    return { id: skill.id, name: skill.name.trim(), type: skill.type.trim(), description: skill.description, link: skill.link, video: skill.video, practice: legacy ? migratedLevels[skill.practice] : skill.practice, live: legacy ? migratedLevels[skill.live] : skill.live, preference: skill.preference, mastered: skill.mastered };
+    return { id: skill.id, name: skill.name.trim(), type: skill.type.trim(), positions, description: skill.description, link: skill.link, video: skill.video, practice: legacy ? migratedLevels[skill.practice] : skill.practice, live: legacy ? migratedLevels[skill.live] : skill.live, preference: skill.preference, mastered: skill.mastered };
+  }
+
+  function bjjConfidence(skill) {
+    const scores = { not_yet: 0, learning: 40, sometimes: 75, consistently: 100 };
+    if (skill.practice === "unset" || skill.live === "unset") return null;
+    if (!Object.hasOwn(scores, skill.practice) || !Object.hasOwn(scores, skill.live)) throw new Error("Invalid skill consistency.");
+    return Math.round((scores[skill.practice] * 40 + scores[skill.live] * 60) / 100);
   }
 
   function validateChampion(champion, legacy = false) {
@@ -337,7 +348,7 @@ const MercyTracker = (function () {
     };
   }
 
-  return { rules, shardResults, soulResults, summonTypes, clanDifficulties, clanRewards, buildFields, buildStatuses, bjjBelts, bjjTypes, emptyState, validateState, validateBjjSkill, validateChampion, buildCompletion, validateClanRecord, clanSummary, calculate, nextChance, mercyActive, battleProjection, summonRowPoints, summonProjection, soulCoinProjection };
+  return { rules, shardResults, soulResults, summonTypes, clanDifficulties, clanRewards, buildFields, buildStatuses, bjjBelts, bjjTypes, bjjPositions, emptyState, validateState, validateBjjSkill, bjjConfidence, validateChampion, buildCompletion, validateClanRecord, clanSummary, calculate, nextChance, mercyActive, battleProjection, summonRowPoints, summonProjection, soulCoinProjection };
 })();
 
 export default MercyTracker;

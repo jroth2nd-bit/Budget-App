@@ -22,9 +22,9 @@
 .bjj-theme[data-belt="black"] .bjj-belt-display { background: #17191d; }
 .bjj-belt-display span { width: 7px; height: 20px; background: #fff; border: 1px solid #53606a; }
 .bjj-skills-panel { margin-top: 16px; }
-.bjj-controls, .bjj-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.bjj-controls label, .bjj-filters label { flex: 1 1 150px; margin: 0; }
-.bjj-controls select, .bjj-filters select, .bjj-filters input { margin-top: 5px; }
+.bjj-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.bjj-filters label { flex: 1 1 150px; margin: 0; }
+.bjj-filters select, .bjj-filters input { margin-top: 5px; }
 .bjj-filter-details { margin-top: 12px; font-size: 12px; }
 .bjj-filter-details summary { cursor: pointer; }
 .bjj-table-wrap { margin-top: 10px; }
@@ -56,12 +56,21 @@ select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
 .bjj-type-options button:hover, .bjj-type-options button:focus-visible { background: #23343d; }
 .bjj-table .bjj-type-picker > summary, .bjj-table .bjj-type-options button { padding: 4px; font-size: 13px; }
 .bjj-cards { display: none; }
-#bjj-add-dialog, #bjj-text-dialog, #bjj-type-dialog { width: min(620px, calc(100% - 32px)); max-height: 90vh; overflow: auto; background: #111b20; color: #edf5ef; border: 1px solid var(--belt-border); border-radius: 7px; padding: 20px; box-shadow: 0 0 24px var(--belt-glow); }
-#bjj-add-dialog::backdrop, #bjj-text-dialog::backdrop, #bjj-type-dialog::backdrop { background: #000b; }
+.bjj-card-sort { display: none; }
+#bjj-add-dialog, #bjj-text-dialog, #bjj-type-dialog, #bjj-positions-dialog { width: min(620px, calc(100% - 32px)); max-height: 90vh; overflow: auto; background: #111b20; color: #edf5ef; border: 1px solid var(--belt-border); border-radius: 7px; padding: 20px; box-shadow: 0 0 24px var(--belt-glow); }
+#bjj-add-dialog::backdrop, #bjj-text-dialog::backdrop, #bjj-type-dialog::backdrop, #bjj-positions-dialog::backdrop { background: #000b; }
 #bjj-add-form label:not(:first-child) { margin-top: 12px; }
 .bjj-add-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
+.bjj-position-fields { border: 1px solid var(--belt-border); border-radius: 4px; padding: 10px; margin: 12px 0 0; min-width: 0; }
+.bjj-position-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.bjj-position-choices label, #bjj-add-form .bjj-position-choices label { display: flex; align-items: center; gap: 7px; margin: 0; text-transform: none; letter-spacing: normal; }
+.bjj-position-choices input { width: auto; flex: none; }
+.bjj-position-fields textarea { width: 100%; }
 @media (max-width: 1350px) {
   .bjj-table-wrap { display: none; }
+  .bjj-card-sort { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .bjj-card-sort button { border: 1px solid var(--belt-border); border-radius: 4px; background: #19272e; color: var(--belt-accent); padding: 6px 8px; font-size: 12px; }
+  .bjj-card-sort button[aria-pressed="true"] { background: var(--belt-accent); color: #10191e; }
   .bjj-cards { display: block; margin-top: 12px; }
   .bjj-card { background: #101b20; border: 1px solid var(--belt-border); border-radius: 5px; margin-bottom: 8px; }
   .bjj-card.bjj-mastered { background: #143139; border-color: #73d5d3; box-shadow: inset 3px 0 #73d5d3; }
