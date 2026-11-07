@@ -229,9 +229,9 @@ export default function Administration({
     }
   };
   return (
-    <div className="admin-card">
-      <div className="admin-section">
-        <div className="admin-section-title">Salary History Transfer</div>
+    <div className="adminPage">
+      <section className="admin-section card" aria-labelledby="admin-salary-title">
+        <h2 className="admin-section-title" id="admin-salary-title">Salary History Transfer</h2>
         <p>Export salary entries and annual goals only, or import them without replacing budget or transaction data. Import replaces existing salary history and goals.</p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="admin-btn" onClick={handleExportSalary}>Export Salary History</button>
@@ -239,37 +239,42 @@ export default function Administration({
           <input ref={salaryRestoreInput} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleRestoreSalary} />
         </div>
         {!salaryImportReady && <p>Wait for account sync to finish successfully before importing.</p>}
-        {salaryBackupMsg && <div role="status" className={salaryBackupMsg.error ? undefined : 'admin-success'} style={salaryBackupMsg.error ? { color: '#ef4444', marginTop: 8 } : undefined}>{salaryBackupMsg.text}</div>}
-      </div>
-      <hr className="admin-divider" />
-      <div className="admin-section">
-        <div className="admin-section-title">Low Projected Balance Threshold</div>
+        {salaryBackupMsg && <div role="status" className={salaryBackupMsg.error ? 'admin-error' : 'admin-success'}>{salaryBackupMsg.text}</div>}
+      </section>
+      <section className="admin-section card" aria-labelledby="admin-threshold-title">
+        <h2 className="admin-section-title" id="admin-threshold-title">Low Projected Balance Threshold</h2>
         <LowBalanceThresholdInput threshold={lowBalanceThreshold} setThreshold={setLowBalanceThreshold} inputClassName="admin-input" />
-      </div>
-      <hr className="admin-divider" />
-      <div className="admin-section">
-        <div className="admin-section-title">Import Data <span style={{ fontSize: '1.1em' }}>📥</span></div>
-        <ImportData addIncomes={addIncomes} addExpenses={addExpenses} tags={tags} setTags={setTags} />
-      </div>
-      <hr className="admin-divider" />
-      <div className="admin-section">
-        <div className="admin-section-title">Backup <span style={{ fontSize: '1.1em' }}>💾</span></div>
+      </section>
+      <section className="admin-section admin-section--import card" aria-labelledby="admin-import-title">
+        <h2 className="admin-section-title" id="admin-import-title">Import Data <span style={{ fontSize: '1.1em' }}>📥</span></h2>
+        <ImportData
+          addIncomes={addIncomes}
+          addExpenses={addExpenses}
+          tags={tags}
+          setTags={setTags}
+          incomeHistory={backup?.incomeHistory || { entries: [], annualGoals: {} }}
+          onRestoreSalaryHistory={onRestoreSalaryHistory}
+          salaryImportReady={salaryImportReady}
+          trackerBackup={trackerBackup}
+        />
+      </section>
+      <section className="admin-section card" aria-labelledby="admin-backup-title">
+        <h2 className="admin-section-title" id="admin-backup-title">Backup <span style={{ fontSize: '1.1em' }}>💾</span></h2>
         <p>Export budget, salary history, and all trackers together. Import a full backup, an older budget backup, or an original Mercy Ledger backup. Imports replace only the data included in the file after confirmation.</p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="admin-btn" disabled={backupBusy} onClick={handleExportAll} title="Download all data as a JSON file">Export Everything</button>
           <button className="admin-btn" disabled={backupBusy} onClick={() => restoreInput.current?.click()} title="Import data from a backup file">Import Backup</button>
           <input ref={restoreInput} aria-label="Backup file" type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleRestoreFile} />
         </div>
-        {backupMsg && <div role="status" className={backupMsg.error ? undefined : 'admin-success'} style={backupMsg.error ? { color: '#ef4444', marginTop: 8 } : undefined}>{backupMsg.text}</div>}
-      </div>
-      <hr className="admin-divider" />
-      <div className="admin-section">
-        <div className="admin-section-title" style={{ color: '#ef4444' }}>Danger Zone <span style={{ fontSize: '1.1em' }}>🗑️</span></div>
+        {backupMsg && <div role="status" className={backupMsg.error ? 'admin-error' : 'admin-success'}>{backupMsg.text}</div>}
+      </section>
+      <section className="admin-section card admin-dangerZone" aria-labelledby="admin-danger-title">
+        <h2 className="admin-section-title" id="admin-danger-title">Danger Zone <span style={{ fontSize: '1.1em' }}>🗑️</span></h2>
         <button className="admin-btn danger" onClick={handleWipeData} title="Wipe all data">
           <span role="img" aria-label="trash">🗑️</span> Wipe All Data
         </button>
         {successMsg && <div className="admin-success">{successMsg}</div>}
-      </div>
+      </section>
     </div>
   );
 }
