@@ -6,16 +6,16 @@ export function mount(root, trackerStorage, T, onBeltChange) {
 const STORAGE_KEY = "mercy-ledger-v1";
 const $ = id => document.getElementById(id);
 const options = {
-  video: { unset: "Unset", liked: "Like it", replace: "Find better" },
   practice: { unset: "Unset", not_yet: "Not yet", learning: "Learning", sometimes: "Sometimes", consistently: "Consistently" },
   live: { unset: "Unset", not_yet: "Not yet", learning: "Learning", sometimes: "Sometimes", consistently: "Consistently" },
   preference: { unset: "Unset", low: "Low", medium: "Medium", high: "High" },
-  mastered: { false: "Not mastered", true: "Mastered" }
+  mastered: { false: "Not mastered", true: "Mastered" },
+  workOnNext: { false: "No", true: "Yes" }
 };
 const columns = [
-  { key: "name", label: "Skill" }, { key: "type", label: "Type" }, { key: "positions", label: "Starting position" },
+  { key: "name", label: "Skill" }, { key: "workOnNext", label: "Work on next" }, { key: "type", label: "Type" }, { key: "positions", label: "Starting position" },
   { key: "description", label: "Description" }, { key: "link", label: "Video link" },
-  { key: "video", label: "Video quality" }, { key: "practice", label: "Practice" },
+  { key: "practice", label: "Practice" },
   { key: "live", label: "Live rolls" }, { key: "confidence", label: "Confidence" },
   { key: "mastered", label: "Mastery" }
 ];
@@ -230,8 +230,24 @@ function masteryControl(skill) {
   return wrapper;
 }
 
+function workOnNextControl(skill) {
+  const input = node("input", "bjj-work-next");
+  input.type = "checkbox";
+  input.checked = skill.workOnNext;
+  input.dataset.skillId = skill.id;
+  input.setAttribute("aria-label", `Work on next: ${skill.name}`);
+  input.addEventListener("change", () => {
+    const focused = document.activeElement === input;
+    if (update(skill, { workOnNext: input.checked })) {
+      if (focused) [...document.querySelectorAll(".bjj-work-next")].find(item => item.dataset.skillId === skill.id)?.focus();
+    } else input.checked = skill.workOnNext;
+  });
+  return input;
+}
+
 function control(skill, key) {
   if (key === "name") return textControl(skill, key);
+  if (key === "workOnNext") return workOnNextControl(skill);
   if (key === "type") return typeControl(skill);
   if (key === "positions") return positionControl(skill);
   if (key === "confidence") {
@@ -398,7 +414,7 @@ function render() {
 function initControls() {
   addOptions($("bjj-belt"), Object.fromEntries(T.bjjBelts.map(belt => [belt, belt])));
   addOptions($("bjj-stripes"), Object.fromEntries([0, 1, 2, 3, 4].map(count => [count, String(count)])));
-  for (const key of ["video", "practice", "live", "preference", "mastered"]) addOptions($(`bjj-add-${key}`), options[key]);
+  for (const key of ["practice", "live", "preference", "mastered"]) addOptions($(`bjj-add-${key}`), options[key]);
   const row = node("tr");
   for (const column of columns) {
     const th = node("th");
@@ -466,7 +482,8 @@ $("bjj-clear").addEventListener("click", () => {
 $("bjj-add").addEventListener("click", () => {
   $("bjj-add-form").reset();
   positionFields($("bjj-add-positions"), []);
-  for (const [key, value] of Object.entries({ video: "unset", practice: "not_yet", live: "not_yet", preference: "low", mastered: "false" })) $(`bjj-add-${key}`).value = value;
+  for (const [key, value] of Object.entries({ practice: "not_yet", live: "not_yet", preference: "low", mastered: "false" })) $(`bjj-add-${key}`).value = value;
+  $("bjj-add-work-next").checked = false;
   resetAddType();
   $("bjj-custom-wrap").hidden = true;
   $("bjj-custom-type").required = false;
@@ -484,7 +501,7 @@ $("bjj-add-form").addEventListener("submit", event => {
       return;
     }
     const type = addCustomType ? $("bjj-custom-type").value : addType;
-    const skill = T.validateBjjSkill({ id: crypto.randomUUID(), name: $("bjj-name").value, type, positions: readPositions($("bjj-add-positions")), description: $("bjj-add-description").value, link: $("bjj-add-link").value.trim(), video: $("bjj-add-video").value, practice: $("bjj-add-practice").value, live: $("bjj-add-live").value, preference: $("bjj-add-preference").value, mastered: $("bjj-add-mastered").value === "true" });
+    const skill = T.validateBjjSkill({ id: crypto.randomUUID(), name: $("bjj-name").value, type, positions: readPositions($("bjj-add-positions")), description: $("bjj-add-description").value, link: $("bjj-add-link").value.trim(), practice: $("bjj-add-practice").value, live: $("bjj-add-live").value, preference: $("bjj-add-preference").value, mastered: $("bjj-add-mastered").value === "true", workOnNext: $("bjj-add-work-next").checked });
     if (save({ ...state.bjj, skills: [...state.bjj.skills, skill] }, "bjj-add-error")) $("bjj-add-dialog").close();
   } catch (error) { $("bjj-add-error").textContent = error.message; }
 });

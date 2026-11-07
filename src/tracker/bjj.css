@@ -34,6 +34,9 @@
 .bjj-table tr.bjj-mastered td:first-child { box-shadow: inset 3px 0 #73d5d3; }
 .bjj-table th:first-child { width: 14%; }.bjj-table th:nth-child(2) { width: 12%; }.bjj-table th:nth-child(4) { width: 14%; }
 .bjj-table input, .bjj-table select { min-width: 0; padding: 4px; font-size: 13px; }
+.bjj-table .bjj-work-next { width: auto; min-width: 18px; padding: 0; accent-color: var(--belt-accent); }
+.bjj-next-add { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.bjj-next-add input { width: auto; margin: 0; accent-color: var(--belt-accent); }
 .bjj-inline-control:not(:focus) { background: transparent; border-color: transparent; }
 select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
 .bjj-cell-button, .bjj-link { color: var(--belt-accent); background: none; border: 0; padding: 4px 0; text-decoration: underline; font-size: 13px; }
