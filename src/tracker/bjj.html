@@ -28,6 +28,7 @@
       <label for="bjj-name">SKILL NAME</label><input id="bjj-name" required maxlength="100">
       <label id="bjj-type-label">TYPE</label><div id="bjj-type-container"></div>
       <div id="bjj-custom-wrap" hidden><label for="bjj-custom-type">CUSTOM TYPE</label><input id="bjj-custom-type" maxlength="100"></div>
+      <div id="bjj-add-positions"></div>
       <label for="bjj-add-description">DESCRIPTION</label><textarea id="bjj-add-description" rows="3" maxlength="4000"></textarea>
       <label for="bjj-add-link">VIDEO LINK</label><input id="bjj-add-link" type="url" maxlength="2048" placeholder="HTTPS YouTube or Instagram link">
       <div class="bjj-add-fields">
@@ -40,6 +41,10 @@
       <p id="bjj-add-error" class="clan-form-error" role="alert"></p>
       <div class="clan-dialog-actions"><button class="button button-primary" type="submit">Add skill</button></div>
     </form>
+  </dialog>
+  <dialog id="bjj-positions-dialog" aria-labelledby="bjj-positions-title">
+    <div class="build-dialog-header"><h2 id="bjj-positions-title">Starting positions</h2><button class="button button-quiet" id="bjj-positions-close" type="button">Cancel</button></div>
+    <form id="bjj-positions-form"><div id="bjj-edit-positions"></div><p id="bjj-positions-error" class="clan-form-error" role="alert"></p><div class="clan-dialog-actions"><button class="button button-primary" type="submit">Save positions</button></div></form>
   </dialog>
   <dialog id="bjj-type-dialog" aria-labelledby="bjj-type-title">
     <div class="build-dialog-header"><h2 id="bjj-type-title">Custom skill type</h2><button class="button button-quiet" id="bjj-type-close" type="button">Cancel</button></div>

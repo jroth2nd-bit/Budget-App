@@ -44,6 +44,8 @@ Tracker filters use the same choices as their editable fields. The BJJ Type filt
 
 On BJJ Skills, select a table heading to sort, and select it again to reverse the order. In the card layout, use the field buttons above the cards the same way.
 
+BJJ skills can have optional suggested or custom starting positions, which can be added, edited, sorted, and filtered. Confidence is an estimate based on Practice (40%) and Live rolls (60%): Not yet = 0, Learning = 40, Sometimes = 75, and Consistently = 100. If either is Unset, confidence shows Not enough data; mastery remains a separate choice. Tracker backups now use version 13; older backups migrate with no starting positions. After deployment, reload older open tracker pages before making changes because they cannot read version 13.
+
 Add dialogs let you enter the editable fields before saving a transaction, salary change, champion, or BJJ skill. Clan Boss rewards and annual salary goals also use dialogs. Calculated values such as balances and champion rankings are still calculated automatically; choosing Posted for a new transaction marks only its first dated occurrence.
 
 When Supabase is configured, tracker data syncs separately to the signed-in account in `tracker_data`, with a browser-local recovery cache. The existing budget table and authentication are unchanged. Before deploying this version, run [supabase/tracker.sql](./supabase/tracker.sql) in the existing Supabase project's SQL editor, and verify that row-level security is enabled and each policy restricts access to the signed-in user. The app cannot load account tracker data until that table and its policies exist. No migration is applied automatically.

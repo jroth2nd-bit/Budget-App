@@ -13,13 +13,84 @@ async function openTracker(page: Page, name: string, mobile = false) {
   return page.locator('.trackerView');
 }
 
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  test(`BJJ confidence and starting positions migrate and remain editable at ${viewport.width}px`, async ({ page }) => {
+    const old = tracker.emptyState();
+    old.version = 12;
+    old.bjj.skills = [
+      { id: 'legacy', name: 'Legacy skill', type: 'Sweep', description: 'Preserved', link: '', video: 'unset', practice: 'unset', live: 'sometimes', preference: 'low', mastered: false },
+    ];
+    old.current.shards.Void = { Legendary: 21 };
+    await page.addInitScript(data => {
+      if (!sessionStorage.getItem('bjj-migration-seeded')) {
+        sessionStorage.setItem('bjj-migration-seeded', '1');
+        localStorage.setItem('mercy-ledger-v1', JSON.stringify(data));
+      }
+    }, old);
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const mobile = viewport.width < 640;
+    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    const list = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
+    if (mobile) await list.locator('.bjj-card > summary').click();
+    await expect(list.getByLabel('Confidence for Legacy skill: Not enough data')).toBeVisible();
+    await list.getByLabel('Practice for Legacy skill').selectOption('consistently');
+    await expect(list.getByLabel('Confidence for Legacy skill: 85%')).toBeVisible();
+    await list.getByLabel('Edit starting positions for Legacy skill').click();
+    const editor = bjj.locator('#bjj-positions-dialog');
+    await editor.getByLabel('Closed guard', { exact: true }).check();
+    await editor.getByLabel('Mount', { exact: true }).check();
+    await editor.getByLabel('Custom positions (one per line)').fill('Custom <guard>\nButterfly guard');
+    await editor.getByRole('button', { name: 'Save positions' }).click();
+    await expect(editor).toBeHidden();
+    await expect(list.getByLabel('Edit starting positions for Legacy skill')).toContainText('Custom <guard>');
+    let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+    expect(saved.version).toBe(13);
+    expect(saved.current.shards.Void.Legendary).toBe(21);
+    expect(saved.bjj.skills[0].positions).toEqual(['Closed guard', 'Mount', 'Custom <guard>', 'Butterfly guard']);
+    await bjj.locator('.bjj-filter-details summary').click();
+    const positionFilter = bjj.getByLabel('Filter Starting position');
+    await positionFilter.selectOption({ label: 'Custom <guard>' });
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 1 skills.');
+    await positionFilter.selectOption({ label: 'No position' });
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 0 of 1 skills.');
+    await bjj.locator('#bjj-clear').click();
+    await bjj.getByLabel('Filter Confidence').fill('85');
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 1 skills.');
+    await bjj.locator('#bjj-clear').click();
+    await page.getByRole('button', { name: 'Add skill', exact: true }).click();
+    const add = bjj.locator('#bjj-add-dialog');
+    await add.locator('#bjj-name').fill('New submission');
+    await add.locator('#bjj-type-container summary').click();
+    await add.getByRole('button', { name: 'Submission', exact: true }).click();
+    await add.getByLabel('Half guard', { exact: true }).check();
+    await add.getByLabel('Custom positions (one per line)').fill('Half guard');
+    await add.locator('button[type=submit]').click();
+    await expect(add.locator('#bjj-add-error')).toContainText('duplicates');
+    await add.getByLabel('Custom positions (one per line)').fill('De La Riva');
+    await add.locator('#bjj-add-practice').selectOption('learning');
+    await add.locator('#bjj-add-live').selectOption('consistently');
+    await add.locator('button[type=submit]').click();
+    await expect(add).toBeHidden();
+    if (mobile) await list.locator('.bjj-card').filter({ hasText: 'New submission' }).locator('summary').first().click();
+    await expect(list.getByLabel('Confidence for New submission: 76%')).toBeVisible();
+    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+    expect(saved.bjj.skills.find((item: { name: string }) => item.name === 'New submission').positions).toEqual(['Half guard', 'De La Riva']);
+    await page.reload();
+    await openTracker(page, 'BJJ Skills', mobile);
+    await bjj.locator('.bjj-filter-details summary').click();
+    await positionFilter.selectOption({ label: 'De La Riva' });
+    await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 2 skills.');
+  });
+}
+
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 720 }]) {
   test(`BJJ column sorting toggles in table and cards at ${viewport.width}px`, async ({ page }) => {
     const state = tracker.emptyState();
     state.bjj.skills = [
-      { id: '1', name: 'Zebra', type: 'Position', description: 'Third', link: 'https://youtu.be/z', video: 'unset', practice: 'consistently', live: 'not_yet', preference: 'high', mastered: true },
-      { id: '2', name: 'Alpha', type: 'Escape', description: 'First', link: 'https://youtu.be/a', video: 'liked', practice: 'not_yet', live: 'consistently', preference: 'low', mastered: false },
-      { id: '3', name: 'Middle', type: 'Guard', description: 'Second', link: 'https://youtu.be/m', video: 'replace', practice: 'learning', live: 'learning', preference: 'medium', mastered: false },
+      { id: '1', name: 'Zebra', type: 'Position', positions: ['Mount'], description: 'Third', link: 'https://youtu.be/z', video: 'unset', practice: 'consistently', live: 'not_yet', preference: 'high', mastered: true },
+      { id: '2', name: 'Alpha', type: 'Escape', positions: ['Closed guard'], description: 'First', link: 'https://youtu.be/a', video: 'liked', practice: 'not_yet', live: 'consistently', preference: 'low', mastered: false },
+      { id: '3', name: 'Middle', type: 'Guard', positions: ['Half guard'], description: 'Second', link: 'https://youtu.be/m', video: 'replace', practice: 'learning', live: 'learning', preference: 'medium', mastered: false },
     ];
     await page.addInitScript(data => localStorage.setItem('mercy-ledger-v1', JSON.stringify(data)), state);
     await page.setViewportSize(viewport);
@@ -33,11 +104,13 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       : bjj.locator('#bjj-list tr td:first-child input').evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value));
     const expectations: Array<[string, string[]]> = [
       ['type', ['Alpha', 'Middle', 'Zebra']],
+      ['positions', ['Alpha', 'Middle', 'Zebra']],
       ['description', ['Alpha', 'Middle', 'Zebra']],
       ['link', ['Alpha', 'Middle', 'Zebra']],
       ['video', ['Middle', 'Alpha', 'Zebra']],
       ['practice', ['Alpha', 'Middle', 'Zebra']],
       ['live', ['Zebra', 'Middle', 'Alpha']],
+      ['confidence', ['Middle', 'Zebra', 'Alpha']],
       ['preference', ['Alpha', 'Middle', 'Zebra']],
       ['mastered', ['Zebra', 'Alpha', 'Middle']],
     ];
@@ -57,7 +130,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
         await expect(button.locator('..')).toHaveAttribute('aria-sort', 'ascending');
       }
       await button.click();
-      const reversed = key === 'mastered' ? ['Alpha', 'Middle', 'Zebra'] : [...ascending].reverse();
+      const reversed = key === 'mastered' ? ['Alpha', 'Middle', 'Zebra'] : key === 'confidence' ? ['Alpha', 'Middle', 'Zebra'] : [...ascending].reverse();
       await expect.poll(names).toEqual(reversed);
       if (cards) await expect(button).toHaveAttribute('aria-label', /sorted descending/);
       else await expect(button.locator('..')).toHaveAttribute('aria-sort', 'descending');
@@ -625,7 +698,7 @@ test('backup migration, invalid and cancelled imports preserve both datasets', a
   const reloadedMercy = await openTracker(page, 'Mercy Ledger');
   await expect(reloadedMercy.locator('#count-Ancient-Legendary')).toHaveValue('99');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
-  expect(saved.version).toBe(12);
+  expect(saved.version).toBe(13);
   expect(saved.starting.Ancient.Legendary).toBe(99);
   expect(saved.bjj.skills).toEqual([]);
 });
@@ -652,6 +725,8 @@ test('full backup round trips budget and every tracker; older budget backups lea
   await bjj.locator('#bjj-name').fill('Backup escape');
   await bjj.locator('#bjj-type-container summary').click();
   await bjj.getByRole('button', { name: 'Escape', exact: true }).click();
+  await bjj.locator('#bjj-add-dialog').getByLabel('Mount', { exact: true }).check();
+  await bjj.locator('#bjj-add-dialog').getByLabel('Custom positions (one per line)').fill('Custom guard');
   await bjj.locator('#bjj-add-form button[type=submit]').click();
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
   const downloadPromise = page.waitForEvent('download');
@@ -664,6 +739,7 @@ test('full backup round trips budget and every tracker; older budget backups lea
   expect(full.tracker.current.shards.Ancient.Legendary).toBe(55);
   expect(full.tracker.champions[0].name).toBe('Backup champion');
   expect(full.tracker.bjj.skills[0].name).toBe('Backup escape');
+  expect(full.tracker.bjj.skills[0].positions).toEqual(['Mount', 'Custom guard']);
   const input = page.getByLabel('Backup file');
   const corrupt = { ...full, startingBalance: 9999, tracker: { version: 12 } };
   await input.setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(corrupt)) });
@@ -696,6 +772,7 @@ test('full backup round trips budget and every tracker; older budget backups lea
   await expect(page.getByText('and tracker data', { exact: false })).toBeVisible();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('startingBalance'))).toBe('2468');
   expect(JSON.parse((await page.evaluate(() => localStorage.getItem('mercy-ledger-v1')))!).current.shards.Ancient.Legendary).toBe(55);
+  expect(JSON.parse((await page.evaluate(() => localStorage.getItem('mercy-ledger-v1')))!).bjj.skills[0].positions).toEqual(['Mount', 'Custom guard']);
   const salaryDialog = page.waitForEvent('dialog');
   await page.locator('input[accept="application/json,.json"]').first().setInputFiles({ name: 'full.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(full)) });
   await (await salaryDialog).accept();
@@ -800,6 +877,24 @@ async function mockCloud(page: Page, cloud: MockCloud) {
     return route.fulfill({ status: 404, json: { message: `Unexpected endpoint ${url.pathname}` }, headers });
   });
 }
+
+test('account sync migrates old BJJ skills and persists positions without changing budget data', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const state = tracker.emptyState();
+  state.version = 12;
+  state.bjj.skills = [{ id: 'legacy', name: 'Cloud sweep', type: 'Sweep', description: '', link: '', video: 'unset', practice: 'learning', live: 'sometimes', preference: 'low', mastered: false }];
+  const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
+  await mockCloud(page, cloud);
+  await page.goto(cloudUrl);
+  const bjj = await openTracker(page, 'BJJ Skills');
+  await bjj.getByLabel('Edit starting positions for Cloud sweep').first().click();
+  const dialog = bjj.locator('#bjj-positions-dialog');
+  await dialog.getByLabel('Mount', { exact: true }).check();
+  await dialog.getByRole('button', { name: 'Save positions' }).click();
+  await expect.poll(() => cloud.row?.data.version).toBe(13);
+  expect(cloud.row!.data.bjj.skills[0].positions).toEqual(['Mount']);
+  expect(cloud.budgetWrites.every(write => !!write && typeof write === 'object' && 'data' in write && !!write.data && typeof write.data === 'object' && !('tracker' in write.data))).toBe(true);
+});
 
 test('signed-in mobile header keeps all page titles and account controls visible', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 720 });
@@ -979,7 +1074,7 @@ test('cloud backup import validates and confirms before replacing tracker data',
   await (await importDialog).accept();
   await expect.poll(() => cloud.row!.data.starting.Void.Legendary).toBe(77);
   await expect(page.getByText('Tracker backup imported.')).toBeVisible();
-  expect(cloud.row!.data.version).toBe(12);
+  expect(cloud.row!.data.version).toBe(13);
 });
 
 test('full restore keeps budget unchanged if tracker cloud write conflicts', async ({ page }) => {
