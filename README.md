@@ -46,6 +46,8 @@ All pages appear in the sidebar with Admin at the bottom; on phones, open **More
 
 Tracker filters use the same choices as their editable fields. The BJJ Type filter includes the built-in skill types and custom types currently in use; select All or use Clear filters to remove the selection.
 
+The Soulstone coin calculator projects Eternal purchases from saved Eternal coins plus 1,000 Eternal coins per projected Immortal pull (including held and newly purchased Immortal stones). It assumes 1,000 Eternal coins per Eternal Soulstone and does not spend resources. Saved Eternal inventory is preserved but cannot be edited in the calculator.
+
 Champion Builds can be filtered by the number of completed fields, from 0/6 through 6/6; a blessing counts as complete at level 6.
 
 On BJJ Skills, the default sort shows the highest confidence first, followed by skills without enough data. Champion Builds defaults to the most complete first. Select a table heading to sort, and select it again to reverse the order. In the BJJ card layout, use the field buttons above the cards the same way.
