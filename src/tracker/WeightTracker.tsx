@@ -41,7 +41,6 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
   const [startDate, setStartDate] = useState(todayKey);
   const [startWeight, setStartWeight] = useState('');
   const [startWeightOverridden, setStartWeightOverridden] = useState(false);
-  const [targetWeight, setTargetWeight] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [entryDate, setEntryDate] = useState(todayKey);
   const [entryWeight, setEntryWeight] = useState('');
@@ -62,10 +61,10 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
   const trend = active ? projection(active, entries, today) : null;
   const targetPace = active ? (active.targetWeight - active.startWeight) / monthsBetween(active.startDate, active.plannedEndDate) : null;
   let preview: string | null = null;
-  if (form === 'plan' && startWeight.trim() && Number(startWeight) < 1000 && (!targetWeight.trim() || Number(targetWeight) < 1000) && (targetWeight.trim() || targetDate)) {
+  if (form === 'plan' && startWeight.trim() && Number(startWeight) < 1000 && targetDate) {
     try {
       if (!validDate(startDate) || startDate > today) throw new Error('Choose today or a past start date.');
-      const proposed = makePlan({ id: 'preview', type, startDate, startWeight: Number(startWeight), targetWeight: targetWeight.trim() ? Number(targetWeight) : null, targetDate: targetDate || null });
+      const proposed = makePlan({ id: 'preview', type, startDate, startWeight: Number(startWeight), targetWeight: null, targetDate });
       preview = `Planned target: ${pounds(proposed.targetWeight)} by ${formatDate(proposed.plannedEndDate)} · ${pace((proposed.targetWeight - proposed.startWeight) / monthsBetween(proposed.startDate, proposed.plannedEndDate))}`;
     } catch (failure) {
       preview = failure instanceof Error ? failure.message : String(failure);
@@ -119,18 +118,18 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
     setActualEndDate(plan?.actualEndDate || today);
     if (plan) {
       setType(plan.type); setStartDate(plan.startDate); setStartWeight(String(plan.startWeight)); setStartWeightOverridden(true);
-      setTargetWeight(String(plan.targetWeight)); setTargetDate(plan.plannedEndDate); setError(''); setForm('plan');
+      setTargetDate(plan.plannedEndDate); setError(''); setForm('plan');
       return;
     }
-    setType('bulk'); setStartDate(today); setStartWeight(latest ? String(latest.weight) : ''); setStartWeightOverridden(false); setTargetWeight(''); setTargetDate(''); setError(''); setForm('plan');
+    setType('bulk'); setStartDate(today); setStartWeight(latest ? String(latest.weight) : ''); setStartWeightOverridden(false); setTargetDate(''); setError(''); setForm('plan');
   };
   const submitPlan = (event: FormEvent) => {
     event.preventDefault();
     if (!data) return;
     try {
       if (!validDate(startDate) || startDate > today) throw new Error('Choose today or a past start date.');
-      if (Number(startWeight) >= 1000 || (targetWeight.trim() && Number(targetWeight) >= 1000)) throw new Error('Check the decimal in each weight of 1,000 lb or more and use the suggested correction or enter a different weight.');
-      const made = makePlan({ id: editingPlan?.id || crypto.randomUUID(), type, startDate, startWeight: Number(startWeight), targetWeight: targetWeight.trim() ? Number(targetWeight) : null, targetDate: targetDate || null });
+      if (Number(startWeight) >= 1000) throw new Error('Check the decimal in the starting weight and use the suggested correction or enter a different weight.');
+      const made = makePlan({ id: editingPlan?.id || crypto.randomUUID(), type, startDate, startWeight: Number(startWeight), targetWeight: null, targetDate: targetDate || null });
       if (historical && (!validDate(actualEndDate) || actualEndDate < startDate || actualEndDate > today)) throw new Error('Actual end date must be between the start date and today.');
       const plan: WeightPlan = historical ? { ...made, status: planStatus, actualEndDate } : made;
       if (editingPlan || historical) {
@@ -225,7 +224,7 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
   if (!snapshot.state || !data) return <p role="alert">{snapshot.error}</p>;
   return <div className="weightPage">
     {error && !form && !editing && <p className="weightError" role="alert">{error}</p>}
-    {form === 'plan' && <FormDialog title={editingPlan ? 'Edit plan' : historical ? 'Add past plan' : 'New plan'} onClose={closeForm}><form onSubmit={submitPlan} className="weightForm"><p>Choose today or a past start date. Enter a target weight, a target date, or both. Maximum: bulk 2 lb/month; cut 5 lb/month.</p>{error && <p className="weightError" role="alert">{error}</p>}<div className="weightFormGrid">
+    {form === 'plan' && <FormDialog title={editingPlan ? 'Edit plan' : historical ? 'Add past plan' : 'New plan'} onClose={closeForm}><form onSubmit={submitPlan} className="weightForm"><p>Choose a start date and planned end date. Target weight is calculated at 2 lb/month for a bulk or 5 lb/month for a cut.</p>{editingPlan && <p>Saving recalculates the target at the fixed rate and updates linked weigh-in comparisons; actual measurements do not change. Current saved target: {pounds(editingPlan.targetWeight)}.</p>}{error && <p className="weightError" role="alert">{error}</p>}<div className="weightFormGrid">
       <label>Plan type<select value={type} onChange={event => setType(event.target.value as WeightPlan['type'])}><option value="bulk">Bulk</option><option value="cut">Cut</option></select></label>
       <label>Start date<input type="date" max={today} required value={startDate} onChange={event => {
         const date = event.target.value;
@@ -236,8 +235,7 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
         }
       }} /></label>
       <WeightField label="Starting weight (lb)" value={startWeight} onChange={value => { setStartWeight(value); setStartWeightOverridden(true); }} required />
-      <WeightField label="Target weight (lb)" value={targetWeight} onChange={setTargetWeight} />
-      <label>Target date<input type="date" min={startDate || undefined} value={targetDate} onChange={event => setTargetDate(event.target.value)} /></label>
+      <label>Planned end date<input type="date" min={startDate || undefined} required value={targetDate} onChange={event => setTargetDate(event.target.value)} /></label>
       {historical && <><label>Plan status<select value={planStatus} onChange={event => setPlanStatus(event.target.value as 'completed' | 'cancelled')}><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label><label>Actual end date<input type="date" min={startDate || undefined} max={today} required value={actualEndDate} onChange={event => setActualEndDate(event.target.value)} /></label></>}
     </div>{preview && <p role="status">{preview}</p>}<div className="weightActions"><button className="primary" type="submit">Save plan</button><button type="button" onClick={closeForm}>Cancel</button></div></form></FormDialog>}
     {form === 'weigh-in' && <FormDialog title="Add weigh-in" onClose={closeForm}>{entryForm}</FormDialog>}
@@ -245,23 +243,21 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
       <div className="weightStats">
         <Metric name="Starting weight" value={pounds(active.startWeight)} detail={formatDate(active.startDate)} />
         <Metric name="Current weight" value={pounds(latest?.weight)} detail={latest ? `Latest: ${formatDate(latest.date)}` : 'No weigh-ins yet'} />
-        <Metric name="Target weight" value={pounds(active.targetWeight)} />
+        <Metric name="Target weight" value={pounds(active.targetWeight)} detail={`Planned end: ${formatDate(active.plannedEndDate)}`} />
         <Metric name="Expected today" value={pounds(expectedWeight(active, today))} />
         <Metric name="Actual weight today" value={pounds(latest?.weight)} detail={latest ? `Latest recorded: ${formatDate(latest.date)}` : 'No weigh-ins yet'} />
         <Metric name="Difference" value={comparison === null ? '—' : `${comparison > 0 ? '+' : ''}${comparison.toFixed(1)} lb`} detail={planEntry ? `Compared on ${formatDate(planEntry.date)}` : 'No weigh-in in this plan'} />
         <Metric name="Days remaining" value={String(Math.max(0, dateNumber(active.plannedEndDate) - dateNumber(today)))} />
         <Metric name="Planned end" value={formatDate(active.plannedEndDate)} />
-        <Metric name="Projected completion" value={trend?.completion ? formatDate(trend.completion) : 'Unavailable'} />
-        <Metric name="Projected weight at end" value={pounds(trend?.endWeight)} />
         <Metric name="Current monthly pace" value={pace(trend?.currentMonthlyRate)} detail={`Difference from target pace: ${pace(trend?.differenceRate)}`} />
         <Metric name="Target monthly pace" value={pace(targetPace)} />
       </div>
-      <p className="weightHint">{comparison !== null ? `${comparison > 0 ? 'Above' : comparison < 0 ? 'Below' : 'At'} expected weight on the latest plan weigh-in date${comparison === 0 ? '' : ` (${active.type === 'bulk' ? comparison > 0 ? 'gaining faster' : 'gaining slower' : comparison > 0 ? 'losing slower' : 'losing faster'} than planned)`}. ` : ''}Projections use a linear trend of at least two plan weigh-ins within the last 30 days; completion is unavailable when the trend is moving away from the goal.</p>
+      <p className="weightHint">{comparison !== null ? `${comparison > 0 ? 'Above' : comparison < 0 ? 'Below' : 'At'} expected weight on the latest plan weigh-in date${comparison === 0 ? '' : ` (${active.type === 'bulk' ? comparison > 0 ? 'gaining faster' : 'gaining slower' : comparison > 0 ? 'losing slower' : 'losing faster'} than planned)`}. ` : ''}Current monthly pace uses a linear trend of at least two plan weigh-ins within the last 30 days.</p>
     </section> : <section className="card"><h3>No active plan</h3><p>Start a bulk or cut to track progress against a fixed goal. {latest && `Your latest weigh-in was ${pounds(latest.weight)} on ${formatDate(latest.date)}.`}</p></section>}
     <section className="card weightHistory"><div className="weightSectionHead"><div><p className="weightKicker">YOUR HISTORY</p><h3>Progress over time</h3></div><label>History range<select value={range} onChange={event => setRange(event.target.value)}><option value="30">Last 30 Days</option><option value="60">Last 60 Days</option><option value="90">Last 90 Days</option><option value="custom">Custom Range</option><option value="all">All Time</option></select></label></div>
       {range === 'custom' && <div className="weightFormGrid"><label>From<input type="date" value={rangeStart} onChange={event => setRangeStart(event.target.value)} /></label><label>To<input type="date" value={rangeEnd} onChange={event => setRangeEnd(event.target.value)} /></label></div>}
       {range === 'custom' && rangeStart && rangeEnd && rangeStart > rangeEnd ? <p role="alert" className="weightError">The start of the range must be on or before its end.</p> : <>
-        <div className="weightCharts"><Chart title="Weight history" rows={chartRows} plans={[]} /><Chart title="Actual vs target" rows={chartRows} plans={shownPlans} /></div>
+        <div className="weightCharts"><Chart rows={chartRows} plans={shownPlans} /></div>
         <div className="weightSectionHead"><h3>Plan timeline</h3><button onClick={() => openPlan(undefined, true)}>Add past plan</button></div><p className="weightHint">Bulk and cut dates are shown for each phase; cancelled and completed phases end on their actual end date.</p>
         <div className="weightTimeline">{shownPlans.length ? [...shownPlans].reverse().map(plan => {
           const first = start || shownPlans.reduce((min, item) => item.startDate < min ? item.startDate : min, plan.startDate);
@@ -271,7 +267,7 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
           const phaseEnd = Math.min(dateNumber(last), dateNumber(plan.actualEndDate || today));
           return <div key={plan.id} className={`weightPhase ${plan.type}`}><strong>{label(plan.type)}</strong><span>{formatDate(plan.startDate)} – {formatDate(plan.actualEndDate || today)}</span><div className="weightTimelineTrack"><div className="weightTimelineBar" style={{ marginLeft: `${(phaseStart - dateNumber(first)) / duration * 100}%`, width: `${Math.max(1, (phaseEnd - phaseStart + 1) / duration * 100)}%` }} /></div><span>{plan.status} · target {pounds(plan.targetWeight)} by {formatDate(plan.plannedEndDate)}</span><div className="weightActions"><button onClick={() => openPlan(plan)}>Edit plan</button>{plan.status === 'completed' && <button onClick={() => reopen(plan)}>Reopen</button>}</div></div>;
         }) : <p>No plans in this range.</p>}</div>
-        <h3>Weigh-ins</h3>{filtered.length ? <div className="weightEntries">{[...filtered].reverse().map(entry => <article key={entry.id} className="weightEntry">{editing?.id === entry.id ? entryForm : <><div><strong>{pounds(entry.weight)}</strong><span>{formatDate(entry.date)} · {label(entry.planType)}</span><span>Expected {pounds(entry.expectedWeight)} · {entry.difference > 0 ? '+' : ''}{entry.difference.toFixed(1)} lb</span>{entry.notes && <p>{entry.notes}</p>}</div><div className="weightActions"><button onClick={() => openEntry(entry)}>Edit</button><button onClick={() => deleteEntry(entry)}>Delete</button></div></>}</article>)}</div> : <p>No weigh-ins in this range.</p>}
+        <details className="weightWeighIns"><summary>Weigh-ins ({filtered.length})</summary>{filtered.length ? <div className="weightEntries">{[...filtered].reverse().map(entry => <article key={entry.id} className="weightEntry">{editing?.id === entry.id ? entryForm : <><div><strong>{pounds(entry.weight)}</strong><span>{formatDate(entry.date)} · {label(entry.planType)}</span><span>Expected {pounds(entry.expectedWeight)} · {entry.difference > 0 ? '+' : ''}{entry.difference.toFixed(1)} lb</span>{entry.notes && <p>{entry.notes}</p>}</div><div className="weightActions"><button onClick={() => openEntry(entry)}>Edit</button><button onClick={() => deleteEntry(entry)}>Delete</button></div></>}</article>)}</div> : <p>No weigh-ins in this range.</p>}</details>
       </>}
     </section>
   </div>;
@@ -288,8 +284,8 @@ function Metric({ name, value, detail }: { name: string; value: string; detail?:
   return <div className="weightMetric"><span>{name}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>;
 }
 
-function Chart({ title, rows, plans }: { title: string; rows: Record<string, string | number | null>[]; plans: WeightPlan[] }) {
-  return <div className="weightChart"><h3>{title}</h3>{rows.length ? <div className="weightChartCanvas"><ResponsiveContainer width="100%" height="100%"><LineChart data={rows} margin={{ top: 10, right: 12, bottom: 5, left: 0 }}><CartesianGrid stroke="var(--border)" strokeDasharray="3 3" /><XAxis dataKey="date" type="number" domain={['dataMin', 'dataMax']} tick={{ fill: 'var(--muted)', fontSize: 11 }} minTickGap={35} tickFormatter={value => dateString(Math.round(Number(value))).slice(5)} /><YAxis domain={['auto', 'auto']} width={44} tick={{ fill: 'var(--muted)', fontSize: 11 }} /><Tooltip contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }} labelFormatter={value => formatDate(dateString(Number(value)))} /><Line name="Actual" type="linear" dataKey="actual" stroke="#f0ad79" strokeWidth={2} dot={{ r: 3 }} connectNulls />{plans.map(plan => <Line key={plan.id} name={`${label(plan.type)} target`} type="linear" dataKey={`target-${plan.id}`} stroke={plan.type === 'bulk' ? '#62d8c0' : '#8dbffc'} strokeDasharray="5 4" strokeWidth={2} dot={false} connectNulls />)}</LineChart></ResponsiveContainer></div> : <p>No data in this range.</p>}<p className="weightHint">{plans.length ? 'Copper: actual · Teal: bulk target · Blue: cut target' : 'Copper: actual weigh-ins'}</p></div>;
+function Chart({ rows, plans }: { rows: Record<string, string | number | null>[]; plans: WeightPlan[] }) {
+  return <div className="weightChart"><h3>Actual vs target</h3>{rows.length ? <div className="weightChartCanvas"><ResponsiveContainer width="100%" height="100%"><LineChart data={rows} margin={{ top: 10, right: 12, bottom: 5, left: 0 }}><CartesianGrid stroke="var(--border)" strokeDasharray="3 3" /><XAxis dataKey="date" type="number" domain={['dataMin', 'dataMax']} tick={{ fill: 'var(--muted)', fontSize: 11 }} minTickGap={35} tickFormatter={value => dateString(Math.round(Number(value))).slice(5)} /><YAxis domain={['auto', 'auto']} width={44} tick={{ fill: 'var(--muted)', fontSize: 11 }} /><Tooltip contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }} labelFormatter={value => formatDate(dateString(Number(value)))} formatter={value => typeof value === 'number' ? pounds(value) : value} /><Line name="Actual" type="linear" dataKey="actual" stroke="#f0ad79" strokeWidth={2} dot={{ r: 3 }} connectNulls />{plans.map(plan => <Line key={plan.id} name={`${label(plan.type)} target`} type="linear" dataKey={`target-${plan.id}`} stroke={plan.type === 'bulk' ? '#62d8c0' : '#8dbffc'} strokeDasharray="5 4" strokeWidth={2} dot={false} connectNulls />)}</LineChart></ResponsiveContainer></div> : <p>No data in this range.</p>}<p className="weightHint">{plans.length ? 'Copper: actual · Teal: bulk target · Blue: cut target' : 'Copper: actual weigh-ins'}</p></div>;
 }
 
 export default WeightTracker;

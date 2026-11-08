@@ -1,6 +1,15 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import tracker from '../src/tracker/tracker.js';
-import { expectedWeight, makePlan } from '../src/tracker/weight.js';
+import { addMonths, expectedWeight, makePlan } from '../src/tracker/weight.js';
+
+async function setEndAfterMonths(page: Page, months: number) {
+  const start = await page.getByLabel('Start date').inputValue();
+  await page.getByLabel('Planned end date').fill(addMonths(start, months));
+}
+
+async function expandWeighIns(page: Page) {
+  await page.locator('.weightWeighIns summary').click();
+}
 
 for (const viewport of [{ width: 320, height: 720 }, { width: 390, height: 844 }, { width: 744, height: 1133 }, { width: 768, height: 1024 }, { width: 1024, height: 768 }, { width: 1440, height: 900 }]) {
   test(`weight plans and weigh-ins persist at ${viewport.width}px`, async ({ page }) => {
@@ -18,10 +27,10 @@ for (const viewport of [{ width: 320, height: 720 }, { width: 390, height: 844 }
     await expect(actions.getByRole('button', { name: 'Add weigh-in' })).toBeDisabled();
     await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
     await page.getByLabel('Starting weight (lb)').fill('180');
-    await page.getByLabel('Target weight (lb)').fill('182');
+    await setEndAfterMonths(page, 1);
     await page.getByRole('button', { name: 'Save plan' }).click();
     await expect(page.locator('.weightOverview')).toContainText('180.0 lb');
-    await expect(page.locator('.weightMetric')).toHaveCount(12);
+    await expect(page.locator('.weightMetric')).toHaveCount(10);
     await expect(page.locator('.weightMetric').filter({ hasText: 'Current monthly pace' })).toContainText('Difference from target pace: —');
     const metrics = await page.locator('.weightStats').evaluate(grid => {
       const bounds = grid.getBoundingClientRect();
@@ -38,11 +47,14 @@ for (const viewport of [{ width: 320, height: 720 }, { width: 390, height: 844 }
     await page.getByLabel('Notes').fill('Vacation');
     await page.getByRole('button', { name: 'Save weigh-in' }).click();
     await expect(page.locator('.weightBadge')).toHaveText('On Track');
+    await expect(page.locator('.weightWeighIns')).not.toHaveAttribute('open');
+    await expandWeighIns(page);
     await expect(page.locator('.weightEntry')).toContainText('Vacation');
-    await expect(page.getByText('Copper: actual weigh-ins')).toBeVisible();
+    await expect(page.getByText('Copper: actual · Teal: bulk target · Blue: cut target')).toBeVisible();
     await page.reload();
     if (mobile) await nav.getByRole('button', { name: 'More' }).click();
     await nav.getByRole('button', { name: 'Weight Tracker' }).click();
+    await expandWeighIns(page);
     await expect(page.locator('.weightEntry')).toContainText('Vacation');
     await page.getByRole('button', { name: 'Add weigh-in' }).click();
     await page.getByLabel('Weight (lb)', { exact: true }).fill('182');
@@ -57,7 +69,7 @@ test('completion, corrections, reopening and replacement preserve historical pla
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Starting weight (lb)').fill('180');
-  await page.getByLabel('Target weight (lb)').fill('182');
+  await setEndAfterMonths(page, 1);
   await page.getByRole('button', { name: 'Save plan' }).click();
   await page.getByRole('button', { name: 'Add weigh-in' }).click();
   await page.getByLabel('Weight (lb)', { exact: true }).fill('182');
@@ -71,11 +83,12 @@ test('completion, corrections, reopening and replacement preserve historical pla
   await page.getByRole('button', { name: 'Start a different plan' }).click();
   await expect(page.getByLabel('Starting weight (lb)')).toHaveValue('182');
   await page.getByLabel('Plan type').selectOption('cut');
-  await page.getByLabel('Target weight (lb)').fill('177');
+  await setEndAfterMonths(page, 1);
   page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Save plan' }).click();
   await expect(page.locator('.weightOverview')).toContainText('Cut');
   await expect(page.locator('.weightPhase.bulk')).toContainText('cancelled');
+  await expandWeighIns(page);
   await expect(page.locator('.weightEntry')).toContainText('Bulk');
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Weight (lb)', { exact: true }).fill('181');
@@ -84,6 +97,7 @@ test('completion, corrections, reopening and replacement preserve historical pla
   await expect(page.locator('.weightEntry')).toContainText('181.0 lb');
   await page.reload();
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
+  await expandWeighIns(page);
   await expect(page.locator('.weightEntry')).toContainText('181.0 lb');
   await expect(page.locator('.weightPhase.bulk')).toContainText('cancelled');
 });
@@ -95,7 +109,7 @@ test('backdated plan accepts historical weigh-ins and uses the selected date for
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Start date').fill('2026-05-01');
   await page.getByLabel('Starting weight (lb)').fill('180');
-  await page.getByLabel('Target date').fill('2026-06-01');
+  await page.getByLabel('Planned end date').fill('2026-06-01');
   await expect(page.getByRole('status').filter({ hasText: 'Planned target' })).toContainText('182.0 lb');
   await page.getByRole('button', { name: 'Save plan' }).click();
   await page.getByRole('button', { name: 'Add weigh-in' }).click();
@@ -109,6 +123,7 @@ test('backdated plan accepts historical weigh-ins and uses the selected date for
   expect(saved.weight.weighIns[0].expectedWeight).toBeCloseTo(180 + 2 * 14 / 31);
   await page.reload();
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
+  await expandWeighIns(page);
   await expect(page.locator('.weightEntry')).toContainText('Earlier measurement');
 });
 
@@ -119,7 +134,7 @@ test('backdated replacement protects existing weigh-ins and prefills weight as o
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Start date').fill('2026-05-01');
   await page.getByLabel('Starting weight (lb)').fill('180');
-  await page.getByLabel('Target weight (lb)').fill('200');
+  await page.getByLabel('Planned end date').fill('2027-03-01');
   await page.getByRole('button', { name: 'Save plan' }).click();
   for (const [date, weight] of [['2026-05-10', '180'], ['2026-06-15', '182']]) {
     await page.getByRole('button', { name: 'Add weigh-in' }).click();
@@ -130,7 +145,7 @@ test('backdated replacement protects existing weigh-ins and prefills weight as o
   await page.getByRole('button', { name: 'Start a different plan' }).click();
   await page.getByLabel('Start date').fill('2026-04-30');
   await page.getByLabel('Starting weight (lb)').fill('181');
-  await page.getByLabel('Target weight (lb)').fill('190');
+  await page.getByLabel('Planned end date').fill('2026-10-30');
   await page.getByRole('button', { name: 'Save plan' }).click();
   await expect(page.getByRole('alert')).toContainText('cannot start before the current plan started');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -138,7 +153,7 @@ test('backdated replacement protects existing weigh-ins and prefills weight as o
   await page.getByLabel('Start date').fill('2026-05-20');
   await expect(page.getByLabel('Starting weight (lb)')).toHaveValue('180');
   await page.getByLabel('Plan type').selectOption('cut');
-  await page.getByLabel('Target weight (lb)').fill('175');
+  await page.getByLabel('Planned end date').fill('2026-07-20');
   await page.getByRole('button', { name: 'Save plan' }).click();
   await expect(page.getByRole('alert')).toContainText('weigh-ins after this start date');
   await page.getByLabel('Starting weight (lb)').fill('185');
@@ -163,7 +178,7 @@ test('a new backdated plan cannot overlap a completed historical phase', async (
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Start date').fill('2026-05-01');
   await page.getByLabel('Starting weight (lb)').fill('180');
-  await page.getByLabel('Target weight (lb)').fill('182');
+  await page.getByLabel('Planned end date').fill('2026-06-01');
   await page.getByRole('button', { name: 'Save plan' }).click();
   await page.getByRole('button', { name: 'Add weigh-in' }).click();
   await page.getByLabel('Date', { exact: true }).fill('2026-06-01');
@@ -174,7 +189,7 @@ test('a new backdated plan cannot overlap a completed historical phase', async (
   await page.getByLabel('Start date').fill('2026-05-20');
   await expect(page.getByLabel('Starting weight (lb)')).toHaveValue('');
   await page.getByLabel('Starting weight (lb)').fill('180');
-  await page.getByLabel('Target weight (lb)').fill('185');
+  await page.getByLabel('Planned end date').fill('2026-08-20');
   await page.getByRole('button', { name: 'Save plan' }).click();
   await expect(page.getByRole('alert')).toContainText('cannot start before the last plan ended');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
@@ -194,12 +209,11 @@ for (const viewport of [{ width: 320, height: 720 }, { width: 744, height: 1133 
     const planDialog = page.getByRole('dialog', { name: 'New plan' });
     await expect(planDialog).toBeVisible();
     await planDialog.getByLabel('Starting weight (lb)').fill('1804');
-    await planDialog.getByLabel('Target weight (lb)').fill('1824');
+    await planDialog.getByLabel('Planned end date').fill('2026-08-20');
     await planDialog.getByRole('button', { name: 'Save plan' }).click();
     await expect(planDialog.getByRole('alert')).toContainText('Check the decimal');
     expect(await page.evaluate(() => localStorage.getItem('mercy-ledger-v1'))).toBeNull();
     await planDialog.getByRole('button', { name: 'Use 180.4 lb' }).click();
-    await planDialog.getByRole('button', { name: 'Use 182.4 lb' }).click();
     await expect(planDialog.getByLabel('Starting weight (lb)')).toHaveValue('180.4');
     await planDialog.getByRole('button', { name: 'Save plan' }).click();
     await expect(planDialog).toHaveCount(0);
@@ -211,6 +225,7 @@ for (const viewport of [{ width: 320, height: 720 }, { width: 744, height: 1133 
     await expect(dialog.getByRole('alert')).toContainText('Check the decimal');
     await dialog.getByRole('button', { name: 'Use 181.1 lb' }).click();
     await dialog.getByRole('button', { name: 'Save weigh-in' }).click();
+    await expandWeighIns(page);
     const entry = page.locator('.weightEntry');
     await entry.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(entry.getByLabel('Weight (lb)')).toHaveValue('181.1');
@@ -226,6 +241,7 @@ for (const viewport of [{ width: 320, height: 720 }, { width: 744, height: 1133 
     await page.reload();
     if (viewport.width < 640) await nav.getByRole('button', { name: 'More' }).click();
     await nav.getByRole('button', { name: 'Weight Tracker' }).click();
+    await expandWeighIns(page);
     await expect(page.locator('.weightEntry')).toContainText('180.4 lb');
   });
 }
@@ -244,7 +260,7 @@ test('historical plans can be inserted and corrected without changing active pla
   await dialog.getByLabel('Start date').fill('2026-04-01');
   await dialog.getByLabel('Starting weight (lb)').fill('190');
   await dialog.getByLabel('Plan type').selectOption('cut');
-  await dialog.getByLabel('Target weight (lb)').fill('185');
+  await dialog.getByLabel('Planned end date').fill('2026-05-01');
   await dialog.getByLabel('Actual end date').fill('2026-06-02');
   await dialog.getByRole('button', { name: 'Save plan' }).click();
   await expect(dialog.getByRole('alert')).toContainText('overlap');
@@ -266,7 +282,6 @@ test('historical plans can be inserted and corrected without changing active pla
   await expect(edit.getByRole('alert')).toContainText('Apr 15, 2026');
   await edit.getByLabel('Actual end date').fill('2026-05-01');
   await edit.getByLabel('Starting weight (lb)').fill('191');
-  await edit.getByLabel('Target weight (lb)').fill('186');
   await edit.getByLabel('Plan status').selectOption('completed');
   await edit.getByRole('button', { name: 'Save plan' }).click();
   await expect(edit).toHaveCount(0);
@@ -277,15 +292,14 @@ test('historical plans can be inserted and corrected without changing active pla
   expect(after.weight.weighIns[0].expectedWeight).toBeCloseTo(expectedWeight(after.weight.plans[0], '2026-04-15'));
   expect(after.weight.weighIns[0].difference).toBeCloseTo(188 - after.weight.weighIns[0].expectedWeight);
   await page.locator('.weightOverview').getByRole('button', { name: 'Edit plan' }).click();
-  await page.getByRole('dialog', { name: 'Edit plan' }).getByLabel('Target weight (lb)').fill('185');
-  await page.getByRole('dialog', { name: 'Edit plan' }).getByLabel('Target date').fill('');
+  await page.getByRole('dialog', { name: 'Edit plan' }).getByLabel('Planned end date').fill('2026-08-16');
   await page.getByRole('dialog', { name: 'Edit plan' }).getByRole('button', { name: 'Save plan' }).click();
   await expect(page.locator('.weightOverview')).toContainText('185.0 lb');
   await page.getByRole('button', { name: 'Add past plan' }).click();
   const gap = page.getByRole('dialog', { name: 'Add past plan' });
   await gap.getByLabel('Start date').fill('2026-05-10');
   await gap.getByLabel('Starting weight (lb)').fill('188');
-  await gap.getByLabel('Target weight (lb)').fill('189');
+  await gap.getByLabel('Planned end date').fill('2026-06-10');
   await gap.getByLabel('Actual end date').fill('2026-05-20');
   await gap.getByRole('button', { name: 'Save plan' }).click();
   await expect(gap).toHaveCount(0);
@@ -308,14 +322,12 @@ test('active plan edits protect dates and recalculate linked entries when changi
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
   await page.locator('.weightOverview').getByRole('button', { name: 'Edit plan' }).click();
   const edit = page.getByRole('dialog', { name: 'Edit plan' });
-  await edit.getByLabel('Target date').fill('');
   await edit.getByLabel('Start date').fill('2026-06-11');
   await edit.getByRole('button', { name: 'Save plan' }).click();
   await expect(edit.getByRole('alert')).toContainText('Jun 10, 2026');
   await edit.getByLabel('Start date').fill('2026-06-01');
   await edit.getByLabel('Plan type').selectOption('cut');
-  await edit.getByLabel('Target weight (lb)').fill('175');
-  await edit.getByLabel('Target date').fill('');
+  await edit.getByLabel('Planned end date').fill('2026-07-01');
   await edit.getByRole('button', { name: 'Save plan' }).click();
   await expect(edit).toHaveCount(0);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
@@ -325,6 +337,75 @@ test('active plan edits protect dates and recalculate linked entries when changi
   expect(saved.weight.weighIns[0].difference).toBeCloseTo(181 - saved.weight.weighIns[0].expectedWeight);
   await page.reload();
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
+  await expandWeighIns(page);
   await expect(page.locator('.weightOverview')).toContainText('Cut');
   await expect(page.locator('.weightEntry')).toContainText('Keep');
+});
+
+test('existing slower goals remain unchanged until saved and chart tooltip rounds weights', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-07-20T12:00:00') });
+  const state = tracker.emptyState();
+  const plan = makePlan({ id: 'legacy', type: 'bulk', startDate: '2026-06-01', startWeight: 180, targetWeight: 183, targetDate: '2026-08-01' });
+  const expected = expectedWeight(plan, '2026-06-10');
+  state.weight = { plans: [plan], weighIns: [{ id: 'w', date: '2026-06-10', weight: 180.51234, notes: 'Original', planId: plan.id, planType: plan.type, expectedWeight: expected, difference: 180.51234 - expected }] };
+  await page.addInitScript(seed => { if (!localStorage.getItem('mercy-ledger-v1')) localStorage.setItem('mercy-ledger-v1', JSON.stringify(seed)); }, state);
+  await page.goto('http://127.0.0.1:5188');
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
+  const overview = page.locator('.weightOverview');
+  await expect(overview).toContainText('183.0 lb');
+  await expect(overview).not.toContainText('Projected');
+  await expect(page.locator('.weightChart')).toHaveCount(1);
+  await expect(page.locator('.weightChart h3')).toHaveText('Actual vs target');
+  await page.locator('.weightChart .recharts-dot').first().hover();
+  const tooltip = page.locator('.recharts-tooltip-wrapper');
+  await expect(tooltip).toContainText('180.5 lb');
+  await expect(tooltip).toContainText('180.4 lb');
+  await expect(tooltip).not.toContainText('180.51234');
+  const list = page.locator('.weightWeighIns');
+  await expect(list).not.toHaveAttribute('open');
+  await list.locator('summary').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.weightEntry')).toContainText('Original');
+  await list.locator('summary').press('Enter');
+  await expect(list).not.toHaveAttribute('open');
+  await overview.getByRole('button', { name: 'Edit plan' }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit plan' });
+  await expect(edit).toContainText('Current saved target: 183.0 lb');
+  await expect(edit.getByRole('status')).toContainText('184.0 lb');
+  await edit.getByRole('button', { name: 'Cancel' }).click();
+  let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+  expect(saved.weight.plans[0]).toEqual(plan);
+  expect(saved.weight.weighIns[0].expectedWeight).toBeCloseTo(expected);
+  await overview.getByRole('button', { name: 'Edit plan' }).click();
+  await page.getByRole('dialog', { name: 'Edit plan' }).getByRole('button', { name: 'Save plan' }).click();
+  saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+  expect(saved.weight.plans[0].targetWeight).toBe(184);
+  expect(saved.weight.weighIns[0]).toMatchObject({ weight: 180.51234, notes: 'Original', planId: 'legacy' });
+  expect(saved.weight.weighIns[0].expectedWeight).toBeCloseTo(expectedWeight(saved.weight.plans[0], '2026-06-10'));
+  await page.reload();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
+  await expect(overview).toContainText('184.0 lb');
+});
+
+test('planned end dates set fixed bulk and cut rates including partial months', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-07-20T12:00:00') });
+  await page.goto('http://127.0.0.1:5188');
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
+  await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
+  const form = page.getByRole('dialog', { name: 'New plan' });
+  await form.getByLabel('Start date').fill('2026-01-01');
+  await form.getByLabel('Starting weight (lb)').fill('180');
+  await form.getByLabel('Planned end date').fill('2026-02-15');
+  await expect(form.getByLabel('Target weight (lb)')).toHaveCount(0);
+  await expect(form.getByRole('status')).toContainText('183.0 lb');
+  await form.getByRole('button', { name: 'Save plan' }).click();
+  let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+  expect(saved.weight.plans[0].targetWeight).toBe(183);
+  await page.locator('.weightOverview').getByRole('button', { name: 'Edit plan' }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit plan' });
+  await edit.getByLabel('Plan type').selectOption('cut');
+  await expect(edit.getByRole('status')).toContainText('172.5 lb');
+  await edit.getByRole('button', { name: 'Save plan' }).click();
+  saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+  expect(saved.weight.plans[0]).toMatchObject({ type: 'cut', targetWeight: 172.5, plannedEndDate: '2026-02-15' });
 });
