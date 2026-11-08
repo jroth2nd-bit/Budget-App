@@ -90,6 +90,10 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
   const [beltTheme, setBeltTheme] = useState<BeltTheme>('blue');
   const [showTransactionAdd, setShowTransactionAdd] = useState(false);
   const [trackerMenuOpen, setTrackerMenuOpen] = useState(false);
+  const [navExpanded, setNavExpanded] = useState(() => localStorage.getItem('milestone-nav-expanded') === 'true');
+  useEffect(() => {
+    localStorage.setItem('milestone-nav-expanded', String(navExpanded));
+  }, [navExpanded]);
   const [incomes, setIncomes] = useState<Income[]>(() => {
     const saved = localStorage.getItem('incomes');
     if (saved) {
@@ -318,9 +322,9 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
       : null;
 
   return (
-    <div className="appRoot" data-theme={page === 'champion-builds' ? 'champions' : page === 'bjj-skills' ? `bjj-${beltTheme}` : page === 'weight-tracker' ? 'weight' : page === 'income-history' ? 'salary' : page === 'mercy-ledger' ? 'mercy' : page === 'admin' ? 'admin' : page === 'dashboard' ? 'dashboard' : 'budget'}>
+    <div className="appRoot" data-nav-expanded={navExpanded} data-theme={page === 'champion-builds' ? 'champions' : page === 'bjj-skills' ? `bjj-${beltTheme}` : page === 'weight-tracker' ? 'weight' : page === 'income-history' ? 'salary' : page === 'mercy-ledger' ? 'mercy' : page === 'admin' ? 'admin' : page === 'dashboard' ? 'dashboard' : 'budget'}>
       <nav className="sideNav" aria-label="Main navigation">
-        <div className="brand"><span className="brandMark">M</span><span className="brandName">Milestone</span></div>
+        <div className="brand"><button type="button" className="brandToggle" onClick={() => setNavExpanded(value => !value)} aria-label={navExpanded ? 'Collapse navigation' : 'Expand navigation'} aria-expanded={navExpanded} title={navExpanded ? 'Collapse navigation' : 'Expand navigation'}><span className="brandMark" aria-hidden="true">M</span></button><span className="brandName">Milestone</span></div>
         {renderNavItems(navItems)}
         {renderNavItems(trackerNavItems)}
         <div className="navAdmin">{renderNavItems(adminNavItems)}</div>

@@ -268,6 +268,8 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 20px; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.05em; }
 .brandMark { width: 32px; height: 36px; background: var(--brand-bg); color: var(--accent); border: 1px solid var(--brand-border); clip-path: polygon(50% 0,100% 24%,100% 76%,50% 100%,0 76%,0 24%); display: grid; place-items: center; flex: none; font-family: Georgia, serif; font-size: 1.2rem; }
+.brandToggle { padding: 0; background: transparent; border: 0; border-radius: 0; flex: none; }
+.brandToggle:hover:not(:disabled) .brandMark { filter: brightness(1.2); }
 .navItem {
   display: flex; align-items: center; gap: 12px;
   width: 100%; padding: 10px 12px;
@@ -680,15 +682,21 @@ button.active { border-color: var(--accent); color: var(--accent); }
   .txAddGrid label:first-child { grid-column: 1 / -1; }
 }
 
-/* ============ Tablet / iPad mini (640–1023) : icon rail ============ */
+/* ============ Collapsed navigation rail ============ */
+@media (min-width: 640px) {
+  .appRoot[data-nav-expanded="false"] { grid-template-columns: var(--rail-w) minmax(0, 1fr); }
+  .appRoot[data-nav-expanded="false"] .sideNav { padding: 16px 10px; align-items: center; }
+  .appRoot[data-nav-expanded="false"] .sideNav .brand { padding: 4px 0 16px; }
+  .appRoot[data-nav-expanded="false"] .sideNav .brandName,
+  .appRoot[data-nav-expanded="false"] .sideNav .navLabel { display: none; }
+  .appRoot[data-nav-expanded="false"] .sideNav .navGroupLabel { font-size: 0; padding: 12px 0 4px; width: 32px; border-bottom: 1px solid var(--border); }
+  .appRoot[data-nav-expanded="false"] .sideNav .navItem { justify-content: center; padding: 12px; width: 48px; }
+  .appRoot[data-nav-expanded="false"] .sideNav .navAdmin { width: 48px; }
+}
+
+/* ============ Tablet / iPad mini (640–1023) ============ */
 @media (max-width: 1023px) {
-  .appRoot { grid-template-columns: var(--rail-w) minmax(0, 1fr); }
-  .sideNav { padding: 16px 10px; align-items: center; }
-  .brand { padding: 4px 0 16px; }
-  .brandName, .navLabel { display: none; }
-  .navGroupLabel { font-size: 0; padding: 12px 0 4px; width: 32px; border-bottom: 1px solid var(--border); }
-  .navItem { justify-content: center; padding: 12px; width: 48px; }
-  .navAdmin { width: 48px; }
+  .topBar .navItem { justify-content: center; padding: 12px; }
   .topBar { padding: 8px 16px; }
   .mainContent { padding: 16px; }
 }
