@@ -4,6 +4,8 @@ import TrackerView, { type TrackerViewHandle } from './tracker/TrackerView';
 import type { TrackerPage } from './tracker/TrackerView';
 import type { BeltTheme } from './tracker/bjj.js';
 import tracker from './tracker/tracker.js';
+import WeightTracker from './tracker/WeightTracker';
+import type { WeightActionState, WeightTrackerHandle } from './tracker/WeightTracker';
 import type { TrackerState } from './tracker/tracker.js';
 
 type Cache = { revision: string | null; data: string | null; dirty: boolean };
@@ -15,6 +17,8 @@ export type TrackerBackupHandle = {
   current: () => Promise<string | null>;
   restore: (expected: string | null, data: TrackerState) => Promise<void>;
   openAdd: () => void;
+  openWeightPlan: () => void;
+  openWeightWeighIn: () => void;
 };
 function readCache(raw: string): Cache {
   const parsed: unknown = JSON.parse(raw);
@@ -27,7 +31,7 @@ function readCache(raw: string): Cache {
   return { revision: value.revision, data: value.data, dirty: value.dirty };
 }
 
-const TrackerHost = forwardRef<TrackerBackupHandle, { page: TrackerPage | null; userId?: string; showRecovery?: boolean; onActionReady: (ready: boolean) => void; onBeltChange: (belt: BeltTheme) => void }>(function TrackerHost({ page, userId, showRecovery, onActionReady, onBeltChange }, ref) {
+const TrackerHost = forwardRef<TrackerBackupHandle, { page: TrackerPage | null; userId?: string; showRecovery?: boolean; onActionReady: (ready: boolean) => void; onBeltChange: (belt: BeltTheme) => void; onWeightActionState: (state: WeightActionState) => void }>(function TrackerHost({ page, userId, showRecovery, onActionReady, onBeltChange, onWeightActionState }, ref) {
   const [phase, setPhase] = useState<'loading' | 'ready' | 'saving' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const [recovery, setRecovery] = useState<string | null>(null);
@@ -35,8 +39,9 @@ const TrackerHost = forwardRef<TrackerBackupHandle, { page: TrackerPage | null; 
   const bridge = useRef<TrackerStorage>();
   const recoveryCache = useRef<string | null>(null);
   const canDiscardCache = useRef(false);
-  const backupActions = useRef<Omit<TrackerBackupHandle, 'openAdd'>>();
+  const backupActions = useRef<Omit<TrackerBackupHandle, 'openAdd' | 'openWeightPlan' | 'openWeightWeighIn'>>();
   const viewRef = useRef<TrackerViewHandle>(null);
+  const weightRef = useRef<WeightTrackerHandle>(null);
   const cacheKey = userId ? `budget-app-tracker-cache:${userId}` : '';
 
   useEffect(() => {
@@ -200,6 +205,8 @@ const TrackerHost = forwardRef<TrackerBackupHandle, { page: TrackerPage | null; 
 
   useImperativeHandle(ref, () => ({
     openAdd: () => viewRef.current?.openAdd(),
+    openWeightPlan: () => weightRef.current?.openPlan(),
+    openWeightWeighIn: () => weightRef.current?.openWeighIn(),
     snapshot: () => {
       if (!backupActions.current) throw new Error('Tracker data is still loading.');
       return backupActions.current.snapshot();
@@ -248,7 +255,9 @@ const TrackerHost = forwardRef<TrackerBackupHandle, { page: TrackerPage | null; 
       </div>}
       {(phase === 'ready' || phase === 'saving') && page && <>
         <p className="trackerSync" role="status">{userId ? (phase === 'saving' ? 'Tracker: saving to account…' : 'Tracker: account sync ready') : 'Tracker: local only'}</p>
-        {bridge.current && <TrackerView ref={viewRef} key={page} page={page} storage={bridge.current} onActionReady={onActionReady} onBeltChange={onBeltChange} />}
+        {bridge.current && (page === 'weight-tracker'
+          ? <WeightTracker ref={weightRef} storage={bridge.current} onActionState={onWeightActionState} />
+          : <TrackerView ref={viewRef} key={page} page={page} storage={bridge.current} onActionReady={onActionReady} onBeltChange={onBeltChange} />)}
       </>}
     </section>
   );

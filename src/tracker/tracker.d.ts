@@ -1,3 +1,5 @@
+import type { WeightData } from './weight.js';
+
 export type MercyHistoryEntry = {
   id: string;
   createdAt: string;
@@ -54,6 +56,7 @@ export type TrackerState = {
   clanBoss: DemonLordRecord[];
   champions: ChampionBuild[];
   bjj: { belt: string; stripes: number; skills: BjjSkill[] };
+  weight: WeightData;
   [key: string]: unknown;
 };
 

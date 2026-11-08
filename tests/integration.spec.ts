@@ -94,7 +94,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(editor).toBeHidden();
     await expect(list.getByLabel('Edit starting positions for Legacy skill')).toContainText('Custom <guard>');
     let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
-    expect(saved.version).toBe(14);
+    expect(saved.version).toBe(15);
     expect(saved.current.shards.Void.Legendary).toBe(21);
     expect(saved.bjj.skills[0].positions).toEqual(['Closed guard', 'Mount', 'Custom <guard>', 'Butterfly guard']);
     await bjj.locator('.bjj-filter-details summary').click();
@@ -902,7 +902,7 @@ test('backup migration, invalid and cancelled imports preserve both datasets', a
   const reloadedMercy = await openTracker(page, 'Mercy Ledger');
   await expect(reloadedMercy.locator('#count-Ancient-Legendary')).toHaveValue('99');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
-  expect(saved.version).toBe(14);
+  expect(saved.version).toBe(15);
   expect(saved.starting.Ancient.Legendary).toBe(99);
   expect(saved.bjj.skills).toEqual([]);
 });
@@ -1082,6 +1082,60 @@ async function mockCloud(page: Page, cloud: MockCloud) {
   });
 }
 
+test('weight plans sync to the existing tracker account without changing other tracker data', async ({ page }) => {
+  const state = tracker.emptyState();
+  state.current.shards.Ancient = { Legendary: 42 };
+  const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
+  await mockCloud(page, cloud);
+  await page.goto(cloudUrl);
+  await openTracker(page, 'Weight Planning');
+  await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
+  await page.getByLabel('Starting weight (lb)').fill('180');
+  await page.getByLabel('Target weight (lb)').fill('184');
+  await page.getByRole('button', { name: 'Save plan' }).click();
+  await expect.poll(() => cloud.row?.data.weight.plans.length).toBe(1);
+  expect(cloud.row!.data.weight.plans[0].targetWeight).toBe(184);
+  expect(cloud.row!.data.current.shards.Ancient.Legendary).toBe(42);
+  await expect(page.locator('.trackerSync')).toHaveText('Tracker: account sync ready');
+  await page.reload();
+  await openTracker(page, 'Weight Planning');
+  await expect(page.locator('.weightOverview')).toContainText('184.0 lb');
+});
+
+test('full backup restores weight plans and weigh-ins', async ({ page }) => {
+  await page.goto(localUrl);
+  await openTracker(page, 'Weight Planning');
+  await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
+  await page.getByLabel('Starting weight (lb)').fill('180');
+  await page.getByLabel('Target weight (lb)').fill('184');
+  await page.getByRole('button', { name: 'Save plan' }).click();
+  await page.getByRole('button', { name: 'Add weigh-in' }).click();
+  await page.getByLabel('Weight (lb)', { exact: true }).fill('181');
+  await page.getByLabel('Notes').fill('Test note');
+  await page.getByRole('button', { name: 'Save weigh-in' }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export Everything' }).click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const backup = JSON.parse(await readFile(path!, 'utf8'));
+  expect(backup.tracker.weight.plans).toHaveLength(1);
+  expect(backup.tracker.weight.weighIns[0].notes).toBe('Test note');
+  await openTracker(page, 'Weight Planning');
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Notes').fill('Changed');
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Save weigh-in' }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+  const confirmation = page.waitForEvent('dialog');
+  await page.getByLabel('Backup file').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) });
+  await (await confirmation).accept();
+  await expect(page.getByText('and tracker data', { exact: false })).toBeVisible();
+  await openTracker(page, 'Weight Planning');
+  await expect(page.locator('.weightEntry')).toContainText('Test note');
+});
+
 test('account sync migrates old BJJ skills and persists positions without changing budget data', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const state = tracker.emptyState();
@@ -1095,7 +1149,7 @@ test('account sync migrates old BJJ skills and persists positions without changi
   const dialog = bjj.locator('#bjj-positions-dialog');
   await dialog.getByLabel('Mount', { exact: true }).check();
   await dialog.getByRole('button', { name: 'Save positions' }).click();
-  await expect.poll(() => cloud.row?.data.version).toBe(14);
+  await expect.poll(() => cloud.row?.data.version).toBe(15);
   expect(cloud.row!.data.bjj.skills[0].positions).toEqual(['Mount']);
   expect(cloud.budgetWrites.every(write => !!write && typeof write === 'object' && 'data' in write && !!write.data && typeof write.data === 'object' && !('tracker' in write.data))).toBe(true);
 });
@@ -1278,7 +1332,7 @@ test('cloud backup import validates and confirms before replacing tracker data',
   await (await importDialog).accept();
   await expect.poll(() => cloud.row!.data.starting.Void.Legendary).toBe(77);
   await expect(page.getByText('Tracker backup imported.')).toBeVisible();
-  expect(cloud.row!.data.version).toBe(14);
+  expect(cloud.row!.data.version).toBe(15);
 });
 
 test('full restore keeps budget unchanged if tracker cloud write conflicts', async ({ page }) => {

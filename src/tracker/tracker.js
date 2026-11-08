@@ -1,3 +1,5 @@
+import { validateWeightData } from "./weight.js";
+
 const MercyTracker = (function () {
   "use strict";
 
@@ -40,11 +42,11 @@ const MercyTracker = (function () {
     }
     const emptyBattle = () => ({ points: 0, battles: 0, energy: 0, minutes: 0, seconds: 0 });
     const summonPlans = Object.fromEntries(Object.entries(summonTypes).map(([kind, types]) => [kind, Object.fromEntries(types.map(type => [type, { pulls: 0, points: 0 }]))]));
-    return { version: 14, starting, entries: [], current: { shards: {}, souls: {} }, soulInventory: { mortalStones: 0, mortalCoins: 0, immortalStones: 0, immortalCoins: 0, eternalStones: 0, eternalCoins: 0 }, battlePlans: { event: emptyBattle(), tournament: emptyBattle() }, summonPlans, clanBoss: [], champions: [], bjj: { belt: "Blue", stripes: 1, skills: [] } };
+    return { version: 15, starting, entries: [], current: { shards: {}, souls: {} }, soulInventory: { mortalStones: 0, mortalCoins: 0, immortalStones: 0, immortalCoins: 0, eternalStones: 0, eternalCoins: 0 }, battlePlans: { event: emptyBattle(), tournament: emptyBattle() }, summonPlans, clanBoss: [], champions: [], bjj: { belt: "Blue", stripes: 1, skills: [] }, weight: { plans: [], weighIns: [] } };
   }
 
   function validateState(data) {
-    if (!data || typeof data !== "object" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(data.version) || !data.starting || !Array.isArray(data.entries)) throw new Error("Not a valid Mercy Ledger backup (version 1 through 14 required).");
+    if (!data || typeof data !== "object" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(data.version) || !data.starting || !Array.isArray(data.entries)) throw new Error("Not a valid Mercy Ledger backup (version 1 through 15 required).");
     const clean = emptyState();
     for (const [source, rarities] of Object.entries(rules)) {
       if (source === "Remnant" && data.version < 4) continue;
@@ -145,6 +147,7 @@ const MercyTracker = (function () {
         return valid;
       }) };
     }
+    if (data.version >= 15) clean.weight = validateWeightData(data.weight);
     return clean;
   }
 

@@ -12,7 +12,8 @@ import trackerCss from './styles.css?raw';
 import bjjCss from './bjj.css?raw';
 import integratedCss from './view.css?raw';
 
-export type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills';
+export type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills' | 'weight-tracker';
+type LegacyTrackerPage = Exclude<TrackerPage, 'weight-tracker'>;
 export type TrackerViewHandle = { openAdd(): void };
 
 const views = {
@@ -21,7 +22,7 @@ const views = {
   'bjj-skills': { html: bjjHtml, mount: mountBjj },
 };
 
-type Props = { page: TrackerPage; storage: TrackerStorage; onActionReady: (ready: boolean) => void; onBeltChange: (belt: BeltTheme) => void };
+type Props = { page: LegacyTrackerPage; storage: TrackerStorage; onActionReady: (ready: boolean) => void; onBeltChange: (belt: BeltTheme) => void };
 
 const TrackerView = forwardRef<TrackerViewHandle, Props>(function TrackerView({ page, storage, onActionReady, onBeltChange }, ref) {
   const host = useRef<HTMLDivElement>(null);
