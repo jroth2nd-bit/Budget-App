@@ -4,6 +4,42 @@ import type { Book } from '../src/tracker/books.js';
 
 const makeBook = (id: string, patch: Partial<Book> = {}): Book => ({ id, title: id, author: 'Writer', series: '', genre: 'Fantasy', fictionType: 'Fiction', read: true, rating: '', summary: '', ...patch });
 
+for (const width of [320, 768, 1440]) {
+  test(`library and rating statistics are grouped and responsive at ${width}px`, async ({ page }) => {
+    const state = tracker.emptyState();
+    state.books = [
+      makeBook('First', { rating: 'Really Liked' }),
+      makeBook('Second', { rating: 'Liked' }),
+      makeBook('Third', { genre: 'History', rating: 'Did Not Like' }),
+      makeBook('Fourth', { read: false, rating: 'Did Not Finish' }),
+      makeBook('Fifth', { read: false }),
+    ];
+    await page.addInitScript(seed => localStorage.setItem('mercy-ledger-v1', JSON.stringify(seed)), state);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('http://127.0.0.1:5188');
+    await page.locator('.overview-books').click();
+    const library = page.getByRole('region', { name: 'Library statistics' });
+    const ratingsPanel = page.getByRole('region', { name: 'Ratings statistics' });
+    await expect(page.locator('.bookStats > .card')).toHaveCount(2);
+    for (const [label, value] of [['Total Books', '5'], ['Books Read', '3'], ['Books Unread', '2'], ['Favorite Genre', 'Fantasy']]) {
+      await expect(library.locator('.bookStat').filter({ hasText: label }).locator('dd')).toHaveText(value);
+    }
+    for (const label of ['Really Liked', 'Liked', 'Did Not Like', 'Did Not Finish']) {
+      await expect(ratingsPanel.locator('.bookStat').filter({ has: page.getByText(label, { exact: true }) }).locator('dd')).toHaveText('1');
+    }
+    const libraryBounds = await library.boundingBox();
+    const ratingBounds = await ratingsPanel.boundingBox();
+    expect(libraryBounds).not.toBeNull();
+    expect(ratingBounds).not.toBeNull();
+    if (width === 320) expect(ratingBounds!.y).toBeGreaterThan(libraryBounds!.y);
+    if (width === 1440) expect(Math.abs(ratingBounds!.y - libraryBounds!.y)).toBeLessThan(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByRole('button', { name: 'Edit Rating for Fifth' }).click();
+    await page.getByLabel('Rating for Fifth', { exact: true }).selectOption('Really Liked');
+    await expect(ratingsPanel.locator('.bookStat').filter({ hasText: 'Really Liked' }).locator('dd')).toHaveText('2');
+  });
+}
+
 test('lookup preserves personal fields, editing persists, and filters and dashboard update', async ({ page }) => {
   await page.route('https://openlibrary.org/**', route => {
     const url = route.request().url();
