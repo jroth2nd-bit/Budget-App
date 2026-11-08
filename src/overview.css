@@ -1,0 +1,24 @@
+.overviewDashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 14px; }
+.overviewCard.card { --card-accent: var(--waypoint-budget); display: flex; flex-direction: column; gap: 18px; width: 100%; min-height: 165px; text-align: left; padding: 18px; border-top: 2px solid var(--card-accent); transition: border-color .15s, transform .15s; }
+.overviewCard:hover:not(:disabled) { border-color: var(--card-accent); transform: translateY(-2px); }
+.overviewCardHead { display: flex; align-items: center; gap: 10px; font-size: .95rem; font-weight: 700; }
+.overviewIcon { display: grid; place-items: center; color: var(--card-accent); }
+.overviewIcon svg { width: 22px; height: 22px; }
+.overviewArrow { margin-left: auto; color: var(--muted); font-size: 1.15rem; }
+.overviewContent { display: flex; flex-direction: column; gap: 5px; min-width: 0; color: var(--text); }
+.overviewContent strong { font-size: 1.35rem; line-height: 1.25; overflow-wrap: anywhere; }
+.overviewContent p { margin: 0; color: var(--muted); font-size: .9rem; }
+.overviewContent small, .overviewLabel { color: var(--muted); font-size: .8rem; }
+.overviewContent .overviewError { color: var(--neg); }
+.overviewContent ul { display: grid; gap: 5px; list-style: none; margin: 0; padding: 0; }
+.overviewContent li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 8px; overflow-wrap: anywhere; }
+.overviewContent li small { white-space: nowrap; }
+.overviewCard.overview-salary { --card-accent: var(--waypoint-salary); }
+.overviewCard.overview-mercy { --card-accent: var(--waypoint-mercy); }
+.overviewCard.overview-champions { --card-accent: var(--waypoint-champions); }
+.overviewCard.overview-bjj { --card-accent: var(--waypoint-bjj-blue); }
+.overviewCard.overview-bjj[data-belt="white"] { --card-accent: var(--waypoint-bjj-white); }
+.overviewCard.overview-bjj[data-belt="purple"] { --card-accent: var(--waypoint-bjj-purple); }
+.overviewCard.overview-bjj[data-belt="brown"] { --card-accent: var(--waypoint-bjj-brown); }
+.overviewCard.overview-bjj[data-belt="black"] { --card-accent: var(--waypoint-bjj-black); }
+.overviewCard.overview-weight { --card-accent: var(--waypoint-weight); }

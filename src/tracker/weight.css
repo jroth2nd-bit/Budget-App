@@ -1,5 +1,5 @@
 .appRoot[data-theme="weight"] {
-  --accent: #f0ad79;
+  --accent: var(--waypoint-weight);
   --accent-soft: rgba(240, 173, 121, 0.13);
   --accent-ink: #291609;
   --active-border: #b97546;

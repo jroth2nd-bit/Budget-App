@@ -8,14 +8,15 @@ import Login from './Login';
 import { supabase } from './supabase';
 import type { Session } from '@supabase/supabase-js';
 import DotDayList from './DotDayList';
-import { DashboardIcon, TransactionsIcon, AdminIcon, CalendarIcon, IncomeHistoryIcon, MercyIcon, BuildsIcon, SkillsIcon, WeightIcon, MoreIcon } from './NavIcons';
+import { DashboardIcon, AdminIcon, CalendarIcon, MoreIcon } from './NavIcons';
 import TransactionsPage from './Transactions';
 import { Income, Expense, Tag, IncomeHistoryData } from './types';
 import * as XLSX from 'xlsx';
 import { AmountScope, DeleteScope, amountFor, applyAmountChange, applyDelete, dateKey, getPaycheckPeriod, isSkipped, occurrenceDetails, stepDate } from './recurrence';
 import { AmountScopeDialog, DeleteScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
 import IncomeHistory from './IncomeHistory';
-import TrackerHost, { type TrackerBackupHandle } from './TrackerHost';
+import TrackerHost, { type TrackerBackupHandle, type TrackerSummary } from './TrackerHost';
+import OverviewDashboard, { overviewCards } from './OverviewDashboard';
 import type { WeightActionState } from './tracker/WeightTracker';
 import type { BeltTheme } from './tracker/bjj.js';
 
@@ -23,14 +24,14 @@ type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills' | 'weight-t
 type Page = 'dashboard' | 'transactions' | 'income-history' | 'admin' | TrackerPage
 
 const PAGE_HEADERS: Record<Page, { title: string; eyebrow: string }> = {
-  dashboard: { title: 'Dashboard', eyebrow: 'YOUR FINANCES' },
-  transactions: { title: 'Transactions', eyebrow: 'YOUR ACTIVITY' },
-  'income-history': { title: 'Salary History', eyebrow: 'YOUR CAREER' },
+  dashboard: { title: 'Dashboard', eyebrow: 'YOUR OVERVIEW' },
+  transactions: { title: 'Budget Tracker', eyebrow: 'YOUR FINANCES' },
+  'income-history': { title: 'Salary Tracker', eyebrow: 'YOUR CAREER' },
   admin: { title: 'Administration', eyebrow: 'YOUR SETTINGS' },
-  'mercy-ledger': { title: 'Mercy Ledger', eyebrow: 'RAID COMPANION' },
-  'champion-builds': { title: 'Champion Builds', eyebrow: 'YOUR CHAMPIONS' },
-  'bjj-skills': { title: 'BJJ Skills', eyebrow: 'BRAZILIAN JIU-JITSU' },
-  'weight-tracker': { title: 'Weight Planning', eyebrow: 'YOUR PROGRESS' },
+  'mercy-ledger': { title: 'Mercy Tracker', eyebrow: 'RAID COMPANION' },
+  'champion-builds': { title: 'Champion Builds Tracker', eyebrow: 'YOUR CHAMPIONS' },
+  'bjj-skills': { title: 'BJJ Tracker', eyebrow: 'BRAZILIAN JIU-JITSU' },
+  'weight-tracker': { title: 'Weight Tracker', eyebrow: 'YOUR PROGRESS' },
 };
 
 function isTrackerPage(page: Page): page is TrackerPage {
@@ -82,7 +83,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
       setPostedMap(prev => ({ ...prev, [id]: !prev[id] }));
     };
   const [page, setPage] = useState<Page>('dashboard')
-  const [trackerOpened, setTrackerOpened] = useState(false);
+  const [trackerSummary, setTrackerSummary] = useState<TrackerSummary>({ status: 'loading' });
   const trackerBackup = useRef<TrackerBackupHandle>(null);
   const [trackerActionReady, setTrackerActionReady] = useState(false);
   const [weightActions, setWeightActions] = useState<WeightActionState>({ ready: false, hasPlans: false, hasActivePlan: false });
@@ -287,24 +288,20 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
   const [upcomingOpen, setUpcomingOpen] = useState(false);
   const navItems: Array<{ id: Page; label: string; icon: JSX.Element }> = [
     { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-    { id: 'transactions', label: 'Transactions', icon: <TransactionsIcon /> },
-    { id: 'income-history', label: 'Salary History', icon: <IncomeHistoryIcon /> },
-    { id: 'admin', label: 'Admin', icon: <AdminIcon /> },
+    ...overviewCards.filter(card => card.id === 'transactions' || card.id === 'income-history').map(card => ({ id: card.id, label: card.title, icon: <>{card.icon}</> })),
   ];
   const trackerNavItems: Array<{ id: TrackerPage; label: string; icon: JSX.Element }> = [
-    { id: 'mercy-ledger', label: 'Mercy Ledger', icon: <MercyIcon /> },
-    { id: 'champion-builds', label: 'Champion Builds', icon: <BuildsIcon /> },
-    { id: 'bjj-skills', label: 'BJJ Skills', icon: <SkillsIcon /> },
-    { id: 'weight-tracker', label: 'Weight Planning', icon: <WeightIcon /> },
+    ...overviewCards.filter((card): card is typeof card & { id: TrackerPage } => isTrackerPage(card.id)).map(card => ({ id: card.id, label: card.title, icon: <>{card.icon}</> })),
   ];
+  const adminNavItems: typeof navItems = [{ id: 'admin', label: 'Admin', icon: <AdminIcon /> }];
   const navigate = (next: Page) => {
-    if (isTrackerPage(next) || next === 'admin') setTrackerOpened(true);
     if (next !== page) {
       setTrackerActionReady(false);
       setShowTransactionAdd(false);
     }
     setPage(next);
     setTrackerMenuOpen(false);
+    if (next === 'dashboard') setUpcomingOpen(false);
   };
   const renderNavItems = (items: typeof navItems) => items.map(item => (
     <button key={item.id} className={`navItem${page === item.id ? ' active' : ''}`} onClick={() => navigate(item.id)} title={item.label} aria-label={item.label} aria-current={page === item.id ? 'page' : undefined}>
@@ -321,19 +318,19 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
       : null;
 
   return (
-    <div className="appRoot" data-theme={page === 'champion-builds' ? 'champions' : page === 'bjj-skills' ? `bjj-${beltTheme}` : page === 'weight-tracker' ? 'weight' : undefined}>
+    <div className="appRoot" data-theme={page === 'champion-builds' ? 'champions' : page === 'bjj-skills' ? `bjj-${beltTheme}` : page === 'weight-tracker' ? 'weight' : page === 'income-history' ? 'salary' : page === 'mercy-ledger' ? 'mercy' : page === 'admin' ? 'admin' : page === 'dashboard' ? 'dashboard' : 'budget'}>
       <nav className="sideNav" aria-label="Main navigation">
-        <div className="brand"><span className="brandMark">$</span><span className="brandName">Budget App</span></div>
+        <div className="brand"><span className="brandMark">M</span><span className="brandName">Milestone</span></div>
         {renderNavItems(navItems)}
-        <div className="navGroupLabel">Trackers</div>
         {renderNavItems(trackerNavItems)}
+        <div className="navAdmin">{renderNavItems(adminNavItems)}</div>
       </nav>
 
       <div className="mainArea">
         <header className="topBar">
-          <div className="brand"><span className="brandMark">$</span><span>Budget App</span></div>
+          <div className="brand"><span className="brandMark">M</span><span>Milestone</span></div>
           <div className="topBarTitle">
-            <p className={`pageEyebrow${page === 'admin' ? ' adminPageEyebrow' : ''}`}>{PAGE_HEADERS[page].eyebrow}</p>
+            <p className="pageEyebrow">{PAGE_HEADERS[page].eyebrow}</p>
             <h1>{PAGE_HEADERS[page].title}</h1>
           </div>
           {pageAction && <div className="desktopPageAction">{pageAction}</div>}
@@ -346,18 +343,16 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
       <main className="mainContent">
         {pageAction && <div className="mobilePageAction">{pageAction}</div>}
 
-        {page === 'dashboard' && (
-          <DashboardPage
+        {page === 'dashboard' && <OverviewDashboard incomes={incomes} salary={incomeHistory} budgetStatus={syncState} trackers={trackerSummary} onNavigate={navigate} />}
+        {page === 'transactions' && <>
+          <BudgetOverview
             expenses={expenses}
             incomes={incomes}
             startingBalance={startingBalance}
-            setStartingBalance={setStartingBalance}
             postedMap={postedMap}
             onPostedChange={handlePostedChange}
             lowBalanceThreshold={lowBalanceThreshold}
           />
-        )}
-        {page === 'transactions' && (
           <TransactionsPage
             showAdd={showTransactionAdd}
             setShowAdd={setShowTransactionAdd}
@@ -371,9 +366,9 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
             onUpdate={(kind, item) => kind === 'income' ? setIncomes(prev => prev.map(i => i.id === item.id ? item as Income : i)) : setExpenses(prev => prev.map(e => e.id === item.id ? item as Expense : e))}
             onDelete={(kind, id) => kind === 'income' ? setIncomes(prev => prev.filter(i => i.id !== id)) : setExpenses(prev => prev.filter(e => e.id !== id))}
           />
-        )}
+        </>}
         {page === 'income-history' && <IncomeHistory data={incomeHistory} onChange={setIncomeHistory} />}
-        {trackerOpened && <TrackerHost ref={trackerBackup} page={isTrackerPage(page) ? page : null} showRecovery={page === 'admin'} userId={userId} onActionReady={setTrackerActionReady} onBeltChange={setBeltTheme} onWeightActionState={setWeightActions} />}
+        <TrackerHost ref={trackerBackup} page={isTrackerPage(page) ? page : null} showSummary={page === 'dashboard'} showRecovery={page === 'admin' || (page === 'dashboard' && trackerSummary.status === 'error')} onSummary={setTrackerSummary} userId={userId} onActionReady={setTrackerActionReady} onBeltChange={setBeltTheme} onWeightActionState={setWeightActions} />
         {page === 'admin' && (
           <Administration
             background={background}
@@ -433,20 +428,19 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
 
       <nav className="bottomNav" aria-label="Mobile navigation">
         {renderNavItems(navItems)}
-        <button className={`navItem${isTrackerPage(page) ? ' active' : ''}`} onClick={() => setTrackerMenuOpen(open => !open)} aria-expanded={trackerMenuOpen} aria-controls="mobile-tracker-menu">
-          <MoreIcon /><span className="navLabel">Trackers</span>
+        <button className={`navItem${isTrackerPage(page) || page === 'admin' ? ' active' : ''}`} onClick={() => setTrackerMenuOpen(open => !open)} aria-expanded={trackerMenuOpen} aria-controls="mobile-tracker-menu">
+          <MoreIcon /><span className="navLabel">More</span>
         </button>
-        {trackerMenuOpen && <div id="mobile-tracker-menu" className="mobileTrackerMenu">{renderNavItems(trackerNavItems)}</div>}
+        {trackerMenuOpen && <div id="mobile-tracker-menu" className="mobileTrackerMenu">{renderNavItems(trackerNavItems)}{renderNavItems(adminNavItems)}</div>}
       </nav>
     </div>
   )
 }
 
-function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance, postedMap, onPostedChange, lowBalanceThreshold }: {
+function BudgetOverview({ expenses, incomes, startingBalance, postedMap, onPostedChange, lowBalanceThreshold }: {
   expenses: Expense[];
   incomes: Income[];
   startingBalance: number;
-  setStartingBalance: (b: number) => void;
   postedMap: Record<string, boolean>;
   onPostedChange: (id: string) => void;
   lowBalanceThreshold: number;
@@ -470,7 +464,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
     // Removed unused projFrom/projTo
     // Gather all transactions (all time)
     const gatherTransactions = (until: Date = new Date()) => {
-      let txs: Array<{ id: string, date: Date, name: string, category: string, income: number, expense: number, type: 'income' | 'expense' }> = []
+      let txs: Array<{ id: string, date: Date, name: string, category: string, icon: string, income: number, expense: number, type: 'income' | 'expense' }> = []
       incomes.forEach(item => {
         let current = new Date(item.startDate)
         if (item.isRecurring && item.frequency !== 'once') {
@@ -483,6 +477,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
               date: new Date(current),
               name: details.name,
               category: (details.tags && details.tags.length > 0) ? details.tags[0] : '',
+              icon: item.icon || '',
               income: amountFor(item, current),
               expense: 0,
               type: 'income'
@@ -502,6 +497,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
             date: new Date(current),
             name: details.name,
             category: (details.tags && details.tags.length > 0) ? details.tags[0] : '',
+            icon: item.icon || '',
             income: amountFor(item, current),
             expense: 0,
             type: 'income'
@@ -520,6 +516,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
               date: new Date(current),
               name: details.name,
               category: (details.tags && details.tags.length > 0) ? details.tags[0] : '',
+              icon: item.icon || '',
               income: 0,
               expense: amountFor(item, current),
               type: 'expense'
@@ -539,6 +536,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
             date: new Date(current),
             name: details.name,
             category: (details.tags && details.tags.length > 0) ? details.tags[0] : '',
+            icon: item.icon || '',
             income: 0,
             expense: amountFor(item, current),
             type: 'expense'
@@ -584,7 +582,7 @@ function DashboardPage({ expenses, incomes, startingBalance, setStartingBalance,
           const dateVal = row.effDate.toISOString().slice(0,10);
           return row.effDate >= projStart && row.effDate <= projEnd && (!dateFrom || dateVal >= dateFrom) && (!dateTo || dateVal <= dateTo);
         })
-        .map(row => ({
+        .map<{ date: Date; posted: boolean; value: number; type?: 'income' | 'expense'; amount?: number; name: string; category: string; icon: string }>(row => ({
           date: row.effDate,
           posted: !!postedMap[row.id],
           value: row.runningBalance,

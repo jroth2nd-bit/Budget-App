@@ -10,6 +10,7 @@ import type { TrackerState } from './tracker/tracker.js';
 
 type Cache = { revision: string | null; data: string | null; dirty: boolean };
 export type TrackerStorage = { getItem(key: string): string | null; setItem(key: string, value: string): void };
+export type TrackerSummary = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: TrackerState };
 
 const LEGACY_KEY = 'mercy-ledger-v1';
 export type TrackerBackupHandle = {
@@ -31,7 +32,7 @@ function readCache(raw: string): Cache {
   return { revision: value.revision, data: value.data, dirty: value.dirty };
 }
 
-const TrackerHost = forwardRef<TrackerBackupHandle, { page: TrackerPage | null; userId?: string; showRecovery?: boolean; onActionReady: (ready: boolean) => void; onBeltChange: (belt: BeltTheme) => void; onWeightActionState: (state: WeightActionState) => void }>(function TrackerHost({ page, userId, showRecovery, onActionReady, onBeltChange, onWeightActionState }, ref) {
+const TrackerHost = forwardRef<TrackerBackupHandle, { page: TrackerPage | null; userId?: string; showRecovery?: boolean; showSummary?: boolean; onSummary: (summary: TrackerSummary) => void; onActionReady: (ready: boolean) => void; onBeltChange: (belt: BeltTheme) => void; onWeightActionState: (state: WeightActionState) => void }>(function TrackerHost({ page, userId, showRecovery, showSummary, onSummary, onActionReady, onBeltChange, onWeightActionState }, ref) {
   const [phase, setPhase] = useState<'loading' | 'ready' | 'saving' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const [recovery, setRecovery] = useState<string | null>(null);
@@ -202,6 +203,24 @@ const TrackerHost = forwardRef<TrackerBackupHandle, { page: TrackerPage | null; 
       backupActions.current = undefined;
     };
   }, [userId, cacheKey, attempt]);
+
+  useEffect(() => {
+    if (!showSummary) return;
+    if (phase === 'error') {
+      onSummary({ status: 'error', message });
+      return;
+    }
+    if (phase === 'loading' || !bridge.current) {
+      onSummary({ status: 'loading' });
+      return;
+    }
+    try {
+      const raw = bridge.current.getItem(LEGACY_KEY);
+      onSummary({ status: 'ready', data: raw === null ? tracker.emptyState() : tracker.validateState(JSON.parse(raw)) });
+    } catch (error) {
+      onSummary({ status: 'error', message: `Could not read tracker data: ${error instanceof Error ? error.message : String(error)}` });
+    }
+  }, [showSummary, phase, message, onSummary]);
 
   useImperativeHandle(ref, () => ({
     openAdd: () => viewRef.current?.openAdd(),

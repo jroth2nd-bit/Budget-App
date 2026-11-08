@@ -43,7 +43,7 @@ const TrackerView = forwardRef<TrackerViewHandle, Props>(function TrackerView({ 
     const root = element.shadowRoot || element.attachShadow({ mode: 'open' });
     const parsed = new DOMParser().parseFromString(views[page].html, 'text/html');
     const surface = document.createElement('div');
-    surface.className = `tracker-surface${page === 'bjj-skills' ? ' bjj-theme' : ''}`;
+    surface.className = `tracker-surface${page === 'bjj-skills' ? ' bjj-theme' : page === 'mercy-ledger' ? ' mercy-theme' : ''}`;
     if (page === 'bjj-skills') surface.dataset.belt = 'blue';
     surface.append(...Array.from(parsed.body.childNodes));
     const style = document.createElement('style');

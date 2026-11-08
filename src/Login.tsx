@@ -20,7 +20,7 @@ export default function Login() {
   return (
     <div className="loginWrap">
       <form onSubmit={submit} className="card loginCard">
-        <h2><span className="brandMark">$</span>Budget App</h2>
+        <h2><span className="brandMark">M</span>Milestone</h2>
         <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" required />
         <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required />
         {error && <div style={{ color: 'var(--neg)', fontSize: 13 }}>{error}</div>}
