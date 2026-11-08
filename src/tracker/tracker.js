@@ -171,7 +171,7 @@ const MercyTracker = (function () {
     const levels = legacy ? ["unset", "yes", "no", "inconsistent"] : ["unset", "not_yet", "learning", "sometimes", "consistently"];
     if (!levels.includes(skill.practice) || !levels.includes(skill.live)) throw new Error("Invalid skill consistency.");
     if (!["unset", "low", "medium", "high"].includes(skill.preference) || typeof skill.mastered !== "boolean") throw new Error("Invalid skill preference or mastery.");
-    if ((workOnNextRequired && typeof skill.workOnNext !== "boolean") || (skill.workOnNext !== undefined && typeof skill.workOnNext !== "boolean")) throw new Error("Work on next must be checked or unchecked.");
+    if ((workOnNextRequired && typeof skill.workOnNext !== "boolean") || (skill.workOnNext !== undefined && typeof skill.workOnNext !== "boolean")) throw new Error("Focus must be checked or unchecked.");
     const migratedLevels = { unset: "unset", yes: "consistently", no: "not_yet", inconsistent: "sometimes" };
     return { id: skill.id, name: skill.name.trim(), type: skill.type.trim(), positions, description: skill.description, link: skill.link, practice: legacy ? migratedLevels[skill.practice] : skill.practice, live: legacy ? migratedLevels[skill.live] : skill.live, preference: skill.preference, mastered: skill.mastered, workOnNext: skill.workOnNext ?? false };
   }

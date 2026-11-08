@@ -400,7 +400,7 @@ test("BJJ data migrates old backups, validates skills and preserves other tracke
   assert.equal(T.validateState(state).bjj.skills[0].mastered, false);
   assert.equal(T.validateState(state).bjj.skills[0].workOnNext, true);
   assert.equal("video" in T.validateState(state).bjj.skills[0], false);
-  assert.throws(() => T.validateState({ ...state, bjj: { ...state.bjj, skills: [{ ...skill, workOnNext: undefined }] } }), /Work on next/);
+  assert.throws(() => T.validateState({ ...state, bjj: { ...state.bjj, skills: [{ ...skill, workOnNext: undefined }] } }), /Focus/);
   state.bjj.skills.push({ ...skill });
   assert.throws(() => T.validateState(state), /Duplicate BJJ/);
   state.bjj.skills.pop();
@@ -412,7 +412,7 @@ test("BJJ data migrates old backups, validates skills and preserves other tracke
   assert.throws(() => T.validateState({ ...state, bjj: { ...state.bjj, belt: "Red" } }), /BJJ belt/);
   assert.throws(() => T.validateBjjSkill({ ...skill, practice: "maybe" }), /consistency/);
   assert.throws(() => T.validateBjjSkill({ ...skill, mastered: "yes" }), /mastery/);
-  assert.throws(() => T.validateBjjSkill({ ...skill, workOnNext: "yes" }), /Work on next/);
+  assert.throws(() => T.validateBjjSkill({ ...skill, workOnNext: "yes" }), /Focus/);
 });
 
 test("version 11 BJJ progression migrates without guessing unset values", () => {

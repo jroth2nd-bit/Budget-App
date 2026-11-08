@@ -32,7 +32,14 @@
 .bjj-table th, .bjj-table td { border-bottom: 1px solid #344550; padding: 6px 3px; text-align: left; vertical-align: middle; overflow-wrap: anywhere; }
 .bjj-table tr.bjj-mastered td { background: #143139; border-bottom-color: #398c98; }
 .bjj-table tr.bjj-mastered td:first-child { box-shadow: inset 3px 0 #73d5d3; }
-.bjj-table th:first-child { width: 14%; }.bjj-table th:nth-child(2) { width: 12%; }.bjj-table th:nth-child(4) { width: 14%; }
+.bjj-table th:nth-child(1) { width: 17%; }
+.bjj-table th:nth-child(2) { width: 6%; }
+.bjj-table th:nth-child(3) { width: 12%; }
+.bjj-table th:nth-child(4) { width: 16%; }
+.bjj-table th:nth-child(5), .bjj-table th:nth-child(6) { width: 10%; }
+.bjj-table th:nth-child(7) { width: 10%; }
+.bjj-table th:nth-child(8) { width: 10%; }
+.bjj-table th:nth-child(9) { width: 9%; }
 .bjj-table input, .bjj-table select { min-width: 0; padding: 4px; font-size: 13px; }
 .bjj-table .bjj-work-next { width: auto; min-width: 18px; padding: 0; accent-color: var(--belt-accent); }
 .bjj-next-add { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
@@ -43,6 +50,20 @@ select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
 .bjj-link { display: inline-block; }
 .bjj-edit-text { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; border: 0; padding: 5px; color: var(--belt-accent); text-align: left; text-decoration: none; font-size: 13px; }
 .bjj-edit-text:hover { text-decoration: underline; }
+.bjj-details-toggle { color: var(--belt-accent); background: transparent; border: 0; padding: 5px; font-size: 13px; text-align: left; }
+.bjj-details-toggle:hover { text-decoration: underline; }
+.bjj-details-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: start; gap: 12px; }
+.bjj-details-content > div { min-width: 0; }
+.bjj-details-content label { margin: 0 0 4px; }
+.bjj-details-content input { width: 100%; }
+.bjj-details-content .bjj-edit-text { width: 100%; }
+.bjj-details-row td { padding: 12px; background: #101b20; }
+.bjj-card-details { grid-column: 1 / -1; min-width: 0; }
+.bjj-card-details > summary { cursor: pointer; color: var(--belt-accent); }
+.bjj-card-details[open] .bjj-details-content { margin-top: 10px; }
+.bjj-secondary-sort { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; color: #a9bdc3; }
+.bjj-secondary-sort button { color: var(--belt-accent); background: transparent; border: 1px solid var(--belt-border); padding: 5px 8px; font-size: 12px; }
+.bjj-secondary-sort button[aria-pressed="true"] { background: var(--belt-accent); color: #10191e; }
 .bjj-mastery { font-size: 13px; }
 .bjj-table .bjj-mastery { white-space: normal; overflow-wrap: anywhere; }
 .bjj-suggest { display: block; color: var(--belt-accent); font-size: 12px; margin-top: 5px; }
@@ -62,14 +83,24 @@ select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
 .bjj-card-sort { display: none; }
 #bjj-add-dialog, #bjj-text-dialog, #bjj-type-dialog, #bjj-positions-dialog { width: min(620px, calc(100% - 32px)); max-height: 90vh; overflow: auto; background: #111b20; color: #edf5ef; border: 1px solid var(--belt-border); border-radius: 7px; padding: 20px; box-shadow: 0 0 24px var(--belt-glow); }
 #bjj-add-dialog::backdrop, #bjj-text-dialog::backdrop, #bjj-type-dialog::backdrop, #bjj-positions-dialog::backdrop { background: #000b; }
-#bjj-add-form label:not(:first-child) { margin-top: 12px; }
-.bjj-add-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
+#bjj-add-form { display: grid; gap: 16px; }
+#bjj-add-form > [hidden] { display: none; }
+#bjj-add-form .bjj-add-field, #bjj-add-form .bjj-add-fields > div { display: grid; gap: 6px; min-width: 0; }
+#bjj-add-form .bjj-add-field label, #bjj-add-form .bjj-add-fields label { margin: 0; }
+#bjj-add-form textarea { width: 100%; }
+#bjj-add-form .bjj-position-fields { margin: 0; }
+#bjj-add-form .bjj-position-fields > label { margin-top: 12px; }
+#bjj-add-form .bjj-next-add { margin: 0; }
+#bjj-add-form .clan-form-error:empty { display: none; }
+#bjj-add-form .clan-dialog-actions { margin-top: 0; }
+.bjj-add-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; }
 .bjj-position-fields { border: 1px solid var(--belt-border); border-radius: 4px; padding: 10px; margin: 12px 0 0; min-width: 0; }
 .bjj-position-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .bjj-position-choices label, #bjj-add-form .bjj-position-choices label { display: flex; align-items: center; gap: 7px; margin: 0; text-transform: none; letter-spacing: normal; }
 .bjj-position-choices input { width: auto; flex: none; }
 .bjj-position-fields textarea { width: 100%; }
 @media (max-width: 1350px) {
+  .bjj-secondary-sort { display: none; }
   .bjj-table-wrap { display: none; }
   .bjj-card-sort { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .bjj-card-sort button { border: 1px solid var(--belt-border); border-radius: 4px; background: #19272e; color: var(--belt-accent); padding: 6px 8px; font-size: 12px; }
@@ -81,4 +112,6 @@ select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
   .bjj-card > summary { display: flex; justify-content: space-between; gap: 10px; cursor: pointer; padding: 12px; overflow-wrap: anywhere; }
   .bjj-card-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; border-top: 1px solid var(--belt-border); }
   .bjj-card-body label { margin: 0; }.bjj-card-body input, .bjj-card-body select { margin-top: 4px; font-size: 14px; }
+  .bjj-details-content { grid-template-columns: minmax(0, 1fr); }
+  .bjj-details-content .build-delete { justify-self: start; }
 }
