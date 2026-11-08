@@ -30,9 +30,7 @@
 .weightMetric { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px; background: var(--surface-2); }
 .weightMetric span, .weightMetric small { color: var(--muted); font-size: .78rem; }
 .weightMetric strong { font-size: 1.05rem; overflow-wrap: anywhere; }
-@container (min-width: 510px) { .weightStats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@container (min-width: 720px) { .weightStats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@container (min-width: 1050px) { .weightStats { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@container (min-width: 720px) { .weightStats { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .weightPlanStatus { color: var(--muted); font: 600 .75rem system-ui, sans-serif; text-transform: uppercase; }
 .weightBadge { border-radius: 999px; padding: 5px 10px; font-size: .8rem; font-weight: 700; border: 1px solid currentColor; }
 .weightBadge.on-track { color: #62d8a8; }
@@ -51,8 +49,10 @@
 .weightTimelineBar { background: #62d8c0; height: 100%; }
 .weightPhase.cut .weightTimelineBar { background: #8dbffc; }
 .weightEntries { display: grid; gap: 8px; }
+.weightWeighIns summary { cursor: pointer; font-family: Georgia, serif; font-size: 1.15rem; }
+.weightWeighIns summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.weightWeighIns[open] .weightEntries { margin-top: 12px; }
 .weightEntry { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; background: var(--surface-2); padding: 12px; border-radius: var(--radius-sm); }
 .weightEntry > div:first-child { display: grid; gap: 3px; min-width: 0; }
 .weightEntry span { font-size: .82rem; color: var(--muted); }
 .weightEntry p { margin: 3px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-@media (min-width: 1000px) { .weightCharts { grid-template-columns: 1fr 1fr; } }

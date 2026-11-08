@@ -1,6 +1,7 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import tracker from '../src/tracker/tracker.js';
+import { addMonths } from '../src/tracker/weight.js';
 const localUrl = 'http://127.0.0.1:5188';
 const cloudUrl = 'http://127.0.0.1:5189';
 const userId = '00000000-0000-4000-8000-000000000001';
@@ -1117,7 +1118,7 @@ test('weight plans sync to the existing tracker account without changing other t
   await openTracker(page, 'Weight Tracker');
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Starting weight (lb)').fill('180');
-  await page.getByLabel('Target weight (lb)').fill('184');
+  await page.getByLabel('Planned end date').fill(addMonths(await page.getByLabel('Start date').inputValue(), 2));
   await page.getByRole('button', { name: 'Save plan' }).click();
   await expect.poll(() => cloud.row?.data.weight.plans.length).toBe(1);
   expect(cloud.row!.data.weight.plans[0].targetWeight).toBe(184);
@@ -1127,7 +1128,7 @@ test('weight plans sync to the existing tracker account without changing other t
   const past = page.getByRole('dialog', { name: 'Add past plan' });
   await past.getByLabel('Start date').fill('2020-01-01');
   await past.getByLabel('Starting weight (lb)').fill('170');
-  await past.getByLabel('Target weight (lb)').fill('172');
+  await past.getByLabel('Planned end date').fill('2020-02-01');
   await past.getByLabel('Actual end date').fill('2020-02-01');
   await past.getByRole('button', { name: 'Save plan' }).click();
   await expect.poll(() => cloud.row?.data.weight.plans.length).toBe(2);
@@ -1149,7 +1150,7 @@ test('full backup restores weight plans and weigh-ins', async ({ page }) => {
   await openTracker(page, 'Weight Tracker');
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Starting weight (lb)').fill('180');
-  await page.getByLabel('Target weight (lb)').fill('184');
+  await page.getByLabel('Planned end date').fill(addMonths(await page.getByLabel('Start date').inputValue(), 2));
   await page.getByRole('button', { name: 'Save plan' }).click();
   await page.getByRole('button', { name: 'Add weigh-in' }).click();
   await page.getByLabel('Weight (lb)', { exact: true }).fill('181');
@@ -1165,6 +1166,7 @@ test('full backup restores weight plans and weigh-ins', async ({ page }) => {
   expect(backup.tracker.weight.plans).toHaveLength(1);
   expect(backup.tracker.weight.weighIns[0].notes).toBe('Test note');
   await openTracker(page, 'Weight Tracker');
+  await page.locator('.weightWeighIns summary').click();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Notes').fill('Changed');
   page.once('dialog', dialog => dialog.accept());
@@ -1175,6 +1177,7 @@ test('full backup restores weight plans and weigh-ins', async ({ page }) => {
   await (await confirmation).accept();
   await expect(page.getByText('and tracker data', { exact: false })).toBeVisible();
   await openTracker(page, 'Weight Tracker');
+  await page.locator('.weightWeighIns summary').click();
   await expect(page.locator('.weightEntry')).toContainText('Test note');
 });
 
