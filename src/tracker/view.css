@@ -13,7 +13,7 @@
 .notice { position: static; width: 100%; margin: 0 0 12px; }
 .notice[hidden] { display: none; }
 .build-page { padding-top: 0; }
-.section:first-child { padding-top: 0; }
+.section:first-child:not(.compact-panel) { padding-top: 0; }
 #build-add, #bjj-add { display: none; }
 @media (max-width: 1050px) { .shell { padding: 0; } }
 @media (max-width: 650px) {

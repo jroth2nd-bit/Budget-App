@@ -111,7 +111,7 @@ test("soulstone coin projection matches the 204 Mortal example", () => {
   const inventory = { ...T.emptyState().soulInventory, mortalStones: 204, immortalCoins: 825 };
   const result = T.soulCoinProjection(inventory);
   assert.deepEqual(result.immortal, { earned: 4080, total: 4905, purchases: 4, remaining: 905, pulls: 4 });
-  assert.equal(result.eternal, undefined);
+  assert.deepEqual(result.eternal, { earned: 4000, total: 4000, purchases: 4, remaining: 0, pulls: 4 });
 });
 
 test("soulstone projection includes held and purchasable Mortal and Immortal stones", () => {
@@ -119,7 +119,13 @@ test("soulstone projection includes held and purchasable Mortal and Immortal sto
   const result = T.soulCoinProjection(inventory);
   assert.deepEqual(result.mortal, { purchases: 2, pulls: 50, remaining: 500 });
   assert.deepEqual(result.immortal, { earned: 1000, total: 1005, purchases: 1, remaining: 5, pulls: 33 });
+  assert.deepEqual(result.eternal, { earned: 33000, total: 33050, purchases: 33, remaining: 50, pulls: 37 });
   assert.throws(() => T.soulCoinProjection({ ...inventory, eternalCoins: -1 }), /whole inventory/);
+});
+
+test("eternal purchases include existing coins and held stones without requiring immortal pulls", () => {
+  const inventory = { ...T.emptyState().soulInventory, eternalCoins: 2500, eternalStones: 2 };
+  assert.deepEqual(T.soulCoinProjection(inventory).eternal, { earned: 0, total: 2500, purchases: 2, remaining: 500, pulls: 4 });
 });
 
 test("version 2 inventory is not confused with historical Soulstone pull totals", () => {

@@ -14,6 +14,38 @@ async function openTracker(page: Page, name: string, mobile = false) {
   return page.locator('.trackerView');
 }
 
+for (const viewport of [{ width: 320, height: 720 }, { width: 1440, height: 900 }]) {
+  test(`eternal soulstone projection persists at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    const state = tracker.emptyState();
+    state.soulInventory.eternalStones = 4;
+    state.soulInventory.eternalCoins = 1500;
+    await page.addInitScript(seed => { if (!localStorage.getItem('mercy-ledger-v1')) localStorage.setItem('mercy-ledger-v1', JSON.stringify(seed)); }, state);
+    await page.goto(localUrl);
+    let mercy = await openTracker(page, 'Mercy Tracker', viewport.width < 640);
+    for (const [label, value] of [
+      ['Current Mortal Soulstones', '48'],
+      ['Current Mortal Soul Coins', '2500'],
+      ['Current Immortal Soulstones', '32'],
+      ['Current Immortal Soul Coins', '5'],
+    ]) {
+      await mercy.getByLabel(label).fill(value);
+      await mercy.getByLabel(label).dispatchEvent('change');
+    }
+    const eternal = mercy.locator('#soul-projection .soul-projection-row').last();
+    await expect(eternal).toContainText('34 purchasable');
+    await expect(eternal).toContainText('Includes saved Eternal coins');
+    await expect(mercy.getByLabel('Current Eternal Soulstones')).toHaveCount(0);
+    await expect(mercy.getByLabel('Current Eternal Soul Coins')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+    await page.reload();
+    mercy = await openTracker(page, 'Mercy Tracker', viewport.width < 640);
+    await expect(mercy.locator('#soul-projection .soul-projection-row').last()).toContainText('34 purchasable');
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+    expect(saved.soulInventory).toMatchObject({ eternalStones: 4, eternalCoins: 1500 });
+  });
+}
+
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
   test(`champion completion filters use counts at ${viewport.width}px`, async ({ page }) => {
     const state = tracker.emptyState();
@@ -273,6 +305,17 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     }
     const mercy = page.locator('.trackerView');
     await expect(mercy.getByText('Enter your current inventory. Amounts start at zero.')).toHaveCount(0);
+    const spacing = await mercy.locator('.dashboard-grid').evaluate(grid => {
+      const panels = Array.from(grid.querySelectorAll<HTMLElement>(':scope > .compact-panel'));
+      return panels.map(panel => ({
+        padding: parseFloat(getComputedStyle(panel).paddingTop),
+        inset: panel.querySelector('.section-heading')!.getBoundingClientRect().top - panel.getBoundingClientRect().top,
+      }));
+    });
+    expect(spacing).toHaveLength(2);
+    expect(spacing[0].padding).toBe(spacing[1].padding);
+    expect(spacing[0].inset).toBeCloseTo(spacing[1].inset);
+    expect(spacing[0].padding).toBeGreaterThanOrEqual(14);
     await expect(mercy.locator('#clan-new')).toBeVisible();
     const builds = await openTracker(page, 'Champion Builds Tracker', mobile);
     await expect(builds.getByRole('heading', { name: 'Build rankings' })).toBeVisible();

@@ -94,9 +94,10 @@ $("mercy-cards").addEventListener("change", event => {
 function renderSoulProjection() {
   const projection = T.soulCoinProjection(state.soulInventory);
   const number = value => value.toLocaleString();
-  const { mortal, immortal } = projection;
+  const { mortal, immortal, eternal } = projection;
   $("soul-projection").innerHTML = `<div class="soul-projection-row"><span><strong>Mortal</strong><small>${number(mortal.purchases)} purchasable · ${number(mortal.pulls)} total to pull</small></span><span>${number(mortal.remaining)} coins left</span></div>
-    <div class="soul-projection-row"><span><strong>Immortal</strong><small>+${number(immortal.earned)} from Mortal pulls · ${number(immortal.total)} coins total</small><small>${number(immortal.pulls)} total Immortal stones</small></span><span><b>${number(immortal.purchases)}</b> purchasable<small>${number(immortal.remaining)} coins left</small></span></div>`;
+    <div class="soul-projection-row"><span><strong>Immortal</strong><small>+${number(immortal.earned)} from Mortal pulls · ${number(immortal.total)} coins total</small><small>${number(immortal.pulls)} total Immortal stones</small></span><span><b>${number(immortal.purchases)}</b> purchasable<small>${number(immortal.remaining)} coins left</small></span></div>
+    <div class="soul-projection-row"><span><strong>Eternal</strong><small>Includes saved Eternal coins</small></span><span><b>${number(eternal.purchases)}</b> purchasable</span></div>`;
 }
 
 function activatePointsTab(tab, focus = false) {
