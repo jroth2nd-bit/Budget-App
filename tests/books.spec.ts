@@ -20,7 +20,16 @@ for (const width of [320, 768, 1440]) {
     await page.locator('.overview-books').click();
     const library = page.getByRole('region', { name: 'Library statistics' });
     const ratingsPanel = page.getByRole('region', { name: 'Ratings statistics' });
-    await expect(page.locator('.bookStats > .card')).toHaveCount(2);
+    const recommendations = page.getByRole('region', { name: 'Find your next read' });
+    await expect(page.locator('.bookOverview > .card')).toHaveCount(3);
+    const buttons = recommendations.locator('.bookActions button');
+    const firstButton = (await buttons.nth(0).boundingBox())!;
+    const secondButton = (await buttons.nth(1).boundingBox())!;
+    expect(Math.abs(firstButton.width - secondButton.width)).toBeLessThan(1);
+    for (const button of await buttons.all()) {
+      await expect(button).toHaveCSS('background-color', 'rgb(215, 165, 224)');
+      await expect(button).toHaveCSS('color', 'rgb(39, 17, 45)');
+    }
     for (const [label, value] of [['Total Books', '5'], ['Books Read', '3'], ['Books Unread', '2'], ['Favorite Genre', 'Fantasy']]) {
       await expect(library.locator('.bookStat').filter({ hasText: label }).locator('dd')).toHaveText(value);
     }
@@ -29,14 +38,35 @@ for (const width of [320, 768, 1440]) {
     }
     const libraryBounds = await library.boundingBox();
     const ratingBounds = await ratingsPanel.boundingBox();
+    const recommendationBounds = await recommendations.boundingBox();
     expect(libraryBounds).not.toBeNull();
     expect(ratingBounds).not.toBeNull();
-    if (width === 320) expect(ratingBounds!.y).toBeGreaterThan(libraryBounds!.y);
-    if (width === 1440) expect(Math.abs(ratingBounds!.y - libraryBounds!.y)).toBeLessThan(2);
+    expect(recommendationBounds).not.toBeNull();
+    if (width === 320) {
+      expect(ratingBounds!.y).toBeGreaterThanOrEqual(libraryBounds!.y + libraryBounds!.height);
+      expect(recommendationBounds!.y).toBeGreaterThanOrEqual(ratingBounds!.y + ratingBounds!.height);
+    }
+    if (width === 1440) {
+      expect(Math.abs(ratingBounds!.y - libraryBounds!.y)).toBeLessThan(2);
+      expect(Math.abs(recommendationBounds!.y - libraryBounds!.y)).toBeLessThan(2);
+      expect(recommendationBounds!.x).toBeGreaterThanOrEqual(ratingBounds!.x + ratingBounds!.width);
+      expect(Math.abs(libraryBounds!.height - ratingBounds!.height)).toBeLessThan(1);
+      expect(Math.abs(libraryBounds!.height - recommendationBounds!.height)).toBeLessThan(1);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole('button', { name: 'Edit Rating for Fifth' }).click();
     await page.getByLabel('Rating for Fifth', { exact: true }).selectOption('Really Liked');
     await expect(ratingsPanel.locator('.bookStat').filter({ hasText: 'Really Liked' }).locator('dd')).toHaveText('2');
+    await recommendations.getByRole('button', { name: 'Recommend From My Library' }).click();
+    await expect(recommendations.locator('.bookResult')).toBeVisible();
+    const expanded = (await recommendations.boundingBox())!;
+    const collection = (await page.locator('.bookCollection').boundingBox())!;
+    if (width === 1440) {
+      expect(Math.abs((await library.boundingBox())!.height - expanded.height)).toBeLessThan(1);
+      expect(Math.abs((await ratingsPanel.boundingBox())!.height - expanded.height)).toBeLessThan(1);
+    }
+    expect(collection.y).toBeGreaterThanOrEqual(expanded.y + expanded.height);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }
 
