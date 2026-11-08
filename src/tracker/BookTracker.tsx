@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type FormEvent } from 'react';
+import { Fragment, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type FormEvent } from 'react';
 import FormDialog from '../FormDialog';
 import type { TrackerStorage } from '../TrackerHost';
 import tracker from './tracker.js';
@@ -36,6 +36,7 @@ const BookTracker = forwardRef<BookTrackerHandle, { storage: TrackerStorage; onA
   const [genreFilter, setGenreFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [seriesFilter, setSeriesFilter] = useState('All');
+  const [expandedSummaries, setExpandedSummaries] = useState<Set<string>>(() => new Set());
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [recommendationMessage, setRecommendationMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -184,7 +185,7 @@ const BookTracker = forwardRef<BookTrackerHandle, { storage: TrackerStorage; onA
           <label>Series<select value={seriesFilter} onChange={event => setSeriesFilter(event.target.value)}><option value="All">All Series</option>{series.map(item => <option key={item}>{item}</option>)}</select></label>
         </div>
         {!filtered.length ? <p>No books match your filters.</p> : <><p className="bookTableHint">Select a value to edit it. Text saves when you leave the field; press Escape to cancel.</p><div className="bookTableWrap"><table className="bookTable"><thead><tr>{['Title', 'Author', 'Series', 'Genre', 'Fiction / Non-Fiction', 'Read', 'Rating', 'Summary'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>
-          {filtered.map(book => <tr key={book.id}>
+          {filtered.map(book => <Fragment key={book.id}><tr>
             {(['title', 'author', 'series'] as const).map(field => <td key={field} data-label={field}><BookCell label={`${field} for ${book.title}`} value={book[field]} maxLength={300} onSave={value => {
               if ((field === 'title' || field === 'author') && !value.trim()) { setError(`${field} is required.`); return false; }
               return update(book, { [field]: value });
@@ -193,8 +194,12 @@ const BookTracker = forwardRef<BookTrackerHandle, { storage: TrackerStorage; onA
             <td data-label="Fiction / Non-Fiction"><BookCell label={`Fiction type for ${book.title}`} value={book.fictionType} options={['Fiction', 'Non-Fiction'].map(value => ({ value, label: value }))} onSave={value => update(book, { fictionType: value as Book['fictionType'] })} /></td>
             <td data-label="Read"><BookCell label={`Read status for ${book.title}`} value={book.read ? 'Yes' : 'No'} options={['Yes', 'No'].map(value => ({ value, label: value }))} onSave={value => update(book, { read: value === 'Yes' })} /></td>
             <td data-label="Rating"><BookCell label={`Rating for ${book.title}`} value={book.rating} emptyLabel="Not rated" options={[{ value: '', label: 'Not rated' }, ...ratings.map(value => ({ value, label: value }))]} onSave={value => update(book, { rating: value as Rating })} /></td>
-            <td data-label="Summary"><details className="bookSummary"><summary aria-label={`Expand summary for ${book.title}`}>{book.summary ? 'View summary' : 'Add summary'}</summary><BookCell label={`Summary for ${book.title}`} value={book.summary} emptyLabel="Select to add a summary" multiline maxLength={4000} onSave={value => update(book, { summary: value })} /></details></td>
-          </tr>)}
+            <td data-label="Summary"><button type="button" className="bookSummaryToggle" aria-label={`Expand summary for ${book.title}`} aria-expanded={expandedSummaries.has(book.id)} onClick={() => setExpandedSummaries(previous => {
+              const next = new Set(previous);
+              if (next.has(book.id)) next.delete(book.id); else next.add(book.id);
+              return next;
+            })}>{book.summary ? 'View summary' : 'Add summary'}</button></td>
+          </tr>{expandedSummaries.has(book.id) && <tr className="bookSummaryRow"><td colSpan={8} data-label="Summary"><BookCell label={`Summary for ${book.title}`} value={book.summary} emptyLabel="Select to add a summary" multiline maxLength={4000} onSave={value => update(book, { summary: value })} /></td></tr>}</Fragment>)}
         </tbody></table></div></>}
       </section>
     </>}
