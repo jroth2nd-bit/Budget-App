@@ -12,8 +12,8 @@ import trackerCss from './styles.css?raw';
 import bjjCss from './bjj.css?raw';
 import integratedCss from './view.css?raw';
 
-export type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills' | 'weight-tracker';
-type LegacyTrackerPage = Exclude<TrackerPage, 'weight-tracker'>;
+export type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills' | 'weight-tracker' | 'book-tracker';
+type LegacyTrackerPage = Exclude<TrackerPage, 'weight-tracker' | 'book-tracker'>;
 export type TrackerViewHandle = { openAdd(): void };
 
 const views = {

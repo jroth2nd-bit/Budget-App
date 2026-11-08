@@ -28,7 +28,8 @@ for (const viewport of [{ width: 320, height: 720 }, { width: 744, height: 1133 
     await page.goto('http://127.0.0.1:5188');
     await expect(page).toHaveTitle('Milestone');
     const overview = page.locator('.overviewDashboard');
-    await expect(overview.locator('.overviewCard')).toHaveCount(6);
+    await expect(overview.locator('.overviewCard')).toHaveCount(7);
+    await expect(overview.locator('.overview-books')).toContainText('0 read');
     await expect(overview.locator('.overview-budget')).toContainText('5 days');
     await expect(overview.locator('.overview-salary')).toContainText('+10.0%');
     await expect(overview.locator('.overview-mercy')).toContainText('Ancient · Legendary');
@@ -61,7 +62,7 @@ test('overview cards update after editing tracker data and all navigate correctl
   await builds.locator('#build-form button[type=submit]').click();
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Dashboard', exact: true }).click();
   await expect(overview.locator('.overview-champions')).toContainText('0 / 1');
-  for (const [card, heading] of [['Salary Tracker', 'Salary Tracker'], ['Mercy Tracker', 'Mercy Tracker'], ['BJJ Tracker', 'BJJ Tracker'], ['Weight Tracker', 'Weight Tracker']]) {
+  for (const [card, heading] of [['Salary Tracker', 'Salary Tracker'], ['Mercy Tracker', 'Mercy Tracker'], ['BJJ Tracker', 'BJJ Tracker'], ['Weight Tracker', 'Weight Tracker'], ['Book Tracker', 'Book Tracker']]) {
     await overview.getByRole('button', { name: new RegExp(card) }).click();
     await expect(page.locator('.topBar').getByRole('heading', { name: heading, exact: true })).toBeVisible();
     await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Dashboard', exact: true }).click();
@@ -80,6 +81,7 @@ for (const viewport of [{ width: 320, height: 720 }, { width: 768, height: 1024 
       ['mercy', 'Mercy Tracker', 'rgb(243, 142, 155)'],
       ['champions', 'Champion Builds Tracker', 'rgb(138, 245, 160)'],
       ['weight', 'Weight Tracker', 'rgb(240, 173, 121)'],
+      ['books', 'Book Tracker', 'rgb(215, 165, 224)'],
     ]) {
       const card = overview.locator(`.overview-${accent}`);
       await expect(card).toHaveCSS('border-top-color', color);

@@ -6,6 +6,7 @@
   --waypoint-mercy: #f38e9b;
   --waypoint-champions: #8af5a0;
   --waypoint-weight: #f0ad79;
+  --waypoint-books: #d7a5e0;
   --waypoint-admin: #b6c3d2;
   --waypoint-bjj-white: #e7eef0;
   --waypoint-bjj-blue: #78c5ff;
@@ -162,6 +163,15 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
   --shell-glow: rgba(78, 124, 180, .2);
   --brand-bg: #1d3043;
   --brand-border: #5b7fa8;
+}
+.appRoot[data-theme="books"] {
+  --accent: var(--waypoint-books);
+  --accent-soft: rgba(215, 165, 224, .12);
+  --accent-ink: #27112d;
+  --active-border: #9d68aa;
+  --shell-glow: rgba(133, 77, 146, .2);
+  --brand-bg: #39233f;
+  --brand-border: #9d68aa;
 }
 .appRoot[data-theme="mercy"] {
   --accent: var(--waypoint-mercy);
