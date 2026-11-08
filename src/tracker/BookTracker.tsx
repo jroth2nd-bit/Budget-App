@@ -188,7 +188,7 @@ const BookTracker = forwardRef<BookTrackerHandle, { storage: TrackerStorage; onA
             <td data-label="Fiction / Non-Fiction"><BookCell label={`Fiction type for ${book.title}`} value={book.fictionType} options={['Fiction', 'Non-Fiction'].map(value => ({ value, label: value }))} onSave={value => update(book, { fictionType: value as Book['fictionType'] })} /></td>
             <td data-label="Read"><BookCell label={`Read status for ${book.title}`} value={book.read ? 'Yes' : 'No'} options={['Yes', 'No'].map(value => ({ value, label: value }))} onSave={value => update(book, { read: value === 'Yes' })} /></td>
             <td data-label="Rating"><BookCell label={`Rating for ${book.title}`} value={book.rating} emptyLabel="Not rated" options={[{ value: '', label: 'Not rated' }, ...ratings.map(value => ({ value, label: value }))]} onSave={value => update(book, { rating: value as Rating })} /></td>
-            <td data-label="Summary"><BookCell label={`Summary for ${book.title}`} value={book.summary} multiline maxLength={4000} onSave={value => update(book, { summary: value })} /></td>
+            <td data-label="Summary"><details className="bookSummary"><summary aria-label={`Expand summary for ${book.title}`}>{book.summary ? 'View summary' : 'Add summary'}</summary><BookCell label={`Summary for ${book.title}`} value={book.summary} emptyLabel="Select to add a summary" multiline maxLength={4000} onSave={value => update(book, { summary: value })} /></details></td>
           </tr>)}
         </tbody></table></div></>}
       </section>
