@@ -36,7 +36,7 @@ for (const viewport of [{ width: 320, height: 720 }, { width: 744, height: 1133 
     await expect(overview.locator('.overview-mercy')).toContainText('In mercy');
     await expect(overview.locator('.overview-mercy')).toContainText('unknown');
     await expect(overview.locator('.overview-champions')).toContainText('1 / 2');
-    await expect(overview.locator('.overview-bjj li')).toHaveText(['Marked techniqueWork on next', 'High confidence85% confidence', 'Lower confidence40% confidence']);
+    await expect(overview.locator('.overview-bjj li')).toHaveText(['Marked techniqueFocus', 'High confidence85% confidence', 'Lower confidence40% confidence']);
     await expect(overview.locator('.overview-weight')).toContainText('43 days remaining');
     await expect(overview.locator('.overview-weight')).toContainText('181.0 lb');
     await expect(overview.locator('.overview-weight')).toContainText('On Track');

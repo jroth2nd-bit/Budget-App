@@ -229,7 +229,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     let bjj = await openTracker(page, 'BJJ Tracker', mobile);
     let list = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
     if (mobile) await list.locator('.bjj-card > summary').click();
-    const workNext = list.getByLabel('Work on next: Guard pass');
+    const workNext = list.getByLabel('Focus: Guard pass');
     await expect(workNext).not.toBeChecked();
     await workNext.check();
     let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
@@ -240,7 +240,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     bjj = await openTracker(page, 'BJJ Tracker', mobile);
     list = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
     if (mobile) await list.locator('.bjj-card > summary').click();
-    await expect(list.getByLabel('Work on next: Guard pass')).toBeChecked();
+    await expect(list.getByLabel('Focus: Guard pass')).toBeChecked();
   });
 }
 
@@ -289,10 +289,12 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.keyboard.press('Enter');
     await expect.poll(names).toEqual(['Zebra', 'Middle', 'Alpha']);
     for (const [key, ascending] of expectations) {
-      const button = sorter.locator(`[data-bjj-sort="${key}"]`);
+      const secondary = !cards && ['description', 'link'].includes(key);
+      if (secondary && !(await bjj.locator('.bjj-filter-details').evaluate(element => (element as HTMLDetailsElement).open))) await bjj.locator('.bjj-filter-details summary').click();
+      const button = bjj.locator(secondary ? '#bjj-secondary-sort' : cards ? '#bjj-card-sort' : '#bjj-head').locator(`[data-bjj-sort="${key}"]`);
       await button.click();
       await expect.poll(names).toEqual(ascending);
-      if (cards) {
+      if (cards || secondary) {
         await expect(button).toHaveAttribute('aria-pressed', 'true');
         await expect(button).toHaveAttribute('aria-label', /sorted ascending/);
       } else {
@@ -301,16 +303,16 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await button.click();
       const reversed = key === 'practice' ? ['Alpha', 'Zebra', 'Middle'] : key === 'workOnNext' ? ['Zebra', 'Alpha', 'Middle'] : key === 'mastered' || key === 'confidence' ? ['Alpha', 'Middle', 'Zebra'] : [...ascending].reverse();
       await expect.poll(names).toEqual(reversed);
-      if (cards) await expect(button).toHaveAttribute('aria-label', /sorted descending/);
+      if (cards || secondary) await expect(button).toHaveAttribute('aria-label', /sorted descending/);
       else await expect(button.locator('..')).toHaveAttribute('aria-sort', 'descending');
     }
-    await bjj.locator('.bjj-filter-details summary').click();
+    if (!(await bjj.locator('.bjj-filter-details').evaluate(element => (element as HTMLDetailsElement).open))) await bjj.locator('.bjj-filter-details summary').click();
     await bjj.getByLabel('Filter Type').selectOption({ label: 'Escape' });
     await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 3 skills.');
     await expect.poll(names).toEqual(['Alpha']);
     await bjj.locator('#bjj-clear').click();
     await expect.poll(names).toEqual(['Alpha', 'Middle', 'Zebra']);
-    await bjj.getByLabel('Filter Work on next').selectOption('true');
+    await bjj.getByLabel('Filter Focus').selectOption('true');
     await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 3 skills.');
     await expect.poll(names).toEqual(['Zebra']);
     expect(await bjj.locator('.bjj-skills-panel').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);

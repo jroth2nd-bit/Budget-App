@@ -13,12 +13,13 @@ const options = {
   workOnNext: { false: "No", true: "Yes" }
 };
 const columns = [
-  { key: "name", label: "Skill" }, { key: "workOnNext", label: "Work on next" }, { key: "type", label: "Type" }, { key: "positions", label: "Starting position" },
+  { key: "name", label: "Skill" }, { key: "workOnNext", label: "Focus" }, { key: "type", label: "Type" }, { key: "positions", label: "Starting position" },
   { key: "description", label: "Description" }, { key: "link", label: "Video link" },
   { key: "practice", label: "Practice" },
   { key: "live", label: "Live rolls" }, { key: "confidence", label: "Confidence" },
   { key: "mastered", label: "Mastery" }
 ];
+const visibleColumns = columns.filter(column => !["description", "link"].includes(column.key));
 let state = T.emptyState();
 let snapshot = null;
 let failed = false;
@@ -29,6 +30,7 @@ let sort = "confidence";
 let direction = "descending";
 const filters = Object.fromEntries(columns.map(column => [column.key, ""]));
 const expanded = new Set();
+const expandedDetails = new Set();
 let typeFilterChoices = [];
 let positionFilterChoices = [];
 
@@ -235,7 +237,7 @@ function workOnNextControl(skill) {
   input.type = "checkbox";
   input.checked = skill.workOnNext;
   input.dataset.skillId = skill.id;
-  input.setAttribute("aria-label", `Work on next: ${skill.name}`);
+  input.setAttribute("aria-label", `Focus: ${skill.name}`);
   input.addEventListener("change", () => {
     const focused = document.activeElement === input;
     if (update(skill, { workOnNext: input.checked })) {
@@ -281,10 +283,22 @@ function deleteControl(skill) {
   button.setAttribute("aria-label", `Delete ${skill.name}`);
   button.addEventListener("click", () => {
     if (window.confirm(`Delete the skill "${skill.name}"?`)) {
-      if (save({ ...state.bjj, skills: state.bjj.skills.filter(item => item.id !== skill.id) })) expanded.delete(skill.id);
+      if (save({ ...state.bjj, skills: state.bjj.skills.filter(item => item.id !== skill.id) })) { expanded.delete(skill.id); expandedDetails.delete(skill.id); }
     }
   });
   return button;
+}
+
+function detailsContent(skill) {
+  const content = node("div", "bjj-details-content");
+  for (const key of ["description", "link"]) {
+    const column = columns.find(item => item.key === key);
+    const wrapper = node("div", `bjj-details-${key}`);
+    wrapper.append(node("label", "", column.label.toUpperCase()), control(skill, key));
+    content.append(wrapper);
+  }
+  content.append(deleteControl(skill));
+  return content;
 }
 
 function render() {
@@ -378,34 +392,60 @@ function render() {
   if (!visible.length) {
     const message = state.bjj.skills.length ? "No skills match these filters." : "No skills yet. Add one to get started.";
     const row = node("tr"), cell = node("td", "build-empty", message);
-    cell.colSpan = columns.length + 1;
+    cell.colSpan = visibleColumns.length + 1;
     row.append(cell);
     list.append(row);
     cards.append(node("p", "build-empty", message));
   }
   for (const skill of visible) {
     const row = node("tr", skill.mastered ? "bjj-mastered" : "");
-    for (const column of columns) {
+    for (const column of visibleColumns) {
       const cell = node("td");
       cell.append(control(skill, column.key));
       row.append(cell);
     }
-    const actions = node("td");
-    actions.append(deleteControl(skill));
-    row.append(actions);
+    const detailsCell = node("td");
+    const detailsButton = node("button", "bjj-details-toggle", expandedDetails.has(skill.id) ? "Hide details" : "Details");
+    detailsButton.type = "button";
+    detailsButton.setAttribute("aria-label", `Details for ${skill.name}`);
+    detailsButton.setAttribute("aria-expanded", String(expandedDetails.has(skill.id)));
+    detailsButton.addEventListener("click", () => {
+      if (expandedDetails.has(skill.id)) expandedDetails.delete(skill.id); else expandedDetails.add(skill.id);
+      render();
+      const replacement = [...list.querySelectorAll(".bjj-details-toggle")].find(button => button.dataset.skillId === skill.id);
+      if (replacement) replacement.focus();
+    });
+    detailsButton.dataset.skillId = skill.id;
+    detailsCell.append(detailsButton);
+    row.append(detailsCell);
     list.append(row);
+    if (expandedDetails.has(skill.id)) {
+      const detailRow = node("tr", "bjj-details-row");
+      const detailCell = node("td");
+      detailCell.colSpan = visibleColumns.length + 1;
+      detailCell.append(detailsContent(skill));
+      detailRow.append(detailCell);
+      list.append(detailRow);
+    }
     const card = node("details", skill.mastered ? "bjj-card bjj-mastered" : "bjj-card");
     card.open = expanded.has(skill.id);
     card.addEventListener("toggle", () => { if (card.open) expanded.add(skill.id); else expanded.delete(skill.id); });
     const summary = node("summary");
     summary.append(node("strong", "", skill.name), node("span", "", skill.mastered ? "Mastered" : skill.type));
     const body = node("div", "bjj-card-body");
-    for (const column of columns) {
+    for (const column of visibleColumns) {
       const wrapper = node("div");
       wrapper.append(node("label", "", column.label.toUpperCase()), control(skill, column.key));
       body.append(wrapper);
     }
-    body.append(deleteControl(skill));
+    const details = node("details", "bjj-card-details");
+    details.open = expandedDetails.has(skill.id);
+    details.append(node("summary", "", "Details"), detailsContent(skill));
+    details.addEventListener("toggle", () => {
+      if (!details.isConnected) return;
+      if (details.open) expandedDetails.add(skill.id); else expandedDetails.delete(skill.id);
+    });
+    body.append(details);
     card.append(summary, body);
     cards.append(card);
   }
@@ -417,10 +457,14 @@ function initControls() {
   for (const key of ["practice", "live", "preference", "mastered"]) addOptions($(`bjj-add-${key}`), options[key]);
   const row = node("tr");
   for (const column of columns) {
-    const th = node("th");
-    th.scope = "col";
-    th.append(sortButton(column, "build-sort-button"));
-    row.append(th);
+    if (visibleColumns.includes(column)) {
+      const th = node("th");
+      th.scope = "col";
+      th.append(sortButton(column, "build-sort-button"));
+      row.append(th);
+    } else {
+      $("bjj-secondary-sort").append(sortButton(column, ""));
+    }
     $("bjj-card-sort").append(sortButton(column, ""));
     const label = node("label", "", column.label.toUpperCase());
     const input = node(column.key === "type" || column.key === "positions" || options[column.key] ? "select" : "input");
@@ -435,7 +479,7 @@ function initControls() {
     label.append(input);
     $("bjj-filters").append(label);
   }
-  const actions = node("th", "", "Actions");
+  const actions = node("th", "", "Details");
   actions.scope = "col";
   row.append(actions);
   $("bjj-head").append(row);

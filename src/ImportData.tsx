@@ -91,7 +91,7 @@ const fieldsByTarget: Record<ImportTarget, ImportField[]> = {
     { key: 'live', label: 'Live rolls' },
     { key: 'preference', label: 'Preference' },
     { key: 'mastered', label: 'Mastered' },
-    { key: 'workOnNext', label: 'Work on next', aliases: ['work next', 'next'] },
+    { key: 'workOnNext', label: 'Focus', aliases: ['work on next', 'work next', 'next'] },
   ],
 };
 
@@ -407,7 +407,7 @@ export default function ImportData({
             live,
             preference,
             mastered: parseBoolean(getValue(row, mapping, 'mastered'), 'Mastered', rowNumber),
-            workOnNext: parseBoolean(getValue(row, mapping, 'workOnNext'), 'Work on next', rowNumber),
+            workOnNext: parseBoolean(getValue(row, mapping, 'workOnNext'), 'Focus', rowNumber),
           };
         });
         next = tracker.validateState({ ...current, bjj: { ...current.bjj, skills: [...current.bjj.skills, ...imported] } });

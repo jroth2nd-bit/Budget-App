@@ -64,7 +64,7 @@ export const overviewCards: Card[] = [
         .filter(row => row.skill.workOnNext || (row.confidence !== null && row.confidence < 100))
         .sort((a, b) => Number(b.skill.workOnNext) - Number(a.skill.workOnNext) || (b.confidence ?? -1) - (a.confidence ?? -1) || a.skill.name.localeCompare(b.skill.name))
         .slice(0, 3);
-      return skills.length ? <><span className="overviewLabel">Learning priorities</span><ul>{skills.map(({ skill, confidence }) => <li key={skill.id}><span>{skill.name}</span><small>{skill.workOnNext ? 'Work on next' : `${confidence}% confidence`}</small></li>)}</ul></> : <p>No learning priorities yet.</p>;
+      return skills.length ? <><span className="overviewLabel">Learning priorities</span><ul>{skills.map(({ skill, confidence }) => <li key={skill.id}><span>{skill.name}</span><small>{skill.workOnNext ? 'Focus' : `${confidence}% confidence`}</small></li>)}</ul></> : <p>No learning priorities yet.</p>;
     }),
   },
   {
