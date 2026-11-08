@@ -60,6 +60,7 @@ select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
 .bjj-details-row td { padding: 12px; background: #101b20; }
 .bjj-card-details { grid-column: 1 / -1; min-width: 0; }
 .bjj-card-details > summary { cursor: pointer; color: var(--belt-accent); }
+.bjj-details-toggle.bjj-details-empty, .bjj-theme .bjj-card-details.bjj-details-empty > summary { color: #a9bdc3; }
 .bjj-card-details[open] .bjj-details-content { margin-top: 10px; }
 .bjj-secondary-sort { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; color: #a9bdc3; }
 .bjj-secondary-sort button { color: var(--belt-accent); background: transparent; border: 1px solid var(--belt-border); padding: 5px 8px; font-size: 12px; }

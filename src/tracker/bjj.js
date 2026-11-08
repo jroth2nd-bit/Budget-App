@@ -398,6 +398,7 @@ function render() {
     cards.append(node("p", "build-empty", message));
   }
   for (const skill of visible) {
+    const hasDetails = Boolean(skill.description.trim() || skill.link.trim());
     const row = node("tr", skill.mastered ? "bjj-mastered" : "");
     for (const column of visibleColumns) {
       const cell = node("td");
@@ -405,7 +406,7 @@ function render() {
       row.append(cell);
     }
     const detailsCell = node("td");
-    const detailsButton = node("button", "bjj-details-toggle", expandedDetails.has(skill.id) ? "Hide details" : "Details");
+    const detailsButton = node("button", `bjj-details-toggle${hasDetails ? "" : " bjj-details-empty"}`, expandedDetails.has(skill.id) ? "Hide details" : "Details");
     detailsButton.type = "button";
     detailsButton.setAttribute("aria-label", `Details for ${skill.name}`);
     detailsButton.setAttribute("aria-expanded", String(expandedDetails.has(skill.id)));
@@ -438,7 +439,7 @@ function render() {
       wrapper.append(node("label", "", column.label.toUpperCase()), control(skill, column.key));
       body.append(wrapper);
     }
-    const details = node("details", "bjj-card-details");
+    const details = node("details", `bjj-card-details${hasDetails ? "" : " bjj-details-empty"}`);
     details.open = expandedDetails.has(skill.id);
     details.append(node("summary", "", "Details"), detailsContent(skill));
     details.addEventListener("toggle", () => {

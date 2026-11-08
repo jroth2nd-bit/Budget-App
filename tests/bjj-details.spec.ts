@@ -1,6 +1,58 @@
 import { test, expect } from '@playwright/test';
 import tracker from '../src/tracker/tracker.js';
 
+for (const width of [320, 1440]) {
+  test(`BJJ details indicator reflects saved description or video at ${width}px`, async ({ page }) => {
+    const state = tracker.emptyState();
+    state.bjj.belt = 'Blue';
+    const skill = {
+      type: 'Pass', positions: [], practice: 'unset', live: 'unset',
+      preference: 'unset', mastered: false, workOnNext: false,
+    };
+    state.bjj.skills = [
+      { ...skill, id: 'empty', name: 'Empty', description: '  ', link: '' },
+      { ...skill, id: 'description', name: 'Description only', description: 'Technique notes', link: '' },
+      { ...skill, id: 'video', name: 'Video only', description: '', link: 'https://youtu.be/example' },
+      { ...skill, id: 'both', name: 'Both', description: 'Notes', link: 'https://youtu.be/example' },
+    ];
+    await page.addInitScript(seed => localStorage.setItem('mercy-ledger-v1', JSON.stringify(seed)), state);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('http://127.0.0.1:5188');
+    await page.locator('.overview-bjj').click();
+    const bjj = page.locator('.trackerView');
+    const cards = width <= 1350;
+    const list = bjj.locator(cards ? '#bjj-cards' : '#bjj-list');
+    const indicator = (name: string) => cards
+      ? bjj.locator('.bjj-card').filter({ has: page.getByText(name, { exact: true }) }).locator('.bjj-card-details > summary')
+      : bjj.getByRole('button', { name: `Details for ${name}` });
+    if (cards) {
+      for (const name of ['Empty', 'Description only', 'Video only', 'Both']) {
+        await bjj.locator('.bjj-card').filter({ has: page.getByText(name, { exact: true }) }).locator(':scope > summary').click();
+      }
+    }
+    await expect(indicator('Empty')).toHaveCSS('color', 'rgb(169, 189, 195)');
+    for (const name of ['Description only', 'Video only', 'Both']) {
+      await expect(indicator(name)).toHaveCSS('color', 'rgb(120, 197, 255)');
+    }
+    await indicator('Empty').click();
+    await list.getByLabel('Edit description for Empty').click();
+    await bjj.locator('#bjj-text').fill('New notes');
+    await bjj.getByRole('button', { name: 'Save description' }).click();
+    await expect(indicator('Empty')).toHaveCSS('color', 'rgb(120, 197, 255)');
+    await list.getByLabel('Edit description for Empty').click();
+    await bjj.locator('#bjj-text').fill('');
+    await bjj.getByRole('button', { name: 'Save description' }).click();
+    await expect(indicator('Empty')).toHaveCSS('color', 'rgb(169, 189, 195)');
+    const video = list.getByLabel('Video link for Empty');
+    await video.fill('https://youtu.be/new');
+    await video.dispatchEvent('change');
+    await expect(indicator('Empty')).toHaveCSS('color', 'rgb(120, 197, 255)');
+    await list.getByLabel('Video link for Empty').fill('');
+    await list.getByLabel('Video link for Empty').dispatchEvent('change');
+    await expect(indicator('Empty')).toHaveCSS('color', 'rgb(169, 189, 195)');
+  });
+}
+
 for (const width of [320, 768, 1440]) {
   test(`BJJ focus and expandable details work at ${width}px`, async ({ page }) => {
     const state = tracker.emptyState();
