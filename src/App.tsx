@@ -8,7 +8,7 @@ import Login from './Login';
 import { supabase } from './supabase';
 import type { Session } from '@supabase/supabase-js';
 import DotDayList from './DotDayList';
-import { DashboardIcon, TransactionsIcon, AdminIcon, CalendarIcon, IncomeHistoryIcon, MercyIcon, BuildsIcon, SkillsIcon, MoreIcon } from './NavIcons';
+import { DashboardIcon, TransactionsIcon, AdminIcon, CalendarIcon, IncomeHistoryIcon, MercyIcon, BuildsIcon, SkillsIcon, WeightIcon, MoreIcon } from './NavIcons';
 import TransactionsPage from './Transactions';
 import { Income, Expense, Tag, IncomeHistoryData } from './types';
 import * as XLSX from 'xlsx';
@@ -16,9 +16,10 @@ import { AmountScope, DeleteScope, amountFor, applyAmountChange, applyDelete, da
 import { AmountScopeDialog, DeleteScopeDialog, MakeRecurringDialog, MakeRecurringResult } from './RecurrenceDialogs';
 import IncomeHistory from './IncomeHistory';
 import TrackerHost, { type TrackerBackupHandle } from './TrackerHost';
+import type { WeightActionState } from './tracker/WeightTracker';
 import type { BeltTheme } from './tracker/bjj.js';
 
-type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills';
+type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills' | 'weight-tracker';
 type Page = 'dashboard' | 'transactions' | 'income-history' | 'admin' | TrackerPage
 
 const PAGE_HEADERS: Record<Page, { title: string; eyebrow: string }> = {
@@ -29,10 +30,11 @@ const PAGE_HEADERS: Record<Page, { title: string; eyebrow: string }> = {
   'mercy-ledger': { title: 'Mercy Ledger', eyebrow: 'RAID COMPANION' },
   'champion-builds': { title: 'Champion Builds', eyebrow: 'YOUR CHAMPIONS' },
   'bjj-skills': { title: 'BJJ Skills', eyebrow: 'BRAZILIAN JIU-JITSU' },
+  'weight-tracker': { title: 'Weight Planning', eyebrow: 'YOUR PROGRESS' },
 };
 
 function isTrackerPage(page: Page): page is TrackerPage {
-  return page === 'mercy-ledger' || page === 'champion-builds' || page === 'bjj-skills';
+  return page === 'mercy-ledger' || page === 'champion-builds' || page === 'bjj-skills' || page === 'weight-tracker';
 }
 
 const ICON_OPTIONS = ['💼','💰','💸','🏠','🛒','🍔','🚗','🎓','🎁','🩺','📈','💡','🧾','📦','🪙']
@@ -83,6 +85,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
   const [trackerOpened, setTrackerOpened] = useState(false);
   const trackerBackup = useRef<TrackerBackupHandle>(null);
   const [trackerActionReady, setTrackerActionReady] = useState(false);
+  const [weightActions, setWeightActions] = useState<WeightActionState>({ ready: false, hasPlans: false, hasActivePlan: false });
   const [beltTheme, setBeltTheme] = useState<BeltTheme>('blue');
   const [showTransactionAdd, setShowTransactionAdd] = useState(false);
   const [trackerMenuOpen, setTrackerMenuOpen] = useState(false);
@@ -292,6 +295,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
     { id: 'mercy-ledger', label: 'Mercy Ledger', icon: <MercyIcon /> },
     { id: 'champion-builds', label: 'Champion Builds', icon: <BuildsIcon /> },
     { id: 'bjj-skills', label: 'BJJ Skills', icon: <SkillsIcon /> },
+    { id: 'weight-tracker', label: 'Weight Planning', icon: <WeightIcon /> },
   ];
   const navigate = (next: Page) => {
     if (isTrackerPage(next) || next === 'admin') setTrackerOpened(true);
@@ -312,10 +316,12 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
     ? <button className="primary" onClick={() => setShowTransactionAdd(value => !value)}>{showTransactionAdd ? 'Close' : '+ Add'}</button>
     : page === 'champion-builds' || page === 'bjj-skills'
       ? <button className="primary" disabled={!trackerActionReady} onClick={() => trackerBackup.current?.openAdd()}>{page === 'champion-builds' ? 'Add champion' : 'Add skill'}</button>
+      : page === 'weight-tracker'
+        ? <div className="weightHeaderActions"><button className="primary" disabled={!weightActions.ready} onClick={() => trackerBackup.current?.openWeightPlan()}>{weightActions.hasActivePlan ? 'Start a different plan' : 'Start a plan'}</button><button disabled={!weightActions.ready || !weightActions.hasPlans} onClick={() => trackerBackup.current?.openWeightWeighIn()}>Add weigh-in</button></div>
       : null;
 
   return (
-    <div className="appRoot" data-theme={page === 'champion-builds' ? 'champions' : page === 'bjj-skills' ? `bjj-${beltTheme}` : undefined}>
+    <div className="appRoot" data-theme={page === 'champion-builds' ? 'champions' : page === 'bjj-skills' ? `bjj-${beltTheme}` : page === 'weight-tracker' ? 'weight' : undefined}>
       <nav className="sideNav" aria-label="Main navigation">
         <div className="brand"><span className="brandMark">$</span><span className="brandName">Budget App</span></div>
         {renderNavItems(navItems)}
@@ -367,7 +373,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
           />
         )}
         {page === 'income-history' && <IncomeHistory data={incomeHistory} onChange={setIncomeHistory} />}
-        {trackerOpened && <TrackerHost ref={trackerBackup} page={isTrackerPage(page) ? page : null} showRecovery={page === 'admin'} userId={userId} onActionReady={setTrackerActionReady} onBeltChange={setBeltTheme} />}
+        {trackerOpened && <TrackerHost ref={trackerBackup} page={isTrackerPage(page) ? page : null} showRecovery={page === 'admin'} userId={userId} onActionReady={setTrackerActionReady} onBeltChange={setBeltTheme} onWeightActionState={setWeightActions} />}
         {page === 'admin' && (
           <Administration
             background={background}

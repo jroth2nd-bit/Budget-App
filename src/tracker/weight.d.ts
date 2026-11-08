@@ -1,0 +1,32 @@
+export type WeightPlan = {
+  id: string;
+  type: 'bulk' | 'cut';
+  status: 'active' | 'completed' | 'cancelled';
+  startDate: string;
+  startWeight: number;
+  targetWeight: number;
+  plannedEndDate: string;
+  actualEndDate: string | null;
+};
+export type WeighIn = {
+  id: string;
+  date: string;
+  weight: number;
+  notes: string;
+  planId: string;
+  planType: WeightPlan['type'];
+  expectedWeight: number;
+  difference: number;
+};
+export type WeightData = { plans: WeightPlan[]; weighIns: WeighIn[] };
+export function validDate(value: unknown): value is string;
+export function dateNumber(value: string): number;
+export function dateString(value: number): string;
+export function addMonths(start: string, count: number): string;
+export function monthsBetween(start: string, end: string): number;
+export function completionDate(start: string, months: number): string;
+export function expectedWeight(plan: WeightPlan, date: string): number;
+export function trackStatus(difference: number): 'On Track' | 'Slightly Off' | 'Off Track';
+export function makePlan(input: { id: string; type: WeightPlan['type']; startDate: string; startWeight: number; targetWeight: number | null; targetDate: string | null }): WeightPlan;
+export function projection(plan: WeightPlan, entries: WeighIn[], today: string): { completion: string | null; endWeight: number; currentMonthlyRate: number; targetMonthlyRate: number; differenceRate: number } | null;
+export function validateWeightData(data: unknown): WeightData;
