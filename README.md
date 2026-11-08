@@ -42,7 +42,7 @@ A personal dashboard for finances, skills, games, and weight planning, built wit
 
 ## Tracker data and setup
 
-All pages appear in the sidebar with Admin at the bottom; on phones, open **More** for additional trackers and Admin. The Mercy, Champion Builds, and BJJ tracker views are hosted inside the app rather than separate embedded pages. They share their data, but do not change budget data. The waypoint accents connect each dashboard card to its page: gold for Budget, steel blue for Salary, crimson for Mercy, emerald for Champion Builds, and copper for Weight. BJJ follows the selected belt color on both its page and card. Dashboard uses ivory and Admin uses slate; warning and danger indicators retain their semantic colors.
+All pages appear in the sidebar with Admin at the bottom. On desktop and tablet, click the Milestone icon to expand or collapse the navigation; it defaults to a compact icon rail and remembers your choice in this browser. On phones, open **More** for additional trackers and Admin. The Mercy, Champion Builds, and BJJ tracker views are hosted inside the app rather than separate embedded pages. They share their data, but do not change budget data. The waypoint accents connect each dashboard card to its page: gold for Budget, steel blue for Salary, crimson for Mercy, emerald for Champion Builds, and copper for Weight. BJJ follows the selected belt color on both its page and card. Dashboard uses ivory and Admin uses slate; warning and danger indicators retain their semantic colors.
 
 Tracker filters use the same choices as their editable fields. The BJJ Type filter includes the built-in skill types and custom types currently in use; select All or use Clear filters to remove the selection.
 
