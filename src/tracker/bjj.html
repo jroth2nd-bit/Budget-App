@@ -6,12 +6,18 @@
     </div>
     <div class="build-page">
       <button id="bjj-add" class="button button-primary" type="button">Add skill</button>
-      <section class="compact-panel bjj-belt-panel" aria-labelledby="belt-title">
-        <div><p class="eyebrow">YOUR PROGRESS</p><h2 id="belt-title">Belt and stripes</h2><p id="bjj-next" class="footnote"></p></div>
-        <div><label for="bjj-belt">BELT</label><select id="bjj-belt"></select></div>
-        <div><label for="bjj-stripes">WHITE STRIPES</label><select id="bjj-stripes"></select></div>
-        <div id="bjj-belt-display" class="bjj-belt-display" aria-label="Belt stripes"></div>
-      </section>
+      <div class="bjj-progress-panels">
+        <section class="compact-panel bjj-belt-panel" aria-labelledby="belt-title">
+          <div><p class="eyebrow">YOUR PROGRESS</p><h2 id="belt-title">Belt and stripes</h2><p id="bjj-next" class="footnote"></p></div>
+          <div><label for="bjj-belt">BELT</label><select id="bjj-belt"></select></div>
+          <div><label for="bjj-stripes">WHITE STRIPES</label><select id="bjj-stripes"></select></div>
+          <div id="bjj-belt-display" class="bjj-belt-display" aria-label="Belt stripes"></div>
+        </section>
+        <section class="compact-panel bjj-priorities-panel" aria-labelledby="bjj-priorities-title">
+          <p class="eyebrow">YOUR TRAINING</p><h2 id="bjj-priorities-title">Learning priorities</h2>
+          <div id="bjj-priorities"></div>
+        </section>
+      </div>
       <section class="compact-panel bjj-skills-panel" aria-labelledby="skills-title">
         <div class="build-toolbar"><div><p class="eyebrow">YOUR TRAINING</p><h2 id="skills-title">Skill library</h2></div><button class="button button-quiet" id="bjj-clear" type="button">Clear filters</button></div>
         <details class="bjj-filter-details"><summary>Filter skills</summary><div id="bjj-filters" class="bjj-filters"></div><div id="bjj-secondary-sort" class="bjj-secondary-sort" role="group" aria-label="Sort additional details"><span>Sort by:</span></div></details>

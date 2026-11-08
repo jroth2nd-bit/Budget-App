@@ -66,6 +66,7 @@ declare const tracker: {
   emptyState(): TrackerState;
   validateState(value: unknown): TrackerState;
   bjjConfidence(skill: BjjSkill): number | null;
+  bjjLearningPriorities(skills: BjjSkill[]): { skill: BjjSkill; confidence: number | null }[];
   buildCompletion(statuses: ChampionBuild['statuses']): { complete: number; applicable: number; percentage: number };
   rules: Record<string, Record<string, { threshold: number; base: number; increment: number }>>;
   calculate(state: TrackerState): { counters: Record<string, Record<string, { known: boolean; count: number }>> };

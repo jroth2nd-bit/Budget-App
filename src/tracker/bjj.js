@@ -353,6 +353,34 @@ function render() {
   belt.setAttribute("aria-label", `${state.bjj.belt} belt, ${state.bjj.stripes} white ${state.bjj.stripes === 1 ? "stripe" : "stripes"}`);
   const nextBelt = T.bjjBelts[T.bjjBelts.indexOf(state.bjj.belt) + 1];
   $("bjj-next").textContent = state.bjj.stripes < 4 ? `Next: ${state.bjj.stripes + 1} ${state.bjj.stripes === 0 ? "stripe" : "stripes"}` : nextBelt ? `Next: ${nextBelt} belt` : "Four stripes recorded; no next belt in this tracker.";
+  const priorities = T.bjjLearningPriorities(state.bjj.skills);
+  const priorityContent = $("bjj-priorities");
+  priorityContent.replaceChildren();
+  if (!priorities.length) priorityContent.append(node("p", "footnote", "No learning priorities yet."));
+  else {
+    const list = node("ul", "bjj-priorities-list");
+    for (const { skill, confidence } of priorities) {
+      const item = node("li");
+      const heading = node("div", "bjj-priority-heading");
+      heading.append(node("strong", "", skill.name));
+      if (skill.workOnNext) heading.append(node("span", "bjj-priority-focus", "Focus"));
+      const info = node("dl", "bjj-priority-info");
+      for (const [label, value] of [
+        ["Type", skill.type],
+        ["Starting position", skill.positions.join(", ") || "Not set"],
+        ["Confidence", confidence === null ? "Not enough data" : `${confidence}%`],
+        ["Practice", options.practice[skill.practice]],
+        ["Live rolls", options.live[skill.live]]
+      ]) {
+        const field = node("div");
+        field.append(node("dt", "", label), node("dd", "", value));
+        info.append(field);
+      }
+      item.append(heading, info);
+      list.append(item);
+    }
+    priorityContent.append(list);
+  }
   const values = skill => columns.map(column => [column.key, column.key === "mastered" ? String(skill.mastered) : column.key === "confidence" ? T.bjjConfidence(skill) : skill[column.key]]);
   const visible = state.bjj.skills.filter(skill => values(skill).every(([key, value]) => {
     const filter = filters[key];

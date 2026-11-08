@@ -54,7 +54,7 @@ On BJJ Skills, the default sort shows the highest confidence first, followed by 
 
 BJJ skills can have optional suggested or custom starting positions, which can be added, edited, sorted, and filtered. Confidence is an estimate based on Practice (40%) and Live rolls (60%): Not yet = 0, Learning = 40, Sometimes = 75, and Consistently = 100. If either is Unset, confidence shows Not enough data; mastery remains a separate choice. Older backups migrate with no starting positions.
 
-On BJJ Tracker, Focus marks skills you want to work on next (existing selections and imports are preserved). Expand a skill's Details to see its one-line description preview, edit the description or video link, or delete the skill. Description and video sorting remain available within Filter skills on desktop and in the sort controls on smaller screens.
+On BJJ Tracker, Focus marks skills you want to work on next (existing selections and imports are preserved). Beside the belt, Learning priorities shows the same up to three skills as the dashboard, with their type, starting position, confidence, practice, and live rolls. Expand a skill's Details to see its one-line description preview, edit the description or video link, or delete the skill. Description and video sorting remain available within Filter skills on desktop and in the sort controls on smaller screens.
 
 Add dialogs let you enter the editable fields before saving a transaction, salary change, champion, or BJJ skill. Clan Boss rewards and annual salary goals also use dialogs. Calculated values such as balances and champion rankings are still calculated automatically; choosing Posted for a new transaction marks only its first dated occurrence.
 
