@@ -18,6 +18,10 @@
 .weightForm h3, .weightOverview h3, .weightHistory h3 { margin-top: 0; }
 .weightFormGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 12px; margin: 14px 0; }
 .weightFormGrid label, .weightSectionHead label { display: grid; gap: 5px; color: var(--muted); font-size: .85rem; }
+.weightField { min-width: 0; }
+.weightSuggestion { display: grid; gap: 6px; margin-top: 6px; color: #f1c96a; font-size: .8rem; }
+.weightSuggestion button { justify-self: start; }
+.weightEntry .weightForm { width: 100%; }
 .weightNotes { grid-column: 1 / -1; }
 .weightNotes textarea { min-height: 70px; resize: vertical; }
 .weightError { color: var(--neg) !important; font-weight: 600; }
