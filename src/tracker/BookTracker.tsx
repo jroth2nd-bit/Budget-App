@@ -151,17 +151,22 @@ const BookTracker = forwardRef<BookTrackerHandle, { storage: TrackerStorage; onA
     (seriesFilter === 'All' || book.series === seriesFilter));
   const series = useMemo(() => [...new Set(books.map(book => book.series).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [books]);
   const favorite = genres.map(genre => ({ genre, count: books.filter(book => book.genre === genre && (book.rating === 'Really Liked' || book.rating === 'Liked')).length })).sort((a, b) => b.count - a.count)[0];
-  const stats: Array<[string, string | number]> = [
+  const libraryStats: Array<[string, string | number]> = [
     ['Total Books', books.length], ['Books Read', books.filter(book => book.read).length], ['Books Unread', books.filter(book => !book.read).length],
-    ...ratings.map(rating => [rating, books.filter(book => book.rating === rating).length] as [string, number]),
     ['Favorite Genre', favorite.count ? favorite.genre : 'Not enough data'],
   ];
+  const ratingStats: Array<[string, number]> = ratings.map(rating => [rating, books.filter(book => book.rating === rating).length]);
 
   return <div className="bookPage">
     {snapshot.error && <p role="alert" className="bookError">{snapshot.error}</p>}
     {error && <p role="alert" className="bookError">{error}</p>}
     {snapshot.state && <>
-      <section className="bookStats" aria-label="Library statistics">{stats.map(([label, value]) => <div className="card bookStat" key={label}><span>{label}</span><strong>{value}</strong></div>)}</section>
+      <div className="bookStats">
+        {[{ title: 'Library', stats: libraryStats }, { title: 'Ratings', stats: ratingStats }].map(group => <section className="card bookStatPanel" aria-label={`${group.title} statistics`} key={group.title}>
+          <h2>{group.title}</h2>
+          <dl className="bookStatGrid">{group.stats.map(([label, value]) => <div className="bookStat" key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+        </section>)}
+      </div>
       <section className="card bookRecommendations">
         <h2>Find your next read</h2>
         <div className="bookActions"><button type="button" onClick={recommendLibrary} disabled={busy}>Recommend From My Library</button><button type="button" onClick={() => void recommendNew()} disabled={busy}>Recommend Something New</button></div>
