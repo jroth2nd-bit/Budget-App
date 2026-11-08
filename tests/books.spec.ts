@@ -98,6 +98,8 @@ for (const width of [320, 768, 1440]) {
     await page.locator('.overview-books').click();
     const table = page.locator('.bookTable');
     await expect(table.locator('tbody input, tbody select, tbody textarea')).toHaveCount(0);
+    await expect(table.getByRole('button', { name: 'Edit Summary for Original' })).toBeHidden();
+    await table.getByLabel('Expand summary for Original').click();
     await expect(table.getByRole('button', { name: 'Edit Summary for Original' })).toHaveText('A readable summary.');
     await table.getByRole('button', { name: 'Edit title for Original' }).click();
     await page.getByLabel('title for Original').fill('Updated');
@@ -118,8 +120,8 @@ for (const width of [320, 768, 1440]) {
       await expect(table.getByRole('button', { name: `Edit ${label} for Updated` })).toHaveText(value);
     }
     await table.getByRole('button', { name: 'Edit Summary for Updated' }).click();
-    await table.getByLabel('Summary for Updated').fill('A new summary.');
-    await table.getByLabel('Summary for Updated').blur();
+    await table.getByRole('textbox', { name: 'Summary for Updated' }).fill('A new summary.');
+    await table.getByRole('textbox', { name: 'Summary for Updated' }).blur();
     await expect(table.locator('tbody input, tbody select, tbody textarea')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.reload();
@@ -127,6 +129,7 @@ for (const width of [320, 768, 1440]) {
     if (width < 640) await nav.getByRole('button', { name: 'More' }).click();
     await nav.getByRole('button', { name: 'Book Tracker' }).click();
     await expect(page.getByRole('button', { name: 'Edit series for Updated' })).toHaveText('A series');
+    await page.getByLabel('Expand summary for Updated').click();
     await expect(page.getByRole('button', { name: 'Edit Summary for Updated' })).toHaveText('A new summary.');
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
     expect(saved.books[0]).toMatchObject({ title: 'Updated', author: 'Writer', series: 'A series', genre: 'History', fictionType: 'Non-Fiction', read: false, rating: 'Liked', summary: 'A new summary.' });
@@ -148,3 +151,42 @@ test('invalid edits stay available for correction', async ({ page }) => {
   await page.getByLabel('title for Original').blur();
   await expect(page.getByRole('button', { name: 'Edit title for Corrected' })).toHaveText('Corrected');
 });
+
+for (const width of [320, 768, 1440]) {
+  test(`summaries stay collapsed and rows compact at ${width}px`, async ({ page }) => {
+    const state = tracker.emptyState();
+    const longSummary = 'A long description of an adventurous journey. '.repeat(60);
+    state.books = [makeBook('Long book', { summary: longSummary }), makeBook('Empty book')];
+    await page.addInitScript(seed => {
+      if (!localStorage.getItem('mercy-ledger-v1')) localStorage.setItem('mercy-ledger-v1', JSON.stringify(seed));
+    }, state);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('http://127.0.0.1:5188');
+    await page.locator('.overview-books').click();
+    const rows = page.locator('.bookTable tbody tr');
+    const longRow = rows.nth(0);
+    const emptyRow = rows.nth(1);
+    const height = async () => (await longRow.boundingBox())!.height;
+    const collapsedHeight = await height();
+    const emptyHeight = (await emptyRow.boundingBox())!.height;
+    expect(Math.abs(collapsedHeight - emptyHeight)).toBeLessThan(3);
+    await expect(longRow.getByRole('button', { name: 'Edit Summary for Long book' })).toBeHidden();
+    await longRow.getByLabel('Expand summary for Long book').press('Enter');
+    await expect(longRow.getByRole('button', { name: 'Edit Summary for Long book' })).toHaveText(longSummary);
+    expect(await height()).toBeGreaterThan(collapsedHeight);
+    await longRow.getByLabel('Expand summary for Long book').click();
+    expect(Math.abs(await height() - collapsedHeight)).toBeLessThan(3);
+    await emptyRow.getByLabel('Expand summary for Empty book').click();
+    await emptyRow.getByRole('button', { name: 'Edit Summary for Empty book' }).click();
+    await emptyRow.getByRole('textbox', { name: 'Summary for Empty book' }).fill('A new description.');
+    await emptyRow.getByRole('textbox', { name: 'Summary for Empty book' }).blur();
+    await expect(emptyRow.getByRole('button', { name: 'Edit Summary for Empty book' })).toHaveText('A new description.');
+    await page.reload();
+    const nav = page.getByRole('navigation', { name: width < 640 ? 'Mobile navigation' : 'Main navigation' });
+    if (width < 640) await nav.getByRole('button', { name: 'More' }).click();
+    await nav.getByRole('button', { name: 'Book Tracker' }).click();
+    await page.getByLabel('Expand summary for Empty book').click();
+    await expect(page.getByRole('button', { name: 'Edit Summary for Empty book' })).toHaveText('A new description.');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+}
