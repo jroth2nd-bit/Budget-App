@@ -22,3 +22,4 @@
 .overviewCard.overview-bjj[data-belt="brown"] { --card-accent: var(--waypoint-bjj-brown); }
 .overviewCard.overview-bjj[data-belt="black"] { --card-accent: var(--waypoint-bjj-black); }
 .overviewCard.overview-weight { --card-accent: var(--waypoint-weight); }
+.overviewCard.overview-books { --card-accent: var(--waypoint-books); }

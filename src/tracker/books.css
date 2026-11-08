@@ -1,0 +1,44 @@
+.bookPage { display: grid; gap: 18px; max-width: 1500px; margin: 0 auto; }
+.bookStats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 10px; }
+.bookStat { display: grid; gap: 6px; border-top: 2px solid var(--accent); }
+.bookStat span, .bookFilters label, .bookForm label { color: var(--muted); font-size: .85rem; }
+.bookStat strong { font-size: 1.15rem; overflow-wrap: anywhere; }
+.bookRecommendations h2, .bookCollection h2 { margin-top: 0; }
+.bookActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.bookResult { display: grid; gap: 5px; margin-top: 16px; }
+.bookResult span, .bookRecommendations p, .bookCollection p { color: var(--muted); }
+.bookResult p { margin: 4px 0; }
+.bookResult button { justify-self: start; }
+.bookFilters, .bookForm { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr)); gap: 12px; }
+.bookFilters label, .bookForm label { display: grid; gap: 5px; min-width: 0; }
+.bookFilters input, .bookFilters select, .bookForm input, .bookForm select, .bookForm textarea { width: 100%; }
+.bookFormSummary, .bookLookup { grid-column: 1 / -1; }
+.bookFormSummary textarea { min-height: 100px; }
+.bookLookup { display: grid; gap: 5px; }
+.bookLookup button { text-align: left; }
+.bookLookup p { margin: 0; color: var(--muted); }
+.bookForm > button { justify-self: start; }
+.bookTableHint { margin: 14px 0 0; font-size: .8rem; }
+.bookTableWrap { margin-top: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.bookTable { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--surface-2); font-size: 13px; }
+.bookTable th { text-align: left; color: var(--accent); font-size: 12px; }
+.bookTable td, .bookTable th { padding: 8px 4px; border-bottom: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+.bookTable tbody tr:last-child > * { border-bottom: 0; }
+.bookTable th:first-child, .bookTable th:nth-child(2) { width: 13%; }
+.bookTable th:nth-child(6) { width: 7%; }
+.bookTable th:last-child { width: 21%; }
+.bookTable .bookCellValue { display: block; width: 100%; min-height: 34px; padding: 4px; border: 1px solid transparent; background: transparent; color: var(--text); font-size: 13px; font-weight: normal; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bookTable .bookCellValue:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--active-border); }
+.bookTable .bookCellEmpty { color: var(--muted); }
+.bookTable input, .bookTable select, .bookTable textarea { width: 100%; min-width: 0; padding: 4px; font-size: 13px; }
+.bookTable textarea { min-height: 90px; resize: vertical; }
+.bookError { color: var(--neg); font-weight: 600; }
+@media (max-width: 1050px) {
+  .bookTable, .bookTable tbody { display: block; }
+  .bookTable thead { display: none; }
+  .bookTable tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
+  .bookTable tr:last-child { border-bottom: 0; }
+  .bookTable td { display: block; min-width: 0; padding: 0; border: 0; }
+  .bookTable td::before { content: attr(data-label); display: block; color: var(--muted); font-size: 12px; text-transform: capitalize; }
+  .bookTable td:first-child, .bookTable td:last-child { grid-column: 1 / -1; }
+}

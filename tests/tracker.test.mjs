@@ -81,7 +81,7 @@ test("battle plans migrate older backups and remain independent in new backups",
   old.current.shards.Ancient = { Legendary: 123 };
   old.soulInventory.mortalStones = 204;
   const migrated = T.validateState(old);
-  assert.equal(migrated.version, 15);
+  assert.equal(migrated.version, 16);
   assert.equal(migrated.battlePlans.event.battles, 0);
   assert.equal(migrated.current.shards.Ancient.Legendary, 123);
   assert.equal(migrated.soulInventory.mortalStones, 204);
@@ -101,7 +101,7 @@ test("legacy backups migrate without losing history or calculated counters", () 
   legacy.starting.Ancient.Legendary = 200;
   legacy.entries = [entry("old", "Ancient", "Rare", 2), { id: "soul", createdAt: "2026-01-01T00:00:00Z", kind: "soul", source: "Mortal", rarity: "Rare", rank: 1, quantity: 3 }];
   const migrated = T.validateState(legacy);
-  assert.equal(migrated.version, 15);
+  assert.equal(migrated.version, 16);
   assert.equal(migrated.entries.length, 2);
   assert.equal(T.calculate(migrated).counters.Ancient.Legendary.count, 202);
   assert.equal(T.calculate(migrated).souls.Mortal, 3);
@@ -240,7 +240,7 @@ test("version 6 backups migrate without losing existing data and version 7 round
   old.current.shards.Void = { Legendary: 123 };
   old.summonPlans.shard.Ancient = { pulls: 10, points: 20 };
   const state = T.validateState(old);
-  assert.equal(state.version, 15);
+  assert.equal(state.version, 16);
   assert.deepEqual(state.clanBoss, []);
   assert.equal(state.current.shards.Void.Legendary, 123);
   assert.deepEqual(state.summonPlans.shard.Ancient, { pulls: 10, points: 20 });
@@ -337,7 +337,7 @@ test("champion builds migrate version 7, validate and round trip alongside exist
   old.clanBoss = [{ date: "2026-03-01", difficulties: { ultra: clanRow(2, 1) } }];
   old.current.shards.Void = { Legendary: 123 };
   const state = T.validateState(old);
-  assert.equal(state.version, 15);
+  assert.equal(state.version, 16);
   assert.deepEqual(state.champions, []);
   assert.equal(state.clanBoss[0].difficulties.ultra.books, 1);
   assert.equal(state.current.shards.Void.Legendary, 123);
@@ -422,7 +422,7 @@ test("version 11 BJJ progression migrates without guessing unset values", () => 
   old.bjj.skills = [skill, { ...skill, id: "two", practice: "no", live: "unset" }];
   old.current.shards.Void = { Legendary: 123 };
   const state = T.validateState(old);
-  assert.equal(state.version, 15);
+  assert.equal(state.version, 16);
   assert.deepEqual(state.bjj.skills.map(({ practice, live }) => [practice, live]), [["consistently", "sometimes"], ["not_yet", "unset"]]);
   assert.equal(state.bjj.skills[0].mastered, true);
   assert.equal(state.bjj.skills[0].preference, "unset");
@@ -454,7 +454,7 @@ test("version 12 skills migrate without positions and version 13 defaults work-o
   old.bjj.skills = [{ id: "1", name: "Armbar", type: "Submission", description: "", link: "", video: "unset", practice: "learning", live: "sometimes", preference: "low", mastered: false }];
   old.current.shards.Void = { Legendary: 123 };
   const migrated = T.validateState(old);
-  assert.equal(migrated.version, 15);
+  assert.equal(migrated.version, 16);
   assert.deepEqual(migrated.bjj.skills[0].positions, []);
   assert.equal(migrated.bjj.skills[0].workOnNext, false);
   assert.equal(migrated.current.shards.Void.Legendary, 123);

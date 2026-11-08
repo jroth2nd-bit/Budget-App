@@ -33,6 +33,9 @@ export const SkillsIcon = () => (
 export const WeightIcon = () => (
   <svg {...base}><rect x="3" y="4" width="18" height="17" rx="3" /><path d="M8 11a4 4 0 0 1 8 0M12 11l2-2" /></svg>
 );
+export const BookIcon = () => (
+  <svg {...base}><path d="M4 5a3 3 0 0 1 3-2h10a3 3 0 0 1 3 3v15H7a3 3 0 0 1-3-3V5Zm0 13a3 3 0 0 1 3-3h13M8 7h8" /></svg>
+);
 export const MoreIcon = () => (
   <svg {...base}><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></svg>
 );

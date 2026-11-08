@@ -170,7 +170,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(editor).toBeHidden();
     await expect(list.getByLabel('Edit starting positions for Legacy skill')).toContainText('Custom <guard>');
     let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
-    expect(saved.version).toBe(15);
+    expect(saved.version).toBe(16);
     expect(saved.current.shards.Void.Legendary).toBe(21);
     expect(saved.bjj.skills[0].positions).toEqual(['Closed guard', 'Mount', 'Custom <guard>', 'Butterfly guard']);
     await bjj.locator('.bjj-filter-details summary').click();
@@ -994,7 +994,7 @@ test('backup migration, invalid and cancelled imports preserve both datasets', a
   const reloadedMercy = await openTracker(page, 'Mercy Tracker');
   await expect(reloadedMercy.locator('#count-Ancient-Legendary')).toHaveValue('99');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
-  expect(saved.version).toBe(15);
+  expect(saved.version).toBe(16);
   expect(saved.starting.Ancient.Legendary).toBe(99);
   expect(saved.bjj.skills).toEqual([]);
 });
@@ -1195,6 +1195,33 @@ test('overview loads account tracker summaries and reports tracker sync errors',
   await expect(page.locator('.overview-champions')).not.toContainText('0 / 0');
 });
 
+test('books sync to the existing account and survive full backup and reload', async ({ page }) => {
+  const state = tracker.emptyState();
+  state.current.shards.Ancient = { Legendary: 42 };
+  const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
+  await mockCloud(page, cloud);
+  await page.route('https://openlibrary.org/**', route => route.fulfill({ json: { docs: [] } }));
+  await page.goto(cloudUrl);
+  await openTracker(page, 'Book Tracker');
+  await page.getByRole('button', { name: 'Add Book', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add Book' });
+  await dialog.getByLabel('Title').fill('Cloud Book');
+  await dialog.getByLabel('Author').fill('Cloud Author');
+  await dialog.getByRole('button', { name: 'Add Book' }).click();
+  await expect.poll(() => cloud.row?.data.books.length).toBe(1);
+  await expect(page.locator('.trackerSync')).toHaveText('Tracker: account sync ready');
+  expect(cloud.row!.data.current.shards.Ancient.Legendary).toBe(42);
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+  await expect(page.locator('.syncBadge')).toHaveText('Synced');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export Everything' }).click();
+  const backup = JSON.parse(await readFile(await (await downloadPromise).path(), 'utf8'));
+  expect(backup.tracker.books[0]).toMatchObject({ title: 'Cloud Book', author: 'Cloud Author', read: false, rating: '' });
+  await page.reload();
+  await openTracker(page, 'Book Tracker');
+  await expect(page.getByRole('button', { name: 'Edit title for Cloud Book' })).toHaveText('Cloud Book');
+});
+
 test('weight plans sync to the existing tracker account without changing other tracker data', async ({ page }) => {
   const state = tracker.emptyState();
   state.current.shards.Ancient = { Legendary: 42 };
@@ -1280,7 +1307,7 @@ test('account sync migrates old BJJ skills and persists positions without changi
   const dialog = bjj.locator('#bjj-positions-dialog');
   await dialog.getByLabel('Mount', { exact: true }).check();
   await dialog.getByRole('button', { name: 'Save positions' }).click();
-  await expect.poll(() => cloud.row?.data.version).toBe(15);
+  await expect.poll(() => cloud.row?.data.version).toBe(16);
   expect(cloud.row!.data.bjj.skills[0].positions).toEqual(['Mount']);
   expect(cloud.budgetWrites.every(write => !!write && typeof write === 'object' && 'data' in write && !!write.data && typeof write.data === 'object' && !('tracker' in write.data))).toBe(true);
 });
@@ -1466,7 +1493,7 @@ test('cloud backup import validates and confirms before replacing tracker data',
   await (await importDialog).accept();
   await expect.poll(() => cloud.row!.data.starting.Void.Legendary).toBe(77);
   await expect(page.getByText('Tracker backup imported.')).toBeVisible();
-  expect(cloud.row!.data.version).toBe(15);
+  expect(cloud.row!.data.version).toBe(16);
 });
 
 test('full restore keeps budget unchanged if tracker cloud write conflicts', async ({ page }) => {

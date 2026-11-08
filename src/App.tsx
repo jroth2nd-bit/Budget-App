@@ -20,7 +20,7 @@ import OverviewDashboard, { overviewCards } from './OverviewDashboard';
 import type { WeightActionState } from './tracker/WeightTracker';
 import type { BeltTheme } from './tracker/bjj.js';
 
-type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills' | 'weight-tracker';
+type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills' | 'weight-tracker' | 'book-tracker';
 type Page = 'dashboard' | 'transactions' | 'income-history' | 'admin' | TrackerPage
 
 const PAGE_HEADERS: Record<Page, { title: string; eyebrow: string }> = {
@@ -32,10 +32,11 @@ const PAGE_HEADERS: Record<Page, { title: string; eyebrow: string }> = {
   'champion-builds': { title: 'Champion Builds Tracker', eyebrow: 'YOUR CHAMPIONS' },
   'bjj-skills': { title: 'BJJ Tracker', eyebrow: 'BRAZILIAN JIU-JITSU' },
   'weight-tracker': { title: 'Weight Tracker', eyebrow: 'YOUR PROGRESS' },
+  'book-tracker': { title: 'Book Tracker', eyebrow: 'YOUR LIBRARY' },
 };
 
 function isTrackerPage(page: Page): page is TrackerPage {
-  return page === 'mercy-ledger' || page === 'champion-builds' || page === 'bjj-skills' || page === 'weight-tracker';
+  return page === 'mercy-ledger' || page === 'champion-builds' || page === 'bjj-skills' || page === 'weight-tracker' || page === 'book-tracker';
 }
 
 const ICON_OPTIONS = ['💼','💰','💸','🏠','🛒','🍔','🚗','🎓','🎁','🩺','📈','💡','🧾','📦','🪙']
@@ -315,14 +316,14 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
   const syncLabel = syncState === 'loading' ? 'Loading…' : syncState === 'saving' ? 'Saving…' : syncState === 'error' ? 'Sync failed' : 'Synced';
   const pageAction = page === 'transactions'
     ? <button className="primary" onClick={() => setShowTransactionAdd(value => !value)}>{showTransactionAdd ? 'Close' : '+ Add'}</button>
-    : page === 'champion-builds' || page === 'bjj-skills'
-      ? <button className="primary" disabled={!trackerActionReady} onClick={() => trackerBackup.current?.openAdd()}>{page === 'champion-builds' ? 'Add champion' : 'Add skill'}</button>
+    : page === 'champion-builds' || page === 'bjj-skills' || page === 'book-tracker'
+      ? <button className="primary" disabled={!trackerActionReady} onClick={() => trackerBackup.current?.openAdd()}>{page === 'champion-builds' ? 'Add champion' : page === 'book-tracker' ? 'Add Book' : 'Add skill'}</button>
       : page === 'weight-tracker'
         ? <div className="weightHeaderActions"><button className="primary" disabled={!weightActions.ready} onClick={() => trackerBackup.current?.openWeightPlan()}>{weightActions.hasActivePlan ? 'Start a different plan' : 'Start a plan'}</button><button disabled={!weightActions.ready || !weightActions.hasPlans} onClick={() => trackerBackup.current?.openWeightWeighIn()}>Add weigh-in</button></div>
       : null;
 
   return (
-    <div className="appRoot" data-nav-expanded={navExpanded} data-theme={page === 'champion-builds' ? 'champions' : page === 'bjj-skills' ? `bjj-${beltTheme}` : page === 'weight-tracker' ? 'weight' : page === 'income-history' ? 'salary' : page === 'mercy-ledger' ? 'mercy' : page === 'admin' ? 'admin' : page === 'dashboard' ? 'dashboard' : 'budget'}>
+    <div className="appRoot" data-nav-expanded={navExpanded} data-theme={page === 'champion-builds' ? 'champions' : page === 'bjj-skills' ? `bjj-${beltTheme}` : page === 'weight-tracker' ? 'weight' : page === 'book-tracker' ? 'books' : page === 'income-history' ? 'salary' : page === 'mercy-ledger' ? 'mercy' : page === 'admin' ? 'admin' : page === 'dashboard' ? 'dashboard' : 'budget'}>
       <nav className="sideNav" aria-label="Main navigation">
         <div className="brand"><button type="button" className="brandToggle" onClick={() => setNavExpanded(value => !value)} aria-label={navExpanded ? 'Collapse navigation' : 'Expand navigation'} aria-expanded={navExpanded} title={navExpanded ? 'Collapse navigation' : 'Expand navigation'}><span className="brandMark" aria-hidden="true">M</span></button><span className="brandName">Milestone</span></div>
         {renderNavItems(navItems)}

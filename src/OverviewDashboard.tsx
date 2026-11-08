@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { BuildsIcon, IncomeHistoryIcon, MercyIcon, SkillsIcon, TransactionsIcon, WeightIcon } from './NavIcons';
+import { BookIcon, BuildsIcon, IncomeHistoryIcon, MercyIcon, SkillsIcon, TransactionsIcon, WeightIcon } from './NavIcons';
 import { dateKey, getPaycheckPeriod } from './recurrence';
 import type { Income, IncomeHistoryData } from './types';
 import type { TrackerSummary } from './TrackerHost';
@@ -65,6 +65,13 @@ export const overviewCards: Card[] = [
         .sort((a, b) => Number(b.skill.workOnNext) - Number(a.skill.workOnNext) || (b.confidence ?? -1) - (a.confidence ?? -1) || a.skill.name.localeCompare(b.skill.name))
         .slice(0, 3);
       return skills.length ? <><span className="overviewLabel">Learning priorities</span><ul>{skills.map(({ skill, confidence }) => <li key={skill.id}><span>{skill.name}</span><small>{skill.workOnNext ? 'Work on next' : `${confidence}% confidence`}</small></li>)}</ul></> : <p>No learning priorities yet.</p>;
+    }),
+  },
+  {
+    id: 'book-tracker', title: 'Book Tracker', icon: <BookIcon />, accent: 'books',
+    summary: data => trackerSummary(data, state => {
+      const read = state.books.filter(book => book.read).length;
+      return <><span className="overviewLabel">Your library</span><strong>{read} read</strong><small>{state.books.length - read} unread</small></>;
     }),
   },
   {
