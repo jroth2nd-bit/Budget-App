@@ -13,9 +13,10 @@
         <section class="section compact-panel soul-panel" aria-labelledby="souls-title">
           <div class="section-heading"><div><p class="eyebrow">ALTAR OF SOULS</p><h2 id="souls-title">Soulstone coin calculator</h2></div></div>
           <div class="soul-inventory">
-            <div class="soul-header"><span>TYPE</span><span>STONES</span><span>COINS</span></div>
-            <div class="soul-input-row"><strong>Mortal</strong><input data-inventory="mortalStones" type="number" min="0" max="1000000" step="1" aria-label="Current Mortal Soulstones"><input data-inventory="mortalCoins" type="number" min="0" max="1000000" step="1" aria-label="Current Mortal Soul Coins"></div>
-            <div class="soul-input-row"><strong>Immortal</strong><input data-inventory="immortalStones" type="number" min="0" max="1000000" step="1" aria-label="Current Immortal Soulstones"><input data-inventory="immortalCoins" type="number" min="0" max="1000000" step="1" aria-label="Current Immortal Soul Coins"></div>
+            <label>Current Mortal Soulstones<input data-inventory="mortalStones" type="number" min="0" max="1000000" step="1"></label>
+            <label>Current Immortal Soul Coins<input data-inventory="immortalCoins" type="number" min="0" max="1000000" step="1"></label>
+            <label>Current Immortal Soulstones<input data-inventory="immortalStones" type="number" min="0" max="1000000" step="1"></label>
+            <label>Current Eternal Soul Coins<input data-inventory="eternalCoins" type="number" min="0" max="1000000" step="1"></label>
           </div>
           <div id="soul-projection" aria-live="polite"></div>
         </section>

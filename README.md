@@ -46,7 +46,7 @@ All pages appear in the sidebar with Admin at the bottom; on phones, open **More
 
 Tracker filters use the same choices as their editable fields. The BJJ Type filter includes the built-in skill types and custom types currently in use; select All or use Clear filters to remove the selection.
 
-The Soulstone coin calculator projects Eternal purchases from saved Eternal coins plus 1,000 Eternal coins per projected Immortal pull (including held and newly purchased Immortal stones). It assumes 1,000 Eternal coins per Eternal Soulstone and does not spend resources. Saved Eternal inventory is preserved but cannot be edited in the calculator.
+The Soulstone coin calculator independently projects Immortal purchases from owned Mortal stones (20 Immortal coins per pull) and Eternal purchases from owned Immortal stones (30 Eternal coins per pull). Each purchase costs 1,000 coins of the relevant type. The purchasable count and stones needed for another purchase are shown for each conversion; expand **Calculation details** for intermediate totals. The calculator does not spend resources or automatically include projected purchases in the other conversion. Previously saved inventory remains in backups, including fields no longer shown.
 
 Champion Builds can be filtered by the number of completed fields, from 0/6 through 6/6; a blessing counts as complete at level 6.
 

@@ -339,19 +339,15 @@ const MercyTracker = (function () {
     for (const key of ["mortalStones", "mortalCoins", "immortalStones", "immortalCoins", "eternalStones", "eternalCoins"]) {
       if (!Number.isSafeInteger(inventory[key]) || inventory[key] < 0 || inventory[key] > 1000000) throw new Error("Enter whole inventory amounts between 0 and 1,000,000.");
     }
-    const mortalPurchases = Math.floor(inventory.mortalCoins / 1000);
-    const mortalPulls = inventory.mortalStones + mortalPurchases;
-    const immortalEarned = mortalPulls * 20;
-    const immortalTotal = inventory.immortalCoins + immortalEarned;
-    const immortalPurchases = Math.floor(immortalTotal / 1000);
-    const immortalPulls = inventory.immortalStones + immortalPurchases;
-    const eternalEarned = immortalPulls * 1000;
-    const eternalTotal = inventory.eternalCoins + eternalEarned;
-    const eternalPurchases = Math.floor(eternalTotal / 1000);
+    const convert = (coins, stones, rate) => {
+      const earned = stones * rate;
+      const total = coins + earned;
+      const remaining = total % 1000;
+      return { coins, stones, earned, total, purchases: Math.floor(total / 1000), remaining, additionalNeeded: Math.ceil((1000 - remaining) / rate) };
+    };
     return {
-      mortal: { purchases: mortalPurchases, pulls: mortalPulls, remaining: inventory.mortalCoins % 1000 },
-      immortal: { earned: immortalEarned, total: immortalTotal, purchases: immortalPurchases, remaining: immortalTotal % 1000, pulls: immortalPulls },
-      eternal: { earned: eternalEarned, total: eternalTotal, purchases: eternalPurchases, remaining: eternalTotal % 1000, pulls: inventory.eternalStones + eternalPurchases }
+      immortal: convert(inventory.immortalCoins, inventory.mortalStones, 20),
+      eternal: convert(inventory.eternalCoins, inventory.immortalStones, 30)
     };
   }
 

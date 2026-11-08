@@ -42,7 +42,23 @@ h2 { font-size: 23px; margin: 0; }
 .footnote { color: #8ca295; font-size: 10px; line-height: 1.5; margin: 8px 0 0; }
 .dashboard-grid { display: grid; grid-template-columns: minmax(260px, .7fr) minmax(0, 1.5fr); gap: 10px; margin-top: 18px; align-items: stretch; }.compact-panel { padding: 16px; }
 .soul-cards { display: grid; gap: 7px; margin-top: 10px; }.soul-card { display: flex; align-items: center; gap: 10px; background: #0c1510; border: 1px solid #263d2d; border-radius: 5px; padding: 8px 10px; }.soul-icon { width: 29px; height: 29px; font-size: 19px; }.soul-card label { flex: 1; margin: 0; letter-spacing: 0; }.soul-card label strong, .soul-card label span { display: block; }.soul-card label strong { color: #e6f4e9; font-size: 12px; }.soul-card label span { color: #86a390; font-size: 8px; letter-spacing: .1em; margin-top: 2px; }.soul-card input { width: 82px; min-height: 31px; padding: 6px 8px; }
-.soul-inventory { margin-top: 10px; }.soul-header, .soul-input-row { display: grid; grid-template-columns: minmax(70px, 1fr) repeat(2, minmax(65px, 1fr)); gap: 7px; align-items: center; }.soul-header { color: #94ae9b; font-size: 9px; font-weight: 700; letter-spacing: .09em; margin-bottom: 5px; }.soul-input-row { margin-bottom: 6px; }.soul-input-row strong { font-size: 11px; }.soul-input-row input { min-height: 31px; padding: 6px 8px; }.soul-projection-row { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid #304537; font-size: 11px; }.soul-projection-row > span:last-child { text-align: right; white-space: nowrap; color: #a4ffb6; }.soul-projection-row small { display: block; margin-top: 3px; color: #a1b6a7; font-size: 10px; line-height: 1.4; }.soul-projection-row b { font-size: 15px; }
+.soul-inventory { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.soul-inventory label { margin: 0; }
+.soul-inventory input { display: block; margin-top: 5px; min-height: 31px; padding: 6px 8px; }
+.soul-conversion { padding: 12px 0; border-top: 1px solid #683b3b; }
+.soul-conversion:first-child { margin-top: 12px; }
+.soul-conversion h3 { margin: 0 0 8px; font-size: 17px; }
+.soul-conversion dl { display: grid; gap: 5px; margin: 0; font-size: 11px; }
+.soul-conversion dl div { display: flex; justify-content: space-between; gap: 10px; }
+.soul-conversion dt { color: #a1b6a7; }
+.soul-conversion dd { margin: 0; color: #ffaaaa; font-weight: 700; text-align: right; }
+.soul-conversion p { margin: 10px 0 0; color: #dfede2; font-size: 11px; line-height: 1.4; }
+.soul-conversion .soul-purchasable { margin-top: 0; color: #ffaaaa; }
+.soul-purchasable strong { font-size: 15px; }
+.soul-conversion details { margin-top: 10px; font-size: 11px; }
+.soul-conversion summary { cursor: pointer; color: #ffaaaa; }
+.soul-conversion summary:focus-visible { outline: 2px solid #ffaaaa; outline-offset: 3px; }
+.soul-conversion details[open] dl { margin-top: 8px; }
 .shard-ancient { --shard-accent: #7bc8ff; --shard-border: #316a8b; --shard-glow: #49b8ff26; }
 .shard-void { --shard-accent: #dea6ff; --shard-border: #80529c; --shard-glow: #c975ff26; }
 .shard-sacred { --shard-accent: #ffe189; --shard-border: #9a7a38; --shard-glow: #ffc43c26; }
@@ -60,8 +76,7 @@ h2 { font-size: 23px; margin: 0; }
 .mercy-card .row-title strong { color: var(--shard-accent); }
 .mercy-card .progress span { background: var(--shard-accent); box-shadow: 0 0 8px var(--shard-glow); }
 .soul-panel { border-color: #9b4545; box-shadow: inset 0 2px 0 #ff8585, 0 0 14px #ff5b5720; }
-.soul-panel .eyebrow, .soul-panel .soul-projection-row > span:last-child { color: #ffaaaa; }
-.soul-panel .soul-projection-row { border-color: #683b3b; }
+.soul-panel .eyebrow { color: #ffaaaa; }
 .soul-panel .soul-inventory input { border-color: #784343; }
 label { display: block; font-size: 9px; font-weight: 700; color: #9ab4a1; letter-spacing: .09em; margin: 0 0 5px; }
 select, input { width: 100%; background: #0a130d; border: 1px solid #355340; color: #edfff0; border-radius: 4px; padding: 8px; font-size: 12px; min-height: 35px; }

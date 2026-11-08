@@ -94,10 +94,23 @@ $("mercy-cards").addEventListener("change", event => {
 function renderSoulProjection() {
   const projection = T.soulCoinProjection(state.soulInventory);
   const number = value => value.toLocaleString();
-  const { mortal, immortal, eternal } = projection;
-  $("soul-projection").innerHTML = `<div class="soul-projection-row"><span><strong>Mortal</strong><small>${number(mortal.purchases)} purchasable · ${number(mortal.pulls)} total to pull</small></span><span>${number(mortal.remaining)} coins left</span></div>
-    <div class="soul-projection-row"><span><strong>Immortal</strong><small>+${number(immortal.earned)} from Mortal pulls · ${number(immortal.total)} coins total</small><small>${number(immortal.pulls)} total Immortal stones</small></span><span><b>${number(immortal.purchases)}</b> purchasable<small>${number(immortal.remaining)} coins left</small></span></div>
-    <div class="soul-projection-row"><span><strong>Eternal</strong><small>Includes saved Eternal coins</small></span><span><b>${number(eternal.purchases)}</b> purchasable</span></div>`;
+  const renderConversion = (source, target) => `<section class="soul-conversion" data-target="${target}" aria-label="${source} to ${target} conversion">
+    <h3>${source} → ${target}</h3>
+    <p class="soul-purchasable"><strong data-value="purchases"></strong> ${target} Soulstones purchasable</p>
+    <p data-helper></p>
+    <details><summary>Calculation details</summary>
+    <dl><div><dt>Current ${target} coins</dt><dd data-value="coins"></dd></div>
+    <div><dt>${source} Soulstones owned</dt><dd data-value="stones"></dd></div>
+    <div><dt>Coins earned from pulling all ${source} Soulstones</dt><dd data-value="earned"></dd></div>
+    <div><dt>Total coins available</dt><dd data-value="total"></dd></div>
+    <div><dt>Remaining coins</dt><dd data-value="remaining"></dd></div></dl></details></section>`;
+  const container = $("soul-projection");
+  if (!container.firstElementChild) container.innerHTML = renderConversion("Mortal", "Immortal") + renderConversion("Immortal", "Eternal");
+  for (const [source, target, result] of [["Mortal", "Immortal", projection.immortal], ["Immortal", "Eternal", projection.eternal]]) {
+    const section = container.querySelector(`[data-target="${target}"]`);
+    for (const field of ["purchases", "coins", "stones", "earned", "total", "remaining"]) section.querySelector(`[data-value="${field}"]`).textContent = number(result[field]);
+    section.querySelector("[data-helper]").textContent = `You need ${number(result.additionalNeeded)} more ${source} Soulstones to buy another ${target} Soulstone.`;
+  }
 }
 
 function activatePointsTab(tab, focus = false) {
