@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useState, type FormEvent } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { TrackerStorage } from '../TrackerHost';
+import FormDialog from '../FormDialog';
 import tracker from './tracker.js';
 import { addMonths, dateNumber, dateString, expectedWeight, makePlan, monthsBetween, projection, trackStatus, validDate } from './weight.js';
 import type { WeightData, WeightPlan, WeighIn } from './weight.js';
@@ -32,6 +33,10 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
   const [error, setError] = useState('');
   const [form, setForm] = useState<'plan' | 'weigh-in' | null>(null);
   const [editing, setEditing] = useState<WeighIn | null>(null);
+  const [editingPlan, setEditingPlan] = useState<WeightPlan | null>(null);
+  const [historical, setHistorical] = useState(false);
+  const [planStatus, setPlanStatus] = useState<'completed' | 'cancelled'>('completed');
+  const [actualEndDate, setActualEndDate] = useState(todayKey);
   const [type, setType] = useState<WeightPlan['type']>('bulk');
   const [startDate, setStartDate] = useState(todayKey);
   const [startWeight, setStartWeight] = useState('');
@@ -57,7 +62,7 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
   const trend = active ? projection(active, entries, today) : null;
   const targetPace = active ? (active.targetWeight - active.startWeight) / monthsBetween(active.startDate, active.plannedEndDate) : null;
   let preview: string | null = null;
-  if (form === 'plan' && startWeight.trim() && (targetWeight.trim() || targetDate)) {
+  if (form === 'plan' && startWeight.trim() && Number(startWeight) < 1000 && (!targetWeight.trim() || Number(targetWeight) < 1000) && (targetWeight.trim() || targetDate)) {
     try {
       if (!validDate(startDate) || startDate > today) throw new Error('Choose today or a past start date.');
       const proposed = makePlan({ id: 'preview', type, startDate, startWeight: Number(startWeight), targetWeight: targetWeight.trim() ? Number(targetWeight) : null, targetDate: targetDate || null });
@@ -107,7 +112,16 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
       return false;
     }
   };
-  const openPlan = () => {
+  const closeForm = () => { setForm(null); setEditing(null); setEditingPlan(null); setError(''); };
+  const openPlan = (plan?: WeightPlan, past = false) => {
+    setEditing(null); setEditingPlan(plan || null); setHistorical(plan ? plan.status !== 'active' : past);
+    setPlanStatus(plan?.status === 'cancelled' ? 'cancelled' : 'completed');
+    setActualEndDate(plan?.actualEndDate || today);
+    if (plan) {
+      setType(plan.type); setStartDate(plan.startDate); setStartWeight(String(plan.startWeight)); setStartWeightOverridden(true);
+      setTargetWeight(String(plan.targetWeight)); setTargetDate(plan.plannedEndDate); setError(''); setForm('plan');
+      return;
+    }
     setType('bulk'); setStartDate(today); setStartWeight(latest ? String(latest.weight) : ''); setStartWeightOverridden(false); setTargetWeight(''); setTargetDate(''); setError(''); setForm('plan');
   };
   const submitPlan = (event: FormEvent) => {
@@ -115,22 +129,41 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
     if (!data) return;
     try {
       if (!validDate(startDate) || startDate > today) throw new Error('Choose today or a past start date.');
+      if (Number(startWeight) >= 1000 || (targetWeight.trim() && Number(targetWeight) >= 1000)) throw new Error('Check the decimal in each weight of 1,000 lb or more and use the suggested correction or enter a different weight.');
+      const made = makePlan({ id: editingPlan?.id || crypto.randomUUID(), type, startDate, startWeight: Number(startWeight), targetWeight: targetWeight.trim() ? Number(targetWeight) : null, targetDate: targetDate || null });
+      if (historical && (!validDate(actualEndDate) || actualEndDate < startDate || actualEndDate > today)) throw new Error('Actual end date must be between the start date and today.');
+      const plan: WeightPlan = historical ? { ...made, status: planStatus, actualEndDate } : made;
+      if (editingPlan || historical) {
+        const affected = entries.filter(entry => entry.planId === editingPlan?.id && (entry.date < plan.startDate || (plan.actualEndDate && entry.date > plan.actualEndDate)));
+        if (affected.length) throw new Error(`These weigh-ins would fall outside the plan dates: ${affected.map(entry => formatDate(entry.date)).join(', ')}. Correct them before changing the plan.`);
+        const nextPlans = [...plans.filter(item => item.id !== editingPlan?.id), plan].sort((a, b) => a.startDate.localeCompare(b.startDate) || (a.actualEndDate || '9999-12-31').localeCompare(b.actualEndDate || '9999-12-31'));
+        for (let i = 1; i < nextPlans.length; i++) {
+          const previousEnd = nextPlans[i - 1].actualEndDate;
+          if (!previousEnd || nextPlans[i].startDate < previousEnd) throw new Error('Plan dates overlap another phase. Choose dates that do not overlap.');
+        }
+        const weighIns = entries.map(entry => {
+          if (entry.planId !== plan.id) return entry;
+          const expected = expectedWeight(plan, entry.date);
+          return { ...entry, planType: plan.type, expectedWeight: expected, difference: entry.weight - expected };
+        });
+        if (save({ plans: nextPlans, weighIns })) closeForm();
+        return;
+      }
       const previous = plans[plans.length - 1];
       if (active && startDate < active.startDate) throw new Error('The new plan cannot start before the current plan started.');
       if (!active && previous?.actualEndDate && startDate < previous.actualEndDate) throw new Error(`The new plan cannot start before the last plan ended on ${formatDate(previous.actualEndDate)}.`);
       if (active && entries.some(entry => entry.planId === active.id && entry.date > startDate)) throw new Error('The current plan has weigh-ins after this start date. Choose a later start date or correct those weigh-ins first.');
-      const plan = makePlan({ id: crypto.randomUUID(), type, startDate, startWeight: Number(startWeight), targetWeight: targetWeight.trim() ? Number(targetWeight) : null, targetDate: targetDate || null });
       if (active && !window.confirm(`Start this new plan and cancel the current active plan on ${formatDate(startDate)}?`)) return;
       const nextPlans = plans.map(item => item.id === active?.id ? { ...item, status: 'cancelled' as const, actualEndDate: startDate } : item);
-      if (save({ ...data, plans: [...nextPlans, plan] })) setForm(null);
+      if (save({ ...data, plans: [...nextPlans, plan] })) closeForm();
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
     }
   };
   const openEntry = (entry?: WeighIn) => {
-    setEditing(entry || null); setEntryDate(entry?.date || today); setEntryWeight(entry ? String(entry.weight) : ''); setNotes(entry?.notes || ''); setError(''); setForm('weigh-in');
+    setEditing(entry || null); setEntryDate(entry?.date || today); setEntryWeight(entry ? String(entry.weight) : ''); setNotes(entry?.notes || ''); setError(''); setForm(entry ? null : 'weigh-in');
   };
-  useImperativeHandle(ref, () => ({ openPlan, openWeighIn: () => openEntry() }));
+  useImperativeHandle(ref, () => ({ openPlan: () => openPlan(), openWeighIn: () => openEntry() }));
   useEffect(() => {
     onActionState({ ready, hasPlans: plans.length > 0, hasActivePlan });
     return () => onActionState({ ready: false, hasPlans: false, hasActivePlan: false });
@@ -145,6 +178,7 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
       if (entries.some(item => item.date === entryDate && item.id !== editing?.id)) throw new Error('A weigh-in already exists on this date. Edit that entry instead.');
       const weight = Number(entryWeight);
       if (!entryWeight.trim() || !Number.isFinite(weight) || weight <= 0) throw new Error('Enter a weight greater than zero.');
+      if (weight >= 1000) throw new Error('Check the decimal in the weight and use the suggested correction or enter a different weight.');
       if (notes.length > 4000) throw new Error('Notes must be 4,000 characters or fewer.');
       if (editing && !window.confirm('Save these changes to the historical weigh-in?')) return;
       const expected = expectedWeight(owner, entryDate);
@@ -157,7 +191,7 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
           nextPlans = plans.map(plan => plan.id === owner.id ? { ...plan, status: 'completed', actualEndDate: entryDate } : plan);
         }
       }
-      if (save({ plans: nextPlans, weighIns: nextEntries })) setForm(null);
+      if (save({ plans: nextPlans, weighIns: nextEntries })) closeForm();
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
     }
@@ -178,10 +212,20 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
     if (window.confirm(`Complete this plan on ${formatDate(planEntry.date)}?`)) save({ ...data, plans: plans.map(plan => plan.id === active.id ? { ...plan, status: 'completed', actualEndDate: planEntry.date } : plan) });
   };
 
+  const entryForm = <form onSubmit={submitEntry} className="weightForm">
+    <p>One entry per date. The date must fall within a plan.</p>
+    {error && <p className="weightError" role="alert">{error}</p>}
+    <div className="weightFormGrid">
+      <label>Date<input type="date" max={today} required value={entryDate} onChange={event => setEntryDate(event.target.value)} /></label>
+      <WeightField label="Weight (lb)" value={entryWeight} onChange={setEntryWeight} required />
+      <label className="weightNotes">Notes<textarea maxLength={4000} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Optional context" /></label>
+    </div><div className="weightActions"><button className="primary" type="submit">Save weigh-in</button><button type="button" onClick={closeForm}>Cancel</button></div>
+  </form>;
+
   if (!snapshot.state || !data) return <p role="alert">{snapshot.error}</p>;
   return <div className="weightPage">
-    {error && <p className="weightError" role="alert">{error}</p>}
-    {form === 'plan' && <section className="card weightForm"><h3>New plan</h3><p>Choose today or a past start date. Enter a target weight, a target date, or both. Maximum: bulk 2 lb/month; cut 5 lb/month.</p><form onSubmit={submitPlan}><div className="weightFormGrid">
+    {error && !form && !editing && <p className="weightError" role="alert">{error}</p>}
+    {form === 'plan' && <FormDialog title={editingPlan ? 'Edit plan' : historical ? 'Add past plan' : 'New plan'} onClose={closeForm}><form onSubmit={submitPlan} className="weightForm"><p>Choose today or a past start date. Enter a target weight, a target date, or both. Maximum: bulk 2 lb/month; cut 5 lb/month.</p>{error && <p className="weightError" role="alert">{error}</p>}<div className="weightFormGrid">
       <label>Plan type<select value={type} onChange={event => setType(event.target.value as WeightPlan['type'])}><option value="bulk">Bulk</option><option value="cut">Cut</option></select></label>
       <label>Start date<input type="date" max={today} required value={startDate} onChange={event => {
         const date = event.target.value;
@@ -191,16 +235,13 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
           setStartWeight(previousWeight ? String(previousWeight.weight) : '');
         }
       }} /></label>
-      <label>Starting weight (lb)<input type="number" step="any" min="0.01" required value={startWeight} onChange={event => { setStartWeight(event.target.value); setStartWeightOverridden(true); }} /></label>
-      <label>Target weight (lb)<input type="number" step="any" min="0.01" value={targetWeight} onChange={event => setTargetWeight(event.target.value)} /></label>
+      <WeightField label="Starting weight (lb)" value={startWeight} onChange={value => { setStartWeight(value); setStartWeightOverridden(true); }} required />
+      <WeightField label="Target weight (lb)" value={targetWeight} onChange={setTargetWeight} />
       <label>Target date<input type="date" min={startDate || undefined} value={targetDate} onChange={event => setTargetDate(event.target.value)} /></label>
-    </div>{preview && <p role="status">{preview}</p>}<div className="weightActions"><button className="primary" type="submit">Save plan</button><button type="button" onClick={() => { setForm(null); setError(''); }}>Cancel</button></div></form></section>}
-    {form === 'weigh-in' && <section className="card weightForm"><h3>{editing ? 'Edit weigh-in' : 'Add weigh-in'}</h3><p>One entry per date. The date must fall within a plan.</p><form onSubmit={submitEntry}><div className="weightFormGrid">
-      <label>Date<input type="date" max={today} required value={entryDate} onChange={event => setEntryDate(event.target.value)} /></label>
-      <label>Weight (lb)<input type="number" step="any" min="0.01" required value={entryWeight} onChange={event => setEntryWeight(event.target.value)} /></label>
-      <label className="weightNotes">Notes<textarea maxLength={4000} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Optional context" /></label>
-    </div><div className="weightActions"><button className="primary" type="submit">Save weigh-in</button><button type="button" onClick={() => { setForm(null); setError(''); }}>Cancel</button></div></form></section>}
-    {active ? <section className="card weightOverview"><div className="weightSectionHead"><div><p className="weightKicker">CURRENT PHASE</p><h3>{label(active.type)} <span className="weightPlanStatus">Active</span></h3></div><div className="weightActions">{comparison !== null ? <span className={`weightBadge ${trackStatus(comparison).replace(/ /g, '-').toLowerCase()}`}>{trackStatus(comparison)}</span> : <span className="weightPlanStatus">Awaiting plan weigh-in</span>}{planEntry && reached(active, planEntry.weight) && <button onClick={complete}>Complete plan</button>}</div></div>
+      {historical && <><label>Plan status<select value={planStatus} onChange={event => setPlanStatus(event.target.value as 'completed' | 'cancelled')}><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label><label>Actual end date<input type="date" min={startDate || undefined} max={today} required value={actualEndDate} onChange={event => setActualEndDate(event.target.value)} /></label></>}
+    </div>{preview && <p role="status">{preview}</p>}<div className="weightActions"><button className="primary" type="submit">Save plan</button><button type="button" onClick={closeForm}>Cancel</button></div></form></FormDialog>}
+    {form === 'weigh-in' && <FormDialog title="Add weigh-in" onClose={closeForm}>{entryForm}</FormDialog>}
+    {active ? <section className="card weightOverview"><div className="weightSectionHead"><div><p className="weightKicker">CURRENT PHASE</p><h3>{label(active.type)} <span className="weightPlanStatus">Active</span></h3></div><div className="weightActions">{comparison !== null ? <span className={`weightBadge ${trackStatus(comparison).replace(/ /g, '-').toLowerCase()}`}>{trackStatus(comparison)}</span> : <span className="weightPlanStatus">Awaiting plan weigh-in</span>}<button onClick={() => openPlan(active)}>Edit plan</button>{planEntry && reached(active, planEntry.weight) && <button onClick={complete}>Complete plan</button>}</div></div>
       <div className="weightStats">
         <Metric name="Starting weight" value={pounds(active.startWeight)} detail={formatDate(active.startDate)} />
         <Metric name="Current weight" value={pounds(latest?.weight)} detail={latest ? `Latest: ${formatDate(latest.date)}` : 'No weigh-ins yet'} />
@@ -221,20 +262,27 @@ const WeightTracker = forwardRef<WeightTrackerHandle, { storage: TrackerStorage;
       {range === 'custom' && <div className="weightFormGrid"><label>From<input type="date" value={rangeStart} onChange={event => setRangeStart(event.target.value)} /></label><label>To<input type="date" value={rangeEnd} onChange={event => setRangeEnd(event.target.value)} /></label></div>}
       {range === 'custom' && rangeStart && rangeEnd && rangeStart > rangeEnd ? <p role="alert" className="weightError">The start of the range must be on or before its end.</p> : <>
         <div className="weightCharts"><Chart title="Weight history" rows={chartRows} plans={[]} /><Chart title="Actual vs target" rows={chartRows} plans={shownPlans} /></div>
-        <h3>Plan timeline</h3><p className="weightHint">Bulk and cut dates are shown for each phase; cancelled and completed phases end on their actual end date.</p>
+        <div className="weightSectionHead"><h3>Plan timeline</h3><button onClick={() => openPlan(undefined, true)}>Add past plan</button></div><p className="weightHint">Bulk and cut dates are shown for each phase; cancelled and completed phases end on their actual end date.</p>
         <div className="weightTimeline">{shownPlans.length ? [...shownPlans].reverse().map(plan => {
           const first = start || shownPlans.reduce((min, item) => item.startDate < min ? item.startDate : min, plan.startDate);
           const last = end || today;
           const duration = Math.max(1, dateNumber(last) - dateNumber(first) + 1);
           const phaseStart = Math.max(dateNumber(first), dateNumber(plan.startDate));
           const phaseEnd = Math.min(dateNumber(last), dateNumber(plan.actualEndDate || today));
-          return <div key={plan.id} className={`weightPhase ${plan.type}`}><strong>{label(plan.type)}</strong><span>{formatDate(plan.startDate)} – {formatDate(plan.actualEndDate || today)}</span><div className="weightTimelineTrack"><div className="weightTimelineBar" style={{ marginLeft: `${(phaseStart - dateNumber(first)) / duration * 100}%`, width: `${Math.max(1, (phaseEnd - phaseStart + 1) / duration * 100)}%` }} /></div><span>{plan.status} · target {pounds(plan.targetWeight)} by {formatDate(plan.plannedEndDate)}</span>{plan.status === 'completed' && <button onClick={() => reopen(plan)}>Reopen</button>}</div>;
+          return <div key={plan.id} className={`weightPhase ${plan.type}`}><strong>{label(plan.type)}</strong><span>{formatDate(plan.startDate)} – {formatDate(plan.actualEndDate || today)}</span><div className="weightTimelineTrack"><div className="weightTimelineBar" style={{ marginLeft: `${(phaseStart - dateNumber(first)) / duration * 100}%`, width: `${Math.max(1, (phaseEnd - phaseStart + 1) / duration * 100)}%` }} /></div><span>{plan.status} · target {pounds(plan.targetWeight)} by {formatDate(plan.plannedEndDate)}</span><div className="weightActions"><button onClick={() => openPlan(plan)}>Edit plan</button>{plan.status === 'completed' && <button onClick={() => reopen(plan)}>Reopen</button>}</div></div>;
         }) : <p>No plans in this range.</p>}</div>
-        <h3>Weigh-ins</h3>{filtered.length ? <div className="weightEntries">{[...filtered].reverse().map(entry => <article key={entry.id} className="weightEntry"><div><strong>{pounds(entry.weight)}</strong><span>{formatDate(entry.date)} · {label(entry.planType)}</span><span>Expected {pounds(entry.expectedWeight)} · {entry.difference > 0 ? '+' : ''}{entry.difference.toFixed(1)} lb</span>{entry.notes && <p>{entry.notes}</p>}</div><div className="weightActions"><button onClick={() => openEntry(entry)}>Edit</button><button onClick={() => deleteEntry(entry)}>Delete</button></div></article>)}</div> : <p>No weigh-ins in this range.</p>}
+        <h3>Weigh-ins</h3>{filtered.length ? <div className="weightEntries">{[...filtered].reverse().map(entry => <article key={entry.id} className="weightEntry">{editing?.id === entry.id ? entryForm : <><div><strong>{pounds(entry.weight)}</strong><span>{formatDate(entry.date)} · {label(entry.planType)}</span><span>Expected {pounds(entry.expectedWeight)} · {entry.difference > 0 ? '+' : ''}{entry.difference.toFixed(1)} lb</span>{entry.notes && <p>{entry.notes}</p>}</div><div className="weightActions"><button onClick={() => openEntry(entry)}>Edit</button><button onClick={() => deleteEntry(entry)}>Delete</button></div></>}</article>)}</div> : <p>No weigh-ins in this range.</p>}
       </>}
     </section>
   </div>;
 });
+
+function WeightField({ label: fieldLabel, value, onChange, required = false }: { label: string; value: string; onChange: (value: string) => void; required?: boolean }) {
+  const amount = Number(value);
+  return <div className="weightField"><label>{fieldLabel}<input type="number" step="any" min="0.01" required={required} value={value} onChange={event => onChange(event.target.value)} /></label>
+    {Number.isFinite(amount) && amount >= 1000 && <div className="weightSuggestion" role="status"><span>Check the decimal. Did you mean {String(amount / 10)} lb?</span><button type="button" onClick={() => onChange(String(amount / 10))}>Use {String(amount / 10)} lb</button></div>}
+  </div>;
+}
 
 function Metric({ name, value, detail }: { name: string; value: string; detail?: string }) {
   return <div className="weightMetric"><span>{name}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>;
