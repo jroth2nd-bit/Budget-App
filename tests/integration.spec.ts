@@ -15,34 +15,77 @@ async function openTracker(page: Page, name: string, mobile = false) {
 }
 
 for (const viewport of [{ width: 320, height: 720 }, { width: 1440, height: 900 }]) {
-  test(`eternal soulstone projection persists at ${viewport.width}px`, async ({ page }) => {
+  test(`independent soulstone conversions persist at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
     const state = tracker.emptyState();
     state.soulInventory.eternalStones = 4;
-    state.soulInventory.eternalCoins = 1500;
+    state.soulInventory.mortalCoins = 2500;
     await page.addInitScript(seed => { if (!localStorage.getItem('mercy-ledger-v1')) localStorage.setItem('mercy-ledger-v1', JSON.stringify(seed)); }, state);
     await page.goto(localUrl);
     let mercy = await openTracker(page, 'Mercy Tracker', viewport.width < 640);
     for (const [label, value] of [
-      ['Current Mortal Soulstones', '48'],
-      ['Current Mortal Soul Coins', '2500'],
-      ['Current Immortal Soulstones', '32'],
-      ['Current Immortal Soul Coins', '5'],
+      ['Current Mortal Soulstones', '50'],
+      ['Current Immortal Soul Coins', '500'],
+      ['Current Immortal Soulstones', '25'],
+      ['Current Eternal Soul Coins', '400'],
     ]) {
       await mercy.getByLabel(label).fill(value);
       await mercy.getByLabel(label).dispatchEvent('change');
     }
-    const eternal = mercy.locator('#soul-projection .soul-projection-row').last();
-    await expect(eternal).toContainText('34 purchasable');
-    await expect(eternal).toContainText('Includes saved Eternal coins');
+    const immortal = mercy.getByRole('region', { name: 'Mortal to Immortal conversion' });
+    const eternal = mercy.getByRole('region', { name: 'Immortal to Eternal conversion' });
+    for (const [region, target, helper, expected] of [
+      [immortal, '1 Immortal Soulstones purchasable', 'You need 25 more Mortal Soulstones', ['Current Immortal coins500', 'Mortal Soulstones owned50', 'Coins earned from pulling all Mortal Soulstones1,000', 'Total coins available1,500', 'Remaining coins500']],
+      [eternal, '1 Eternal Soulstones purchasable', 'You need 29 more Immortal Soulstones', ['Current Eternal coins400', 'Immortal Soulstones owned25', 'Coins earned from pulling all Immortal Soulstones750', 'Total coins available1,150', 'Remaining coins150']],
+    ] as const) {
+      await expect(region.getByText(target, { exact: true })).toBeVisible();
+      await expect(region.getByText(helper, { exact: false })).toBeVisible();
+      await expect(region.locator('details')).not.toHaveAttribute('open');
+      await expect(region.locator('dl')).toBeHidden();
+      await region.getByText('Calculation details').focus();
+      await page.keyboard.press('Enter');
+      await expect(region.locator('dl')).toBeVisible();
+      for (const text of expected) await expect(region).toContainText(text);
+    }
+    await mercy.getByLabel('Current Mortal Soulstones').fill('51');
+    await mercy.getByLabel('Current Mortal Soulstones').dispatchEvent('change');
+    await expect(immortal.locator('details')).toHaveAttribute('open');
+    await expect(eternal.locator('details')).toHaveAttribute('open');
+    await expect(immortal).toContainText('Total coins available1,520');
+    await mercy.getByLabel('Current Mortal Soulstones').fill('50');
+    await mercy.getByLabel('Current Mortal Soulstones').dispatchEvent('change');
+    await immortal.getByText('Calculation details').click();
+    await expect(immortal.locator('dl')).toBeHidden();
     await expect(mercy.getByLabel('Current Eternal Soulstones')).toHaveCount(0);
-    await expect(mercy.getByLabel('Current Eternal Soul Coins')).toHaveCount(0);
+    await expect(mercy.getByLabel('Current Mortal Soul Coins')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     await page.reload();
     mercy = await openTracker(page, 'Mercy Tracker', viewport.width < 640);
-    await expect(mercy.locator('#soul-projection .soul-projection-row').last()).toContainText('34 purchasable');
+    await expect(mercy.getByRole('region', { name: 'Immortal to Eternal conversion' }).getByText('1 Eternal Soulstones purchasable')).toBeVisible();
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
-    expect(saved.soulInventory).toMatchObject({ eternalStones: 4, eternalCoins: 1500 });
+    expect(saved.soulInventory).toMatchObject({ eternalStones: 4, mortalCoins: 2500, eternalCoins: 400, immortalStones: 25, mortalStones: 50, immortalCoins: 500 });
+    if (viewport.width === 1440) {
+      await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+      const downloaded = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'Export Everything' }).click();
+      const backup = JSON.parse(await readFile(await (await downloaded).path(), 'utf8'));
+      expect(backup.tracker.soulInventory).toMatchObject(saved.soulInventory);
+      mercy = await openTracker(page, 'Mercy Tracker');
+      await mercy.getByLabel('Current Eternal Soul Coins').fill('900');
+      await mercy.getByLabel('Current Eternal Soul Coins').dispatchEvent('change');
+      await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
+      const confirmation = page.waitForEvent('dialog');
+      await page.getByLabel('Backup file').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) });
+      await (await confirmation).accept();
+      await expect(page.getByText('and tracker data', { exact: false })).toBeVisible();
+      mercy = await openTracker(page, 'Mercy Tracker');
+      await expect(mercy.getByLabel('Current Eternal Soul Coins')).toHaveValue('400');
+      const restoredEternal = mercy.getByRole('region', { name: 'Immortal to Eternal conversion' });
+      await restoredEternal.getByText('Calculation details').click();
+      await expect(restoredEternal).toContainText('Remaining coins150');
+      const restored = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
+      expect(restored.soulInventory).toMatchObject(saved.soulInventory);
+    }
   });
 }
 
