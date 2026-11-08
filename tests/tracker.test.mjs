@@ -448,6 +448,22 @@ test("BJJ confidence uses weighted consistency and requires both answers", () =>
   assert.throws(() => T.bjjConfidence({ practice: "invalid", live: "learning" }), /consistency/);
 });
 
+test("BJJ learning priorities match dashboard ranking and cap", () => {
+  const skills = [
+    { name: "Fallback", practice: "consistently", live: "sometimes", workOnNext: false },
+    { name: "Unset", practice: "unset", live: "sometimes", workOnNext: false },
+    { name: "Complete", practice: "consistently", live: "consistently", workOnNext: false },
+    { name: "Focus unknown", practice: "unset", live: "sometimes", workOnNext: true },
+    { name: "Focus complete", practice: "consistently", live: "consistently", workOnNext: true },
+    { name: "Lower", practice: "learning", live: "learning", workOnNext: false }
+  ];
+  assert.deepEqual(T.bjjLearningPriorities(skills).map(row => [row.skill.name, row.confidence]), [
+    ["Focus complete", 100], ["Focus unknown", null], ["Fallback", 85]
+  ]);
+  assert.deepEqual(T.bjjLearningPriorities([skills[1], skills[2]]), []);
+  assert.equal(skills[0].name, "Fallback");
+});
+
 test("version 12 skills migrate without positions and version 13 defaults work-on-next while preserving positions", () => {
   const old = T.emptyState();
   old.version = 12;

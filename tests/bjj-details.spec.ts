@@ -1,6 +1,78 @@
 import { test, expect } from '@playwright/test';
 import tracker from '../src/tracker/tracker.js';
 
+for (const width of [320, 768, 1440]) {
+  test(`BJJ learning priorities match the dashboard and update at ${width}px`, async ({ page }) => {
+    const state = tracker.emptyState();
+    const skill = {
+      type: 'Pass', positions: ['Half guard'], description: '', link: '',
+      practice: 'consistently' as const, live: 'sometimes' as const,
+      preference: 'unset' as const, mastered: false, workOnNext: false,
+    };
+    state.bjj.skills = [
+      { ...skill, id: 'one', name: 'Focus with confidence', workOnNext: true },
+      { ...skill, id: 'two', name: 'Focus without confidence', positions: [], practice: 'unset', workOnNext: true },
+      { ...skill, id: 'three', name: 'Fallback priority' },
+      { ...skill, id: 'four', name: 'Another fallback', live: 'learning' },
+      { ...skill, id: 'five', name: 'Complete skill', live: 'consistently' },
+    ];
+    await page.addInitScript(seed => {
+      if (!sessionStorage.getItem('priorities-seeded')) {
+        sessionStorage.setItem('priorities-seeded', '1');
+        localStorage.setItem('mercy-ledger-v1', JSON.stringify(seed));
+      }
+    }, state);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('http://127.0.0.1:5188');
+    const dashboard = page.locator('.overview-bjj');
+    const dashboardNames = await dashboard.locator('li > span').allTextContents();
+    expect(dashboardNames).toEqual(['Focus with confidence', 'Focus without confidence', 'Fallback priority']);
+    await dashboard.click();
+    const bjj = page.locator('.trackerView');
+    const priorities = bjj.locator('#bjj-priorities');
+    await expect(priorities.locator('li strong')).toHaveText(dashboardNames);
+    const first = priorities.locator('li').first();
+    await expect(first.locator('.bjj-priority-focus')).toHaveText('Focus');
+    for (const [label, value] of [['Type', 'Pass'], ['Starting position', 'Half guard'], ['Confidence', '85%'], ['Practice', 'Consistently'], ['Live rolls', 'Sometimes']]) {
+      await expect(first.locator('.bjj-priority-info div').filter({ has: page.getByText(label, { exact: true }) }).locator('dd')).toHaveText(value);
+    }
+    await expect(priorities.locator('li').nth(1)).toContainText('Not set');
+    await expect(priorities.locator('li').nth(1)).toContainText('Not enough data');
+    await expect(priorities.locator('li').nth(1)).toContainText('Unset');
+    await expect(bjj.locator('#bjj-belt')).toHaveValue('Blue');
+    const cards = width <= 1350;
+    const list = bjj.locator(cards ? '#bjj-cards' : '#bjj-list');
+    if (cards) await list.locator('.bjj-card').filter({ has: page.getByText('Focus without confidence', { exact: true }) }).locator(':scope > summary').click();
+    await list.getByLabel('Focus: Focus without confidence').uncheck();
+    await expect(priorities.locator('li strong')).toHaveText(['Focus with confidence', 'Fallback priority', 'Another fallback']);
+    await list.getByLabel('Practice for Focus without confidence').selectOption('learning');
+    await expect(priorities.locator('li strong')).toHaveText(['Focus with confidence', 'Fallback priority', 'Another fallback']);
+    await list.getByLabel('Focus: Focus without confidence').check();
+    await expect(priorities.locator('li').nth(1)).toContainText('Learning');
+    await expect(priorities.locator('li').nth(1)).toContainText('61%');
+    await bjj.locator('.bjj-filter-details > summary').click();
+    await bjj.locator('[data-bjj-filter="name"]').fill('Complete skill');
+    await expect(priorities.locator('li strong')).toHaveCount(3);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    const panelLayout = await bjj.locator('.bjj-progress-panels').evaluate(element => {
+      const [belt, priorities] = Array.from(element.children, child => child.getBoundingClientRect());
+      return { beltRight: belt.right, prioritiesLeft: priorities.left, beltBottom: belt.bottom, prioritiesTop: priorities.top };
+    });
+    if (width < 768) expect(panelLayout.prioritiesTop).toBeGreaterThanOrEqual(panelLayout.beltBottom);
+    else expect(panelLayout.prioritiesLeft).toBeGreaterThanOrEqual(panelLayout.beltRight);
+  });
+}
+
+test('BJJ learning priorities show an empty state without changing the belt', async ({ page }) => {
+  await page.goto('http://127.0.0.1:5188');
+  await page.locator('.overview-bjj').click();
+  const bjj = page.locator('.trackerView');
+  await expect(bjj.locator('#bjj-priorities')).toHaveText('No learning priorities yet.');
+  await expect(bjj.locator('#bjj-belt')).toHaveValue('Blue');
+  await bjj.locator('#bjj-belt').selectOption('Purple');
+  await expect(bjj.locator('#bjj-belt-display')).toHaveAttribute('aria-label', /Purple belt/);
+});
+
 for (const width of [320, 1440]) {
   test(`BJJ details indicator reflects saved description or video at ${width}px`, async ({ page }) => {
     const state = tracker.emptyState();

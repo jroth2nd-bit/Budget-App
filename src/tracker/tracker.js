@@ -183,6 +183,13 @@ const MercyTracker = (function () {
     return Math.round((scores[skill.practice] * 40 + scores[skill.live] * 60) / 100);
   }
 
+  function bjjLearningPriorities(skills) {
+    return skills.map(skill => ({ skill, confidence: bjjConfidence(skill) }))
+      .filter(row => row.skill.workOnNext || (row.confidence !== null && row.confidence < 100))
+      .sort((a, b) => Number(b.skill.workOnNext) - Number(a.skill.workOnNext) || (b.confidence ?? -1) - (a.confidence ?? -1) || a.skill.name.localeCompare(b.skill.name))
+      .slice(0, 3);
+  }
+
   function validateChampion(champion, legacy = false) {
     if (!champion || typeof champion !== "object" || typeof champion.id !== "string" || !champion.id.trim() || champion.id.length > 100) throw new Error("Invalid champion build ID.");
     if (typeof champion.name !== "string" || !champion.name.trim() || champion.name.length > 100) throw new Error("Champion name is required and must be 100 characters or fewer.");
@@ -353,7 +360,7 @@ const MercyTracker = (function () {
     };
   }
 
-  return { rules, shardResults, soulResults, summonTypes, clanDifficulties, clanRewards, buildFields, buildStatuses, bjjBelts, bjjTypes, bjjPositions, emptyState, validateState, validateBjjSkill, bjjConfidence, validateChampion, buildCompletion, validateClanRecord, clanSummary, calculate, nextChance, mercyActive, battleProjection, summonRowPoints, summonProjection, soulCoinProjection };
+  return { rules, shardResults, soulResults, summonTypes, clanDifficulties, clanRewards, buildFields, buildStatuses, bjjBelts, bjjTypes, bjjPositions, emptyState, validateState, validateBjjSkill, bjjConfidence, bjjLearningPriorities, validateChampion, buildCompletion, validateClanRecord, clanSummary, calculate, nextChance, mercyActive, battleProjection, summonRowPoints, summonProjection, soulCoinProjection };
 })();
 
 export default MercyTracker;
