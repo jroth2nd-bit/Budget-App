@@ -161,18 +161,18 @@ const BookTracker = forwardRef<BookTrackerHandle, { storage: TrackerStorage; onA
     {snapshot.error && <p role="alert" className="bookError">{snapshot.error}</p>}
     {error && <p role="alert" className="bookError">{error}</p>}
     {snapshot.state && <>
-      <div className="bookStats">
+      <div className="bookOverview">
         {[{ title: 'Library', stats: libraryStats }, { title: 'Ratings', stats: ratingStats }].map(group => <section className="card bookStatPanel" aria-label={`${group.title} statistics`} key={group.title}>
           <h2>{group.title}</h2>
           <dl className="bookStatGrid">{group.stats.map(([label, value]) => <div className="bookStat" key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
         </section>)}
+        <section className="card bookRecommendations" aria-labelledby="book-recommendations-title">
+          <h2 id="book-recommendations-title">Find your next read</h2>
+          <div className="bookActions"><button className="primary" type="button" onClick={recommendLibrary} disabled={busy}>Recommend From My Library</button><button className="primary" type="button" onClick={() => void recommendNew()} disabled={busy}>Recommend Something New</button></div>
+          {recommendationMessage && <p role="status">{recommendationMessage}</p>}
+          {recommendation && <div className="bookResult"><strong>{recommendation.book.title}</strong><span>by {recommendation.book.author}{recommendation.isNew ? ` · ${recommendation.book.genre}` : ''}</span><p>{recommendation.reason}</p>{recommendation.isNew && <button type="button" onClick={() => { if (books.some(book => identity(book) === identity(recommendation.book))) { setError('This book is already in your library.'); return; } if (save([...books, recommendation.book])) { setRecommendation(null); setRecommendationMessage('Added to your library as unread.'); } }}>Add To Library</button>}</div>}
+        </section>
       </div>
-      <section className="card bookRecommendations">
-        <h2>Find your next read</h2>
-        <div className="bookActions"><button type="button" onClick={recommendLibrary} disabled={busy}>Recommend From My Library</button><button type="button" onClick={() => void recommendNew()} disabled={busy}>Recommend Something New</button></div>
-        {recommendationMessage && <p role="status">{recommendationMessage}</p>}
-        {recommendation && <div className="bookResult"><strong>{recommendation.book.title}</strong><span>by {recommendation.book.author}{recommendation.isNew ? ` · ${recommendation.book.genre}` : ''}</span><p>{recommendation.reason}</p>{recommendation.isNew && <button type="button" onClick={() => { if (books.some(book => identity(book) === identity(recommendation.book))) { setError('This book is already in your library.'); return; } if (save([...books, recommendation.book])) { setRecommendation(null); setRecommendationMessage('Added to your library as unread.'); } }}>Add To Library</button>}</div>}
-      </section>
       <section className="card bookCollection">
         <h2>Your library</h2>
         <div className="bookFilters">
