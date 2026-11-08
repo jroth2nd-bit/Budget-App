@@ -90,16 +90,20 @@ test('lookup preserves personal fields, editing persists, and filters and dashbo
   await expect(dialog.getByRole('combobox', { name: 'Rating', exact: true })).toHaveValue('Really Liked');
   await dialog.getByRole('button', { name: 'Add Book' }).click();
   await expect(page.locator('.bookStat').filter({ hasText: 'Favorite Genre' })).toContainText('Fantasy');
+  await page.getByLabel('Expand summary for The Dragon').click();
   await page.getByRole('button', { name: 'Edit series for The Dragon' }).click();
   await page.getByLabel('series for The Dragon').fill('Dragons #2');
   await page.getByLabel('series for The Dragon').blur();
   await page.getByLabel('Search', { exact: true }).fill('dragons #2');
-  await expect(page.locator('.bookTable tbody tr')).toHaveCount(1);
+  await expect(page.locator('.bookTable tbody tr:not(.bookSummaryRow)')).toHaveCount(1);
+  await page.getByRole('combobox', { name: 'Series', exact: true }).selectOption('Dragons #2');
+  await expect(page.locator('.bookTable tbody tr:not(.bookSummaryRow)')).toHaveCount(1);
   await page.getByRole('combobox', { name: 'Read Status', exact: true }).selectOption('Unread');
   await expect(page.getByText('No books match your filters.')).toBeVisible();
   await page.getByRole('combobox', { name: 'Read Status', exact: true }).selectOption('All');
   await page.reload();
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Book Tracker' }).click();
+  await page.getByLabel('Expand summary for The Dragon').click();
   await expect(page.getByRole('button', { name: 'Edit series for The Dragon' })).toHaveText('Dragons #2');
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Dashboard', exact: true }).click();
   await expect(page.locator('.overview-books')).toContainText('1 read');
@@ -194,8 +198,8 @@ for (const width of [320, 768, 1440]) {
     const nav = page.getByRole('navigation', { name: width < 640 ? 'Mobile navigation' : 'Main navigation' });
     if (width < 640) await nav.getByRole('button', { name: 'More' }).click();
     await nav.getByRole('button', { name: 'Book Tracker' }).click();
-    await expect(page.getByRole('button', { name: 'Edit series for Updated' })).toHaveText('A series');
     await page.getByLabel('Expand summary for Updated').click();
+    await expect(page.getByRole('button', { name: 'Edit series for Updated' })).toHaveText('A series');
     await expect(page.getByRole('button', { name: 'Edit Summary for Updated' })).toHaveText('A new summary.');
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
     expect(saved.books[0]).toMatchObject({ title: 'Updated', author: 'Writer', series: 'A series', genre: 'History', fictionType: 'Non-Fiction', read: false, rating: 'Liked', summary: 'A new summary.' });
@@ -218,6 +222,31 @@ test('invalid edits stay available for correction', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Edit title for Corrected' })).toHaveText('Corrected');
 });
 
+test('desktop table gives book titles more room without truncating them', async ({ page }) => {
+  const state = tracker.emptyState();
+  const title = 'The Fellowship of the Ring';
+  state.books = [makeBook(title, { series: 'The Lord of the Rings' })];
+  await page.addInitScript(seed => localStorage.setItem('mercy-ledger-v1', JSON.stringify(seed)), state);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('http://127.0.0.1:5188');
+  await page.locator('.overview-books').click();
+  const table = page.locator('.bookTable');
+  await expect(table.getByRole('columnheader', { name: 'Series' })).toHaveCount(0);
+  const geometry = await table.evaluate(element => {
+    const header = element.querySelector('th')!.getBoundingClientRect();
+    const tableRect = element.getBoundingClientRect();
+    const span = element.querySelector('tbody tr:first-child td:first-child .bookCellValue span')!;
+    const range = document.createRange();
+    range.selectNodeContents(span);
+    return { proportion: header.width / tableRect.width, lines: range.getClientRects().length };
+  });
+  expect(geometry.proportion).toBeGreaterThan(0.25);
+  expect(geometry.lines).toBe(1);
+  await expect(table.getByRole('button', { name: `Edit title for ${title}` })).toHaveText(title);
+  await table.getByLabel(`Expand summary for ${title}`).click();
+  await expect(table.getByRole('button', { name: `Edit series for ${title}` })).toHaveText('The Lord of the Rings');
+});
+
 for (const width of [320, 768, 1440]) {
   test(`summaries stay collapsed and rows compact at ${width}px`, async ({ page }) => {
     const state = tracker.emptyState();
@@ -237,9 +266,11 @@ for (const width of [320, 768, 1440]) {
     const emptyHeight = (await emptyRow.boundingBox())!.height;
     expect(Math.abs(collapsedHeight - emptyHeight)).toBeLessThan(3);
     await expect(longRow.getByRole('button', { name: 'Edit Summary for Long book' })).toBeHidden();
+    await expect(longRow.getByRole('button', { name: 'Edit series for Long book' })).toBeHidden();
     await longRow.getByLabel('Expand summary for Long book').press('Enter');
     await expect(longRow.getByLabel('Expand summary for Long book')).toHaveAttribute('aria-expanded', 'true');
     const expandedRow = longRow.locator('xpath=following-sibling::tr[1]');
+    await expect(expandedRow.getByRole('button', { name: 'Edit series for Long book' })).toHaveText('Select to add a series');
     await expect(expandedRow.getByRole('button', { name: 'Edit Summary for Long book' })).toHaveText(longSummary);
     const tableWidth = (await page.locator('.bookTable').boundingBox())!.width;
     const expandedWidth = (await expandedRow.boundingBox())!.width;
