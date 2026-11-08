@@ -23,10 +23,10 @@ const targets: Array<{ value: ImportTarget; label: string }> = [
   { value: 'income', label: 'Income transactions' },
   { value: 'expense', label: 'Expense transactions' },
   { value: 'salary', label: 'Salary history' },
-  { value: 'mercy-pulls', label: 'Mercy Ledger pulls' },
-  { value: 'demon-lord', label: 'Mercy Ledger reward days' },
-  { value: 'champions', label: 'Champion Builds' },
-  { value: 'bjj-skills', label: 'BJJ Skills' },
+  { value: 'mercy-pulls', label: 'Mercy Tracker pulls' },
+  { value: 'demon-lord', label: 'Mercy Tracker reward days' },
+  { value: 'champions', label: 'Champion Builds Tracker' },
+  { value: 'bjj-skills', label: 'BJJ Tracker' },
 ];
 
 const transactionFields: ImportField[] = [

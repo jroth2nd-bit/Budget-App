@@ -7,7 +7,7 @@ const userId = '00000000-0000-4000-8000-000000000001';
 
 async function openTracker(page: Page, name: string, mobile = false) {
   const nav = page.getByRole('navigation', { name: mobile ? 'Mobile navigation' : 'Main navigation' });
-  if (mobile) await nav.getByRole('button', { name: 'Trackers' }).click();
+  if (mobile) await nav.getByRole('button', { name: 'More' }).click();
   await nav.getByRole('button', { name, exact: true }).click();
   await expect(page.locator('iframe')).toHaveCount(0);
   return page.locator('.trackerView');
@@ -25,7 +25,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.setViewportSize(viewport);
     await page.goto(localUrl);
     const mobile = viewport.width < 640;
-    const builds = await openTracker(page, 'Champion Builds', mobile);
+    const builds = await openTracker(page, 'Champion Builds Tracker', mobile);
     if (mobile) {
       await expect(builds.locator('.build-mobile-card summary > span')).toHaveText(['Champion 6', 'Champion 5', 'Champion 4', 'Champion 3', 'Champion 2', 'Champion 1', 'Champion 0']);
     } else {
@@ -79,7 +79,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.setViewportSize(viewport);
     await page.goto(localUrl);
     const mobile = viewport.width < 640;
-    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    const bjj = await openTracker(page, 'BJJ Tracker', mobile);
     const list = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
     if (mobile) await list.locator('.bjj-card > summary').click();
     await expect(list.getByLabel('Confidence for Legacy skill: Not enough data')).toBeVisible();
@@ -126,7 +126,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
     expect(saved.bjj.skills.find((item: { name: string }) => item.name === 'New submission').positions).toEqual(['Half guard', 'De La Riva']);
     await page.reload();
-    await openTracker(page, 'BJJ Skills', mobile);
+    await openTracker(page, 'BJJ Tracker', mobile);
     await bjj.locator('.bjj-filter-details summary').click();
     await positionFilter.selectOption({ label: 'De La Riva' });
     await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 2 skills.');
@@ -150,7 +150,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.setViewportSize(viewport);
     await page.goto(localUrl);
     const mobile = viewport.width < 640;
-    let bjj = await openTracker(page, 'BJJ Skills', mobile);
+    let bjj = await openTracker(page, 'BJJ Tracker', mobile);
     let list = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
     if (mobile) await list.locator('.bjj-card > summary').click();
     const workNext = list.getByLabel('Work on next: Guard pass');
@@ -161,7 +161,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     expect(saved.bjj.skills[0]).not.toHaveProperty('video');
 
     await page.reload();
-    bjj = await openTracker(page, 'BJJ Skills', mobile);
+    bjj = await openTracker(page, 'BJJ Tracker', mobile);
     list = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
     if (mobile) await list.locator('.bjj-card > summary').click();
     await expect(list.getByLabel('Work on next: Guard pass')).toBeChecked();
@@ -179,7 +179,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.addInitScript(data => localStorage.setItem('mercy-ledger-v1', JSON.stringify(data)), state);
     await page.setViewportSize(viewport);
     await page.goto(localUrl);
-    const bjj = await openTracker(page, 'BJJ Skills', viewport.width < 640);
+    const bjj = await openTracker(page, 'BJJ Tracker', viewport.width < 640);
     await expect(bjj.locator('#bjj-sort, #bjj-direction')).toHaveCount(0);
     const cards = viewport.width <= 1350;
     const sorter = bjj.locator(cards ? '#bjj-card-sort' : '#bjj-head');
@@ -257,9 +257,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.goto(localUrl);
     const mobile = viewport.width < 640;
     for (const [name, firstPanel] of [
-      ['Champion Builds', '.compact-panel'],
-      ['BJJ Skills', '.bjj-belt-panel'],
-      ['Mercy Ledger', '#dashboard'],
+      ['Champion Builds Tracker', '.compact-panel'],
+      ['BJJ Tracker', '.bjj-belt-panel'],
+      ['Mercy Tracker', '#dashboard'],
     ]) {
       const trackerView = await openTracker(page, name, mobile);
       await expect(page.locator('.trackerSync')).toHaveCSS('position', 'absolute');
@@ -273,12 +273,12 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     const mercy = page.locator('.trackerView');
     await expect(mercy.getByText('Enter your current inventory. Amounts start at zero.')).toHaveCount(0);
     await expect(mercy.locator('#clan-new')).toBeVisible();
-    const builds = await openTracker(page, 'Champion Builds', mobile);
+    const builds = await openTracker(page, 'Champion Builds Tracker', mobile);
     await expect(builds.getByRole('heading', { name: 'Build rankings' })).toBeVisible();
     await expect(builds.locator('#build-clear-filters')).toBeVisible();
     await expect(builds.getByText('Click or tap a value to edit it.')).toHaveCount(0);
     await expect(builds.locator('.build-desktop-hint')).toHaveCount(0);
-    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    const bjj = await openTracker(page, 'BJJ Tracker', mobile);
     await expect(bjj.getByRole('heading', { name: 'Skill library' })).toBeVisible();
     await expect(bjj.locator('#bjj-clear')).toBeVisible();
     await expect(bjj.getByText('Mastery is your choice.', { exact: false })).toHaveCount(0);
@@ -290,7 +290,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.setViewportSize(viewport);
     await page.goto(localUrl);
     const mobile = viewport.width < 640;
-    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    const bjj = await openTracker(page, 'BJJ Tracker', mobile);
     await page.getByRole('button', { name: 'Add skill', exact: true }).click();
     const skill = bjj.locator('#bjj-add-dialog');
     await expect(skill).toBeVisible();
@@ -321,7 +321,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(skill.locator('#bjj-add-description')).toHaveValue('');
     await skill.locator('#bjj-add-close').click();
 
-    const builds = await openTracker(page, 'Champion Builds', mobile);
+    const builds = await openTracker(page, 'Champion Builds Tracker', mobile);
     await page.getByRole('button', { name: 'Add champion', exact: true }).click();
     const champion = builds.locator('#build-dialog');
     expect(await champion.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
@@ -338,7 +338,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(champion).toBeHidden();
 
     const nav = page.getByRole('navigation', { name: mobile ? 'Mobile navigation' : 'Main navigation' });
-    await nav.getByRole('button', { name: 'Transactions', exact: true }).click();
+    await nav.getByRole('button', { name: 'Budget Tracker', exact: true }).click();
     await page.getByRole('button', { name: '+ Add' }).click();
     const transaction = page.getByRole('dialog', { name: 'Add transaction' });
     await expect(transaction).toBeVisible();
@@ -359,7 +359,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(page.locator('.txRow .txName')).toContainText('Posted income');
     await expect(page.locator('.txRow:not(.txHead)').getByLabel('Posted')).toBeChecked();
 
-    await nav.getByRole('button', { name: 'Salary History', exact: true }).click();
+    await nav.getByRole('button', { name: 'Salary Tracker', exact: true }).click();
     await page.getByRole('button', { name: 'Add salary change' }).click();
     const salary = page.getByRole('dialog', { name: 'Add salary change' });
     expect(await salary.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
@@ -394,9 +394,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(goal).toHaveCount(0);
     await expect(page.locator('.incomeHistoryGoalItem').filter({ hasText: '2026' })).toContainText('95,000');
     await page.reload();
-    await nav.getByRole('button', { name: 'Salary History', exact: true }).click();
+    await nav.getByRole('button', { name: 'Salary Tracker', exact: true }).click();
     await expect(page.locator('.incomeHistoryRow').filter({ hasText: 'Example employer' })).toBeVisible();
-    await openTracker(page, 'BJJ Skills', mobile);
+    await openTracker(page, 'BJJ Tracker', mobile);
     await expect(bjj.locator('#bjj-count')).toHaveText('Showing 1 of 1 skills.');
     if (mobile) await bjj.locator('.bjj-card > summary').click();
     const skillList = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
@@ -411,7 +411,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
 
 test('posting a new recurring transaction posts only its first occurrence', async ({ page }) => {
   await page.goto(localUrl);
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Transactions' }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Budget Tracker' }).click();
   await page.getByRole('button', { name: '+ Add' }).click();
   const form = page.getByRole('dialog', { name: 'Add transaction' });
   const date = new Date();
@@ -435,7 +435,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.setViewportSize(viewport);
     await page.goto(localUrl);
     const mobile = viewport.width < 640;
-    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    const bjj = await openTracker(page, 'BJJ Tracker', mobile);
     const addSkill = async (name: string, type: string, custom = false) => {
       await page.getByRole('button', { name: 'Add skill', exact: true }).click();
       await bjj.locator('#bjj-name').fill(name);
@@ -490,11 +490,11 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await bjj.locator('#bjj-clear').click();
     await expect(typeFilter.locator('option')).toHaveText(['All', ...tracker.bjjTypes, 'Leg <entanglement> advanced']);
     await page.reload();
-    await openTracker(page, 'BJJ Skills', mobile);
+    await openTracker(page, 'BJJ Tracker', mobile);
     await bjj.locator('.bjj-filter-details summary').click();
     await expect(typeFilter.locator('option')).toHaveText(['All', ...tracker.bjjTypes, 'Leg <entanglement> advanced']);
 
-    const builds = await openTracker(page, 'Champion Builds', mobile);
+    const builds = await openTracker(page, 'Champion Builds Tracker', mobile);
     await page.getByRole('button', { name: 'Add champion', exact: true }).click();
     await builds.locator('#build-name').fill('Filter champion');
     await builds.locator('#build-books').selectOption('complete');
@@ -533,7 +533,7 @@ test(`transaction dropdown filters match editing at ${viewport.width}px`, async 
     localStorage.setItem('tags', JSON.stringify([{ name: 'Work', icon: '', color: '#ffffff' }, { name: 'all', icon: '', color: '#ffffff' }, { name: 'category:', icon: '', color: '#ffffff' }]));
   });
   await page.goto(localUrl);
-  await page.getByRole('navigation', { name: viewport.width < 640 ? 'Mobile navigation' : 'Main navigation' }).getByRole('button', { name: 'Transactions' }).click();
+  await page.getByRole('navigation', { name: viewport.width < 640 ? 'Mobile navigation' : 'Main navigation' }).getByRole('button', { name: 'Budget Tracker' }).click();
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
   const filter = page.locator('.txFilters').getByLabel('Category');
   await page.getByRole('button', { name: 'Edit all' }).click();
@@ -557,7 +557,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1351, height: 800
     await page.setViewportSize(viewport);
     await page.goto(localUrl);
     const mobile = viewport.width < 640;
-    const builds = await openTracker(page, 'Champion Builds', mobile);
+    const builds = await openTracker(page, 'Champion Builds Tracker', mobile);
     await page.getByRole('button', { name: 'Add champion', exact: true }).click();
     await builds.locator('#build-name').fill('Readability champion');
     await builds.locator('#build-form button[type=submit]').click();
@@ -569,7 +569,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1351, height: 800
       await expect(builds.locator('.build-table-wrap')).toBeHidden();
       await expect(builds.locator('.build-mobile-card').first()).toBeVisible();
     }
-    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    const bjj = await openTracker(page, 'BJJ Tracker', mobile);
     await page.getByRole('button', { name: 'Add skill', exact: true }).click();
     await bjj.locator('#bjj-name').fill('Readability escape');
     await bjj.locator('#bjj-type-container summary').click();
@@ -583,7 +583,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1351, height: 800
       await expect(bjj.locator('.bjj-table-wrap')).toBeHidden();
       await expect(bjj.locator('.bjj-card').first()).toBeVisible();
     }
-    const mercy = await openTracker(page, 'Mercy Ledger', mobile);
+    const mercy = await openTracker(page, 'Mercy Tracker', mobile);
     await mercy.locator('#clan-new').click();
     const dialog = mercy.locator('#clan-dialog');
     await expect(dialog.locator('.clan-table')).toHaveCSS('font-size', '13px');
@@ -610,10 +610,10 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await expect(activeNav()).toHaveCSS('color', navAccent);
       await expect(nav).toHaveCSS('background-color', navBackground);
     };
-    await openTracker(page, 'Champion Builds', mobile);
+    await openTracker(page, 'Champion Builds Tracker', mobile);
     await assertTheme('rgb(138, 245, 160)', mobile ? 'rgba(12, 23, 17, 0.97)' : 'rgb(12, 23, 17)');
     await expect(action).toHaveCSS('background-color', 'rgb(138, 245, 160)');
-    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    const bjj = await openTracker(page, 'BJJ Tracker', mobile);
     for (const [belt, color] of [
       ['Blue', 'rgb(120, 197, 255)'],
       ['White', 'rgb(231, 238, 240)'],
@@ -628,18 +628,21 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await expect(action).toHaveCSS('background-color', color);
       await expect(bjj.locator('.bjj-belt-panel .eyebrow')).toHaveCSS('color', color);
     }
-    await openTracker(page, 'Mercy Ledger', mobile);
-    await assertTheme('rgb(250, 204, 21)', mobile ? 'rgba(17, 16, 12, 0.97)' : 'rgb(17, 16, 12)');
-    for (const name of ['Dashboard', 'Transactions', 'Salary History', 'Admin']) {
+    await openTracker(page, 'Mercy Tracker', mobile);
+    await assertTheme('rgb(243, 142, 155)', mobile ? 'rgba(17, 16, 12, 0.97)' : 'rgb(17, 16, 12)');
+    for (const [name, color] of [
+      ['Dashboard', 'rgb(237, 227, 203)'],
+      ['Budget Tracker', 'rgb(250, 204, 21)'],
+      ['Salary Tracker', 'rgb(154, 188, 233)'],
+      ['Admin', 'rgb(182, 195, 210)'],
+    ]) {
+      if (mobile && name === 'Admin') await nav.getByRole('button', { name: 'More' }).click();
       await nav.getByRole('button', { name, exact: true }).click();
-      await assertTheme(
-        name === 'Admin' ? 'rgb(180, 35, 54)' : 'rgb(250, 204, 21)',
-        mobile ? 'rgba(17, 16, 12, 0.97)' : 'rgb(17, 16, 12)',
-        'rgb(250, 204, 21)'
-      );
+      await assertTheme(color, mobile ? 'rgba(17, 16, 12, 0.97)' : 'rgb(17, 16, 12)');
+      if (name === 'Admin') await expect(page.locator('.admin-dangerZone')).toHaveCSS('border-top-color', 'rgb(248, 113, 113)');
     }
     await page.reload();
-    const restored = await openTracker(page, 'BJJ Skills', mobile);
+    const restored = await openTracker(page, 'BJJ Tracker', mobile);
     await expect(restored.locator('#bjj-belt')).toHaveValue('Black');
     await expect(page.locator('.appRoot')).toHaveAttribute('data-theme', 'bjj-black');
     await expect(eyebrow).toHaveCSS('color', 'rgb(214, 220, 229)');
@@ -650,19 +653,20 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.goto(localUrl);
     const mobile = viewport.width < 640;
     const nav = page.getByRole('navigation', { name: mobile ? 'Mobile navigation' : 'Main navigation' });
-    for (const [label, heading, eyebrow] of [
-      ['Dashboard', 'Dashboard', 'YOUR FINANCES'],
-      ['Transactions', 'Transactions', 'YOUR ACTIVITY'],
-      ['Salary History', 'Salary History', 'YOUR CAREER'],
-      ['Admin', 'Administration', 'YOUR SETTINGS'],
+    for (const [label, heading, eyebrow, color] of [
+      ['Dashboard', 'Dashboard', 'YOUR OVERVIEW', 'rgb(237, 227, 203)'],
+      ['Budget Tracker', 'Budget Tracker', 'YOUR FINANCES', 'rgb(250, 204, 21)'],
+      ['Salary Tracker', 'Salary Tracker', 'YOUR CAREER', 'rgb(154, 188, 233)'],
+      ['Admin', 'Administration', 'YOUR SETTINGS', 'rgb(182, 195, 210)'],
     ]) {
+      if (mobile && label === 'Admin') await nav.getByRole('button', { name: 'More' }).click();
       await nav.getByRole('button', { name: label, exact: true }).click();
       const title = page.locator('.topBar').getByRole('heading', { name: heading, exact: true });
       await expect(title).toBeVisible();
       await expect(page.getByRole('heading', { name: heading, exact: true })).toHaveCount(1);
       await expect(title).toHaveCSS('font-family', /Georgia/);
       await expect(page.locator('.topBar .pageEyebrow')).toHaveText(eyebrow);
-      await expect(page.locator('.topBar .pageEyebrow')).toHaveCSS('color', label === 'Admin' ? 'rgb(180, 35, 54)' : 'rgb(250, 204, 21)');
+      await expect(page.locator('.topBar .pageEyebrow')).toHaveCSS('color', color);
       if (label === 'Admin') {
         const columns = await page.locator('.adminPage').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
         expect(columns).toBe(mobile ? 1 : 2);
@@ -670,9 +674,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     }
     for (const [name, eyebrow] of [
-      ['Mercy Ledger', 'RAID COMPANION'],
-      ['Champion Builds', 'YOUR CHAMPIONS'],
-      ['BJJ Skills', 'BRAZILIAN JIU-JITSU'],
+      ['Mercy Tracker', 'RAID COMPANION'],
+      ['Champion Builds Tracker', 'YOUR CHAMPIONS'],
+      ['BJJ Tracker', 'BRAZILIAN JIU-JITSU'],
     ]) {
       await openTracker(page, name, mobile);
       await expect(page.locator('.topBar').getByRole('heading', { name, exact: true })).toBeVisible();
@@ -680,11 +684,11 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await expect(page.locator('.topBar .pageEyebrow')).toHaveText(eyebrow);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     }
-    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    const bjj = await openTracker(page, 'BJJ Tracker', mobile);
     await expect(bjj.locator('.tracker-surface')).toHaveAttribute('data-belt', 'blue');
     await bjj.locator('#bjj-belt').selectOption('Purple');
     await expect(bjj.locator('.tracker-surface')).toHaveAttribute('data-belt', 'purple');
-    await expect(page.locator('.topBar').getByRole('heading', { name: 'BJJ Skills' })).toBeVisible();
+    await expect(page.locator('.topBar').getByRole('heading', { name: 'BJJ Tracker' })).toBeVisible();
   });
 }
 
@@ -710,7 +714,7 @@ test('admin CSV imports map columns and update only the selected destination', a
   const mapping = page.locator('.adminMappingGrid');
   await mapping.getByLabel('Skill name *').selectOption({ label: 'Skill Name' });
   await page.getByRole('button', { name: 'Import 1 row' }).click();
-  await expect(page.getByRole('status')).toContainText('Imported 1 row to BJJ Skills');
+  await expect(page.getByRole('status')).toContainText('Imported 1 row to BJJ Tracker');
 
   let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
   expect(saved.champions.map((champion: { name: string }) => champion.name)).toEqual(['Keep existing build']);
@@ -748,7 +752,7 @@ test('admin CSV imports map columns and update only the selected destination', a
     buffer: Buffer.from('Date,Pull Type,Source,Rarity,Quantity\n2026-11-06,shard,Ancient,Rare,1\n'),
   });
   await page.getByRole('button', { name: 'Import 1 row' }).click();
-  await expect(page.getByRole('status')).toContainText('Imported 1 row to Mercy Ledger pulls');
+  await expect(page.getByRole('status')).toContainText('Imported 1 row to Mercy Tracker pulls');
   saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
   expect(saved.entries).toMatchObject([{ kind: 'shard', source: 'Ancient', rarity: 'Rare', quantity: 1 }]);
   expect(saved.champions.map((champion: { name: string }) => champion.name)).toEqual(['Keep existing build']);
@@ -760,7 +764,7 @@ test('admin CSV imports map columns and update only the selected destination', a
     buffer: Buffer.from('Date,Difficulty,Chests,Legendary books,Epic books,Sacred shards,Void shards,Ancient shards\n2026-11-07,Ultra-Nightmare,2,1,,2,3,4\n'),
   });
   await page.getByRole('button', { name: 'Import 1 row' }).click();
-  await expect(page.getByRole('status')).toContainText('Imported 1 row to Mercy Ledger reward days');
+  await expect(page.getByRole('status')).toContainText('Imported 1 row to Mercy Tracker reward days');
   saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
   expect(saved.clanBoss[0].difficulties.ultra).toMatchObject({ chests: 2, books: 1, epicBooks: null, sacred: 2, void: 3, ancient: 4 });
   expect(saved.entries).toHaveLength(1);
@@ -772,7 +776,7 @@ test('admin CSV imports map columns and update only the selected destination', a
     buffer: Buffer.from('Champion,Blessing,Books,Gear,Notes\nNew champion,3,complete,progress,Imported build\n'),
   });
   await page.getByRole('button', { name: 'Import 1 row' }).click();
-  await expect(page.getByRole('status')).toContainText('Imported 1 row to Champion Builds');
+  await expect(page.getByRole('status')).toContainText('Imported 1 row to Champion Builds Tracker');
   saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
   expect(saved.champions).toMatchObject([
     { name: 'Keep existing build' },
@@ -787,16 +791,16 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     const mobile = viewport.width < 640;
     const actionArea = page.locator(mobile ? '.mobilePageAction' : '.topBar');
     const nav = page.getByRole('navigation', { name: mobile ? 'Mobile navigation' : 'Main navigation' });
-    await nav.getByRole('button', { name: 'Transactions', exact: true }).click();
+    await nav.getByRole('button', { name: 'Budget Tracker', exact: true }).click();
     await actionArea.getByRole('button', { name: '+ Add' }).click();
     await expect(page.locator('form.txAdd')).toBeVisible();
     await page.getByRole('dialog', { name: 'Add transaction' }).getByRole('button', { name: 'Close' }).click();
     await expect(page.locator('form.txAdd')).toHaveCount(0);
-    const builds = await openTracker(page, 'Champion Builds', mobile);
+    const builds = await openTracker(page, 'Champion Builds Tracker', mobile);
     await actionArea.getByRole('button', { name: 'Add champion' }).click();
     await expect(builds.locator('#build-dialog')).toBeVisible();
     await builds.locator('#build-close').click();
-    const bjj = await openTracker(page, 'BJJ Skills', mobile);
+    const bjj = await openTracker(page, 'BJJ Tracker', mobile);
     await actionArea.getByRole('button', { name: 'Add skill' }).click();
     await expect(bjj.locator('#bjj-add-dialog')).toBeVisible();
     await bjj.locator('#bjj-add-close').click();
@@ -813,15 +817,16 @@ test('desktop and mobile navigation, editing, reload and budget isolation', asyn
     }
   });
   await page.goto(localUrl);
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Budget Tracker' }).click();
   await expect(page.getByText('$2,468.00').first()).toBeVisible();
-  const mercy = await openTracker(page, 'Mercy Ledger');
+  const mercy = await openTracker(page, 'Mercy Tracker');
   await mercy.locator('#count-Ancient-Legendary').fill('201');
   await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
-  const builds = await openTracker(page, 'Champion Builds');
+  const builds = await openTracker(page, 'Champion Builds Tracker');
   await page.getByRole('button', { name: 'Add champion', exact: true }).click();
   await builds.locator('#build-name').fill('Integration champion');
   await builds.locator('#build-form button[type=submit]').click();
-  const bjj = await openTracker(page, 'BJJ Skills');
+  const bjj = await openTracker(page, 'BJJ Tracker');
   await page.getByRole('button', { name: 'Add skill', exact: true }).click();
   await bjj.locator('#bjj-name').fill('Integration escape');
   await bjj.locator('#bjj-type-container summary').click();
@@ -838,19 +843,19 @@ test('desktop and mobile navigation, editing, reload and budget isolation', asyn
   await expect(bjj.locator('#bjj-count')).toContainText('Showing 1 of 1');
   await page.reload();
   await page.setViewportSize({ width: 390, height: 844 });
-  const mobileBjj = await openTracker(page, 'BJJ Skills', true);
+  const mobileBjj = await openTracker(page, 'BJJ Tracker', true);
   await expect(mobileBjj.getByText('Integration escape', { exact: true }).first()).toBeVisible();
   await expect(mobileBjj.locator('.tracker-surface')).toHaveAttribute('data-belt', 'purple');
   await mobileBjj.getByText('Integration escape', { exact: true }).first().click();
   await expect(mobileBjj.getByRole('button', { name: 'Mastered: Integration escape' }).last()).toHaveAttribute('aria-pressed', 'true');
-  const mobileBuilds = await openTracker(page, 'Champion Builds', true);
+  const mobileBuilds = await openTracker(page, 'Champion Builds Tracker', true);
   await expect(mobileBuilds.getByText('Integration champion', { exact: true }).last()).toBeVisible();
-  const mobileMercy = await openTracker(page, 'Mercy Ledger', true);
+  const mobileMercy = await openTracker(page, 'Mercy Tracker', true);
   await expect(mobileMercy.locator('#count-Ancient-Legendary')).toHaveValue('201');
   await expect(mobileMercy.locator('#import-button')).toHaveCount(0);
   await expect(mobileMercy.locator('#export-button')).toHaveCount(0);
-  await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'Transactions' }).click();
-  await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'Budget Tracker' }).click();
+  await expect(page.getByRole('heading', { name: 'Budget Tracker' })).toBeVisible();
   await page.getByRole('button', { name: '+ Add' }).click();
   await page.locator('form.txAdd').getByRole('button', { name: 'Income', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Budget test income');
@@ -860,13 +865,13 @@ test('desktop and mobile navigation, editing, reload and budget isolation', asyn
   await page.getByRole('button', { name: 'Add income' }).click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('incomes') || '[]').some((item: { name: string }) => item.name === 'Budget test income'))).toBe(true);
   await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'Dashboard' }).click();
-  await expect(page.getByText('$2,468.00').first()).toBeVisible();
+  await expect(page.getByText('$2,468.00').first()).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('startingBalance'))).toBe('2468');
 });
 
 test('backup migration, invalid and cancelled imports preserve both datasets', async ({ page }) => {
   await page.goto(localUrl);
-  const mercy = await openTracker(page, 'Mercy Ledger');
+  const mercy = await openTracker(page, 'Mercy Tracker');
   await mercy.locator('#clan-new').click();
   await mercy.getByLabel('Ultra-Nightmare Epic books').fill('3');
   await mercy.locator('#clan-form button[type=submit]').click();
@@ -899,7 +904,7 @@ test('backup migration, invalid and cancelled imports preserve both datasets', a
   await input.setInputFiles(file);
   await (await importDialog).accept();
   await expect(page.getByText('Tracker backup imported.')).toBeVisible();
-  const reloadedMercy = await openTracker(page, 'Mercy Ledger');
+  const reloadedMercy = await openTracker(page, 'Mercy Tracker');
   await expect(reloadedMercy.locator('#count-Ancient-Legendary')).toHaveValue('99');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
   expect(saved.version).toBe(15);
@@ -917,14 +922,14 @@ test('full backup round trips budget and every tracker; older budget backups lea
     localStorage.setItem('tags', JSON.stringify([{ name: 'Work', icon: '', color: '#ffffff' }]));
   });
   await page.goto(localUrl);
-  const mercy = await openTracker(page, 'Mercy Ledger');
+  const mercy = await openTracker(page, 'Mercy Tracker');
   await mercy.locator('#count-Ancient-Legendary').fill('55');
   await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
-  const builds = await openTracker(page, 'Champion Builds');
+  const builds = await openTracker(page, 'Champion Builds Tracker');
   await page.getByRole('button', { name: 'Add champion', exact: true }).click();
   await builds.locator('#build-name').fill('Backup champion');
   await builds.locator('#build-form button[type=submit]').click();
-  const bjj = await openTracker(page, 'BJJ Skills');
+  const bjj = await openTracker(page, 'BJJ Tracker');
   await page.getByRole('button', { name: 'Add skill', exact: true }).click();
   await bjj.locator('#bjj-name').fill('Backup escape');
   await bjj.locator('#bjj-type-container summary').click();
@@ -952,7 +957,7 @@ test('full backup round trips budget and every tracker; older budget backups lea
   expect(JSON.parse((await page.evaluate(() => localStorage.getItem('mercy-ledger-v1')))!).current.shards.Ancient.Legendary).toBe(55);
   const invalidBudget = { ...full, incomes: [null] };
   await input.setInputFiles({ name: 'invalid-budget.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalidBudget)) });
-  await expect(page.getByText('full Budget App backup is incomplete or invalid', { exact: false })).toBeVisible();
+  await expect(page.getByText('full Milestone backup is incomplete or invalid', { exact: false })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('startingBalance'))).toBe('2468');
   const old = { ...full, version: 1, startingBalance: 1357 };
   delete old.tracker;
@@ -961,7 +966,7 @@ test('full backup round trips budget and every tracker; older budget backups lea
   await (await oldDialog).accept();
   await expect(page.getByText('tracker data unchanged', { exact: false })).toBeVisible();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('startingBalance'))).toBe('1357');
-  const changedMercy = await openTracker(page, 'Mercy Ledger');
+  const changedMercy = await openTracker(page, 'Mercy Tracker');
   await changedMercy.locator('#count-Ancient-Legendary').fill('13');
   await changedMercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
@@ -982,16 +987,16 @@ test('full backup round trips budget and every tracker; older budget backups lea
   await (await salaryDialog).accept();
   await expect(page.getByText('Salary history imported.', { exact: false })).toBeVisible();
   await page.reload();
-  const restored = await openTracker(page, 'BJJ Skills');
+  const restored = await openTracker(page, 'BJJ Tracker');
   await expect(restored.getByRole('textbox', { name: 'Skill for Backup escape' })).toHaveValue('Backup escape');
-  const restoredBuilds = await openTracker(page, 'Champion Builds');
+  const restoredBuilds = await openTracker(page, 'Champion Builds Tracker');
   await expect(restoredBuilds.locator('#build-count')).toContainText('1');
 });
 
 test('a valid original tracker backup can repair corrupt local tracker data', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('mercy-ledger-v1', '{invalid'));
   await page.goto(localUrl);
-  const mercy = await openTracker(page, 'Mercy Ledger');
+  const mercy = await openTracker(page, 'Mercy Tracker');
   await expect(mercy.locator('#notice')).toContainText('Could not load saved data');
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
   const valid = tracker.emptyState();
@@ -1000,19 +1005,19 @@ test('a valid original tracker backup can repair corrupt local tracker data', as
   await page.getByLabel('Backup file').setInputFiles({ name: 'tracker.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(valid)) });
   await (await dialog).accept();
   await expect(page.getByText('Tracker backup imported.', { exact: false })).toBeVisible();
-  const restored = await openTracker(page, 'Mercy Ledger');
+  const restored = await openTracker(page, 'Mercy Tracker');
   await expect(restored.locator('#count-Void-Legendary')).toHaveValue('21');
 });
 
 test('a stale tracker tab cannot overwrite a newer local edit', async ({ context }) => {
   const first = await context.newPage();
   await first.goto(localUrl);
-  const firstTracker = await openTracker(first, 'Mercy Ledger');
+  const firstTracker = await openTracker(first, 'Mercy Tracker');
   await firstTracker.locator('#count-Void-Legendary').fill('2');
   await firstTracker.locator('#count-Void-Legendary').dispatchEvent('change');
   const second = await context.newPage();
   await second.goto(localUrl);
-  const secondTracker = await openTracker(second, 'Mercy Ledger');
+  const secondTracker = await openTracker(second, 'Mercy Tracker');
   await expect(secondTracker.locator('#count-Void-Legendary')).toHaveValue('2');
   await firstTracker.locator('#count-Void-Legendary').fill('7');
   await firstTracker.locator('#count-Void-Legendary').dispatchEvent('change');
@@ -1026,12 +1031,12 @@ test('a stale tracker tab cannot overwrite a newer local edit', async ({ context
 test('tracker import rejects data changed in another tab during confirmation', async ({ context }) => {
   const first = await context.newPage();
   await first.goto(localUrl);
-  const firstTracker = await openTracker(first, 'Mercy Ledger');
+  const firstTracker = await openTracker(first, 'Mercy Tracker');
   await firstTracker.locator('#count-Void-Legendary').fill('2');
   await firstTracker.locator('#count-Void-Legendary').dispatchEvent('change');
   const second = await context.newPage();
   await second.goto(localUrl);
-  const secondTracker = await openTracker(second, 'Mercy Ledger');
+  const secondTracker = await openTracker(second, 'Mercy Tracker');
   await first.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
   const imported = tracker.emptyState();
   imported.current.shards.Void = { Legendary: 99 };
@@ -1082,13 +1087,34 @@ async function mockCloud(page: Page, cloud: MockCloud) {
   });
 }
 
+test('overview loads account tracker summaries and reports tracker sync errors', async ({ page }) => {
+  const state = tracker.emptyState();
+  state.champions = [{ id: 'one', name: 'Cloud champion', notes: '', statuses: { blessing: 6, books: 'complete', masteries: 'complete', gear: 'complete', glyphs: 'complete', relic: 'complete' } }];
+  state.bjj.belt = 'Purple';
+  const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
+  await mockCloud(page, cloud);
+  await page.goto(cloudUrl);
+  await expect(page.locator('.overview-champions')).toContainText('1 / 1');
+  await expect(page.locator('.overview-mercy')).toContainText('No known shard counters yet');
+  await expect(page.locator('.overview-bjj')).toHaveCSS('border-top-color', 'rgb(211, 166, 255)');
+  await page.route('**/tracker_data*', route => route.fulfill({
+    status: 500,
+    json: { message: 'Test tracker failure' },
+    headers: { 'access-control-allow-origin': '*' },
+  }));
+  await page.reload();
+  await expect(page.locator('.overview-champions')).toContainText('Could not load tracker data');
+  await expect(page.locator('.trackerError')).toContainText('Test tracker failure');
+  await expect(page.locator('.overview-champions')).not.toContainText('0 / 0');
+});
+
 test('weight plans sync to the existing tracker account without changing other tracker data', async ({ page }) => {
   const state = tracker.emptyState();
   state.current.shards.Ancient = { Legendary: 42 };
   const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
   await mockCloud(page, cloud);
   await page.goto(cloudUrl);
-  await openTracker(page, 'Weight Planning');
+  await openTracker(page, 'Weight Tracker');
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Starting weight (lb)').fill('180');
   await page.getByLabel('Target weight (lb)').fill('184');
@@ -1098,13 +1124,13 @@ test('weight plans sync to the existing tracker account without changing other t
   expect(cloud.row!.data.current.shards.Ancient.Legendary).toBe(42);
   await expect(page.locator('.trackerSync')).toHaveText('Tracker: account sync ready');
   await page.reload();
-  await openTracker(page, 'Weight Planning');
+  await openTracker(page, 'Weight Tracker');
   await expect(page.locator('.weightOverview')).toContainText('184.0 lb');
 });
 
 test('full backup restores weight plans and weigh-ins', async ({ page }) => {
   await page.goto(localUrl);
-  await openTracker(page, 'Weight Planning');
+  await openTracker(page, 'Weight Tracker');
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Starting weight (lb)').fill('180');
   await page.getByLabel('Target weight (lb)').fill('184');
@@ -1122,7 +1148,7 @@ test('full backup restores weight plans and weigh-ins', async ({ page }) => {
   const backup = JSON.parse(await readFile(path!, 'utf8'));
   expect(backup.tracker.weight.plans).toHaveLength(1);
   expect(backup.tracker.weight.weighIns[0].notes).toBe('Test note');
-  await openTracker(page, 'Weight Planning');
+  await openTracker(page, 'Weight Tracker');
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Notes').fill('Changed');
   page.once('dialog', dialog => dialog.accept());
@@ -1132,7 +1158,7 @@ test('full backup restores weight plans and weigh-ins', async ({ page }) => {
   await page.getByLabel('Backup file').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) });
   await (await confirmation).accept();
   await expect(page.getByText('and tracker data', { exact: false })).toBeVisible();
-  await openTracker(page, 'Weight Planning');
+  await openTracker(page, 'Weight Tracker');
   await expect(page.locator('.weightEntry')).toContainText('Test note');
 });
 
@@ -1144,7 +1170,7 @@ test('account sync migrates old BJJ skills and persists positions without changi
   const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
   await mockCloud(page, cloud);
   await page.goto(cloudUrl);
-  const bjj = await openTracker(page, 'BJJ Skills');
+  const bjj = await openTracker(page, 'BJJ Tracker');
   await bjj.getByLabel('Edit starting positions for Cloud sweep').first().click();
   const dialog = bjj.locator('#bjj-positions-dialog');
   await dialog.getByLabel('Mount', { exact: true }).check();
@@ -1161,15 +1187,18 @@ test('signed-in mobile header keeps all page titles and account controls visible
   const nav = page.getByRole('navigation', { name: 'Mobile navigation' });
   for (const [label, heading, trackerPage] of [
     ['Dashboard', 'Dashboard', false],
-    ['Transactions', 'Transactions', false],
-    ['Salary History', 'Salary History', false],
+    ['Budget Tracker', 'Budget Tracker', false],
+    ['Salary Tracker', 'Salary Tracker', false],
     ['Admin', 'Administration', false],
-    ['Mercy Ledger', 'Mercy Ledger', true],
-    ['Champion Builds', 'Champion Builds', true],
-    ['BJJ Skills', 'BJJ Skills', true],
+    ['Mercy Tracker', 'Mercy Tracker', true],
+    ['Champion Builds Tracker', 'Champion Builds Tracker', true],
+    ['BJJ Tracker', 'BJJ Tracker', true],
   ] as const) {
     if (trackerPage) await openTracker(page, label, true);
-    else await nav.getByRole('button', { name: label, exact: true }).click();
+    else {
+      if (label === 'Admin') await nav.getByRole('button', { name: 'More' }).click();
+      await nav.getByRole('button', { name: label, exact: true }).click();
+    }
     const header = page.locator('.topBar');
     await expect(header.getByRole('heading', { name: heading, exact: true })).toBeVisible();
     await expect(header.locator('.syncBadge')).toBeVisible();
@@ -1203,7 +1232,7 @@ test('mobile header accommodates a budget sync error', async ({ page }) => {
   }));
   await page.goto(cloudUrl);
   await expect(page.locator('.syncBadge')).toHaveText('Sync failed');
-  await openTracker(page, 'Champion Builds', true);
+  await openTracker(page, 'Champion Builds Tracker', true);
   const layout = await page.locator('.topBar').evaluate(el => {
     const header = el.getBoundingClientRect();
     const title = el.querySelector('h1')!;
@@ -1224,7 +1253,7 @@ test('signed-in tablet keeps page actions and controls visible without header ov
   await page.setViewportSize({ width: 640, height: 800 });
   await mockCloud(page, { row: { revision: 'original', data: tracker.emptyState() }, budgetWrites: [] });
   await page.goto(cloudUrl);
-  for (const [label, action] of [['Transactions', '+ Add'], ['Champion Builds', 'Add champion'], ['BJJ Skills', 'Add skill']]) {
+  for (const [label, action] of [['Budget Tracker', '+ Add'], ['Champion Builds Tracker', 'Add champion'], ['BJJ Tracker', 'Add skill']]) {
     await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: label, exact: true }).click();
     const header = page.locator('.topBar');
     await expect(page.locator('.mobilePageAction').getByRole('button', { name: action, exact: true })).toBeVisible();
@@ -1246,7 +1275,7 @@ test('account sync saves separately and rejects a stale cloud write with recover
   await page.addInitScript(() => localStorage.setItem('mercy-ledger-v1', 'legacy data must not be changed'));
   await mockCloud(page, cloud);
   await page.goto(cloudUrl);
-  const mercy = await openTracker(page, 'Mercy Ledger');
+  const mercy = await openTracker(page, 'Mercy Tracker');
   await expect(mercy.locator('#count-Ancient-Legendary')).toHaveValue('8');
   await mercy.locator('#count-Ancient-Legendary').fill('9');
   await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
@@ -1271,7 +1300,7 @@ test('account sync saves separately and rejects a stale cloud write with recover
   expect(JSON.parse(cached.data).current.shards.Ancient.Legendary).toBe(10);
   expect(await page.evaluate(() => localStorage.getItem('mercy-ledger-v1'))).toBe('legacy data must not be changed');
   await page.reload();
-  await openTracker(page, 'Mercy Ledger');
+  await openTracker(page, 'Mercy Tracker');
   await expect(page.getByRole('alert')).toContainText('unsynced tracker changes');
   await expect(page.getByRole('button', { name: 'Export recovery backup' })).toBeVisible();
   expect(cloud.row.data.current.shards.Ancient.Legendary).toBe(42);
@@ -1292,7 +1321,7 @@ test('rapid cloud edits are queued without losing the latest value', async ({ pa
   };
   await mockCloud(page, cloud);
   await page.goto(cloudUrl);
-  const mercy = await openTracker(page, 'Mercy Ledger');
+  const mercy = await openTracker(page, 'Mercy Tracker');
   await mercy.locator('#count-Ancient-Legendary').fill('2');
   await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
   await firstWrite;
@@ -1310,7 +1339,7 @@ test('cloud backup import validates and confirms before replacing tracker data',
   const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
   await mockCloud(page, cloud);
   await page.goto(cloudUrl);
-  const mercy = await openTracker(page, 'Mercy Ledger');
+  const mercy = await openTracker(page, 'Mercy Tracker');
   await expect(mercy.locator('#count-Void-Legendary')).toHaveValue('15');
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
   const input = page.getByLabel('Backup file');
@@ -1341,7 +1370,7 @@ test('full restore keeps budget unchanged if tracker cloud write conflicts', asy
   const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
   await mockCloud(page, cloud);
   await page.goto(cloudUrl);
-  await openTracker(page, 'Mercy Ledger');
+  await openTracker(page, 'Mercy Tracker');
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
   await expect(page.locator('.syncBadge')).toHaveText('Synced');
   const importedTracker = tracker.emptyState();
@@ -1365,7 +1394,7 @@ test('signed-in full backup restores tracker and budget to their separate accoun
   const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
   await mockCloud(page, cloud);
   await page.goto(cloudUrl);
-  await openTracker(page, 'Mercy Ledger');
+  await openTracker(page, 'Mercy Tracker');
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
   await expect(page.locator('.syncBadge')).toHaveText('Synced');
   const exported = page.waitForEvent('download');
@@ -1390,7 +1419,7 @@ test('a missing account row never silently replaces an existing cached tracker',
   const cloud: MockCloud = { row: null, budgetWrites: [] };
   await mockCloud(page, cloud);
   await page.goto(cloudUrl);
-  await openTracker(page, 'Mercy Ledger');
+  await openTracker(page, 'Mercy Tracker');
   await expect(page.getByRole('alert')).toContainText('account tracker is missing');
   await expect(page.getByRole('button', { name: 'Export recovery backup' })).toBeVisible();
   expect(await page.evaluate(id => localStorage.getItem(`budget-app-tracker-cache:${id}`), userId)).toBe(cached);

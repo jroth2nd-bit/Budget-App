@@ -1,5 +1,11 @@
 :host { display: block; min-width: 0; background: transparent; }
 .tracker-surface { background: transparent; color: #edf5ef; }
+.mercy-theme .eyebrow { color: var(--waypoint-mercy); }
+.mercy-theme .compact-panel:not(.soul-panel) { background: #1c1517; border-color: #54363c; }
+.mercy-theme .button-primary { background: var(--waypoint-mercy); color: #300e14; }
+.mercy-theme .button-primary:hover { background: #ffb4bc; }
+.mercy-theme .button-quiet:hover { border-color: var(--waypoint-mercy); }
+.mercy-theme input:focus, .mercy-theme select:focus, .mercy-theme textarea:focus { outline-color: var(--waypoint-mercy); }
 .shell { max-width: none; margin: 0; padding: 0; }
 .tracker-heading { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-bottom: 18px; }
 .local-label { display: none; }

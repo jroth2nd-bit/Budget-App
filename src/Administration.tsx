@@ -55,7 +55,7 @@ function validateFullBudget(data: Record<string, unknown>) {
     typeof data.startingBalance !== 'number' || !Number.isFinite(data.startingBalance) ||
     typeof data.lowBalanceThreshold !== 'number' || !Number.isFinite(data.lowBalanceThreshold) ||
     !isRecord(data.postedMap) || !Object.values(data.postedMap).every(value => typeof value === 'boolean')) {
-    throw new Error('The full Budget App backup is incomplete or invalid.');
+    throw new Error('The full Milestone backup is incomplete or invalid.');
   }
   return parseSalaryHistoryBackup(data);
 }
@@ -172,14 +172,14 @@ export default function Administration({
         const imported = tracker.validateState(data);
         if (!trackerBackup.current) throw new Error('Tracker data is not ready.');
         const raw = await trackerBackup.current.current();
-        if (!window.confirm('Replace all tracker data, including Mercy Ledger, Champion Builds and BJJ Skills, with this backup? Budget data will not change.')) return;
+        if (!window.confirm('Replace all tracker data, including Mercy, Champion Builds, BJJ and Weight, with this backup? Budget data will not change.')) return;
         await settleStorageEvents();
         await trackerBackup.current.restore(raw, imported);
         setBackupMsg({ text: 'Tracker backup imported. If signed in, check tracker sync status.' });
         return;
       }
       if ((data.version !== 1 && data.version !== 2) || !Array.isArray(data.incomes) || !Array.isArray(data.expenses)) {
-        throw new Error('This is not a supported Budget App backup file.');
+        throw new Error('This is not a supported Milestone backup file.');
       }
       if (data.version === 1 && (!data.incomes.every(isBudgetItem) || !data.expenses.every(isBudgetItem))) {
         throw new Error('The budget backup contains invalid income or expense records.');

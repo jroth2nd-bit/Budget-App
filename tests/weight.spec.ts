@@ -6,8 +6,8 @@ for (const viewport of [{ width: 320, height: 720 }, { width: 390, height: 844 }
     await page.goto('http://127.0.0.1:5188');
     const mobile = viewport.width < 640;
     const nav = page.getByRole('navigation', { name: mobile ? 'Mobile navigation' : 'Main navigation' });
-    if (mobile) await nav.getByRole('button', { name: 'Trackers' }).click();
-    await nav.getByRole('button', { name: 'Weight Planning' }).click();
+    if (mobile) await nav.getByRole('button', { name: 'More' }).click();
+    await nav.getByRole('button', { name: 'Weight Tracker' }).click();
     await expect(page.locator('.appRoot')).toHaveAttribute('data-theme', 'weight');
     await expect(page.locator('.appRoot')).toHaveCSS('--accent', '#f0ad79');
     await expect(page.getByText('Plan your next phase')).toHaveCount(0);
@@ -39,8 +39,8 @@ for (const viewport of [{ width: 320, height: 720 }, { width: 390, height: 844 }
     await expect(page.locator('.weightEntry')).toContainText('Vacation');
     await expect(page.getByText('Copper: actual weigh-ins')).toBeVisible();
     await page.reload();
-    if (mobile) await nav.getByRole('button', { name: 'Trackers' }).click();
-    await nav.getByRole('button', { name: 'Weight Planning' }).click();
+    if (mobile) await nav.getByRole('button', { name: 'More' }).click();
+    await nav.getByRole('button', { name: 'Weight Tracker' }).click();
     await expect(page.locator('.weightEntry')).toContainText('Vacation');
     await page.getByRole('button', { name: 'Add weigh-in' }).click();
     await page.getByLabel('Weight (lb)', { exact: true }).fill('182');
@@ -52,7 +52,7 @@ for (const viewport of [{ width: 320, height: 720 }, { width: 390, height: 844 }
 
 test('completion, corrections, reopening and replacement preserve historical plans', async ({ page }) => {
   await page.goto('http://127.0.0.1:5188');
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Planning' }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Starting weight (lb)').fill('180');
   await page.getByLabel('Target weight (lb)').fill('182');
@@ -81,7 +81,7 @@ test('completion, corrections, reopening and replacement preserve historical pla
   await page.getByRole('button', { name: 'Save weigh-in' }).click();
   await expect(page.locator('.weightEntry')).toContainText('181.0 lb');
   await page.reload();
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Planning' }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
   await expect(page.locator('.weightEntry')).toContainText('181.0 lb');
   await expect(page.locator('.weightPhase.bulk')).toContainText('cancelled');
 });
@@ -89,7 +89,7 @@ test('completion, corrections, reopening and replacement preserve historical pla
 test('backdated plan accepts historical weigh-ins and uses the selected date for calculations', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-07-20T12:00:00') });
   await page.goto('http://127.0.0.1:5188');
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Planning' }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Start date').fill('2026-05-01');
   await page.getByLabel('Starting weight (lb)').fill('180');
@@ -106,14 +106,14 @@ test('backdated plan accepts historical weigh-ins and uses the selected date for
   expect(saved.weight.weighIns[0]).toMatchObject({ date: '2026-05-15', weight: 180.5, notes: 'Earlier measurement', planId: saved.weight.plans[0].id, planType: 'bulk' });
   expect(saved.weight.weighIns[0].expectedWeight).toBeCloseTo(180 + 2 * 14 / 31);
   await page.reload();
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Planning' }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
   await expect(page.locator('.weightEntry')).toContainText('Earlier measurement');
 });
 
 test('backdated replacement protects existing weigh-ins and prefills weight as of the selected date', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-07-20T12:00:00') });
   await page.goto('http://127.0.0.1:5188');
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Planning' }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Start date').fill('2026-05-01');
   await page.getByLabel('Starting weight (lb)').fill('180');
@@ -157,7 +157,7 @@ test('backdated replacement protects existing weigh-ins and prefills weight as o
 test('a new backdated plan cannot overlap a completed historical phase', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-07-20T12:00:00') });
   await page.goto('http://127.0.0.1:5188');
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Planning' }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Weight Tracker' }).click();
   await page.getByRole('button', { name: 'Start a plan', exact: true }).click();
   await page.getByLabel('Start date').fill('2026-05-01');
   await page.getByLabel('Starting weight (lb)').fill('180');

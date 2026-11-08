@@ -1,16 +1,16 @@
-# Budget App
+# Milestone
 
-A simple budgeting app built with React and TypeScript.
+A personal dashboard for finances, skills, games, and weight planning, built with React and TypeScript. Existing Budget App data and backups remain compatible.
 
 ## Features
 
 - Add recurring or one-time incomes
-- Mark paycheck income to define the current pay period and the next-paycheck dashboard summary
+- Mark paycheck income to define the current pay period and the next-paycheck summary
 - Add expenses with various frequencies (weekly, biweekly, bimonthly, monthly, quarterly, semiannual, annual)
-- Track salary changes, annual income goals, raises, and notes separately on the Salary History page
+- Track salary changes, annual income goals, raises, and notes on Salary Tracker
 - View monthly summary
 - Balance projections over 12 months
-- Dashboard chart and Upcoming sections are shown together across screen sizes
+- Budget Tracker combines transactions, balance projections, and Upcoming
 - Mercy Ledger for RAID shard mercy, Soulstone and event calculators, and Clan Boss rewards; Champion Builds and BJJ Skills
 
 ## Getting Started
@@ -21,24 +21,28 @@ A simple budgeting app built with React and TypeScript.
 
 ## Usage
 
+- The dashboard contains clickable summary cards for Budget, Salary, Mercy, Champion Builds, BJJ, and Weight. It displays no financial amounts; detailed amounts remain on their respective pages.
+- Budget Tracker shows the current balance, upcoming low balance, lowest projected balance, next paycheck, balance projection chart, Upcoming list, and transaction controls. The separate Upcoming panel remains in the header.
+- The dashboard's salary card compares the two latest salary entries; the mercy card picks the known counter closest to mercy, prioritizing those already in mercy; BJJ shows marked skills first, then the highest confidence below 100%; weight shows the planned days remaining, latest recorded weight, and active-plan track status.
+- Dashboard cards and their navigation entries are defined together in the `overviewCards` registry. Add a summary there when adding a new tracker; tracker data must use the existing sync and backup safeguards.
 - Add incomes and expenses using the forms
-- Expand Add salary change or Annual income goals on Salary History to enter or manage those records
-- Expand a salary change in Salary History to view calculated details, notes, and edit or delete actions
+- Expand Add salary change or Annual income goals on Salary Tracker to enter or manage those records
+- Expand a salary change in Salary Tracker to view calculated details, notes, and edit or delete actions
 - Use Salary What-If to compare a hypothetical annual salary with your latest entry and a selected annual goal; scenarios are not saved
-- Salary History and Salary What-If estimate take-home pay at 66.6% of gross, using 26 biweekly paychecks per year. Monthly figures are yearly take-home averaged over 12 months; annual income, raises, and goals remain gross.
-- The Salary History chart has separate Cleveland city and Ohio ACS household-income controls. Refresh checks Census Reporter’s latest available ACS 1-year release and retains newer existing data if the provider is behind. Benchmarks are fixed references, not historical figures or individual salaries; shaded brackets are the largest reported ranges, not exact modes. Mean is aggregate household income divided by households.
+- Salary Tracker and Salary What-If estimate take-home pay at 66.6% of gross, using 26 biweekly paychecks per year. Monthly figures are yearly take-home averaged over 12 months; annual income, raises, and goals remain gross.
+- The Salary Tracker chart has separate Cleveland city and Ohio ACS household-income controls. Refresh checks Census Reporter’s latest available ACS 1-year release and retains newer existing data if the provider is behind. Benchmarks are fixed references, not historical figures or individual salaries; shaded brackets are the largest reported ranges, not exact modes. Mean is aggregate household income divided by households.
 - On phones and tablets, the salary chart defaults to the latest five salary changes and goals within their date range; use Show all to see the full history and goals. Salary records and the full history list are unaffected.
 - In Administration, use Export Salary History to save a private JSON file containing only salary entries and annual goals. Import Salary History accepts that file or a full Budget App backup and replaces only salary entries and goals, leaving budget and transaction data unchanged. When signed in, wait for account sync to finish before importing and confirm it is saved afterward.
 - Income tiers are a Pew-inspired approximation using the latest individual salary as household income and a four-person household. The calculation assumes the unadjusted local median represents three people, adjusts by √(4/3), and defines middle income as two-thirds to twice that adjusted median. This is not an official Pew classification.
 - Mark income as a paycheck when adding or editing it; income descriptions containing “Paycheck” are detected automatically when imported or migrated
 - Review posted and unposted transactions in the current paycheck period
-- Choose a 30-, 60-, or 90-day range on the Transactions page (defaults to 30 days); the range selector is available at all screen sizes
+- Choose a 30-, 60-, or 90-day range for the Budget Tracker transaction list (defaults to 30 days); the range selector is available at all screen sizes
 - View the monthly net income
 - See the balance projection for the next 12 months
 
 ## Tracker data and setup
 
-The tracker uses the existing sidebar; on phones, open **Trackers** in the bottom navigation. The three tracker views are hosted inside the app rather than separate embedded pages. They share their data, but do not change budget data. Champion Builds gives the shared shell green accents; BJJ Skills matches the shell to the selected belt and retains its belt themes and responsive skill cards. Budget pages and Mercy Ledger retain their usual shell colors.
+All pages appear in the sidebar with Admin at the bottom; on phones, open **More** for additional trackers and Admin. The Mercy, Champion Builds, and BJJ tracker views are hosted inside the app rather than separate embedded pages. They share their data, but do not change budget data. The waypoint accents connect each dashboard card to its page: gold for Budget, steel blue for Salary, crimson for Mercy, emerald for Champion Builds, and copper for Weight. BJJ follows the selected belt color on both its page and card. Dashboard uses ivory and Admin uses slate; warning and danger indicators retain their semantic colors.
 
 Tracker filters use the same choices as their editable fields. The BJJ Type filter includes the built-in skill types and custom types currently in use; select All or use Clear filters to remove the selection.
 
@@ -54,11 +58,11 @@ When Supabase is configured, tracker data syncs separately to the signed-in acco
 
 Without Supabase, tracker data remains in this browser's local storage under `mercy-ledger-v1`; it does not sync. In account mode, any original tracker data under that key is not automatically uploaded or deleted. The Administration **Export Everything** backup includes budget data, salary history, and all tracker data in a version 2 JSON file. Its **Import Backup** accepts full backups, older version 1 budget backups (which leave tracker data unchanged), and original tracker backups (which leave budget data unchanged). The separate salary-only transfer and the budget wipe action do not change tracker data.
 
-To transfer data from the original tracker, open the original Mercy Ledger in the browser where its data exists and choose **Export backup**. In the Budget App, open **Administration → Backup → Import Backup** and select that JSON file. A different site origin or browser cannot read the original local storage directly. Import validates and migrates supported tracker versions 1–15, and asks for confirmation before replacing tracker data; invalid files leave existing data unchanged. The source ZIP does not contain personal tracker data.
+To transfer data from the original tracker, open the original Mercy Ledger in the browser where its data exists and choose **Export backup**. In Milestone, open **Administration → Backup → Import Backup** and select that JSON file. A different site origin or browser cannot read the original local storage directly. Import validates and migrates supported tracker versions 1–15, and asks for confirmation before replacing tracker data; invalid files leave existing data unchanged. The source ZIP does not contain personal tracker data.
 
 Tracker changes are saved in the local recovery cache before account sync. Wait for **Tracker: account sync ready** before closing the page. If a cloud save fails or another device changes the tracker, the app stops further saves and offers a recovery backup. Export that file first; then reload the account copy and review or import the backup if appropriate. Import replaces the complete tracker dataset, not just the changed fields. A recovery cache belongs to the account and browser profile that created it; clearing site data can remove it. Keep independent JSON backups, especially before changing devices, accounts, or browsers.
 
-Weight Planning is under Trackers and uses the same account sync, local-only storage, recovery, and full backup as the other trackers. Tracker backups now use version 15; older backups migrate with empty weight data. Reload older open app tabs before editing: older versions cannot safely read the new backup format. No new Supabase table or migration is required.
+Weight Tracker uses the same account sync, local-only storage, recovery, and full backup as the other trackers. Tracker backups now use version 15; older backups migrate with empty weight data. Reload older open app tabs before editing: older versions cannot safely read the new backup format. No new Supabase table or migration is required.
 
 New plans can start today or in the past, but cannot begin before the latest phase ended or, when replacing an active phase, before it began. Starting another plan cancels the active one on the new start date; it is blocked if the active plan has later weigh-ins, so those records are not silently reassigned. The starting weight defaults to the most recent weigh-in on or before the chosen start date until manually overridden. Each plan retains its planned and actual end dates. A bulk allows up to 2 lb per calendar month and a cut up to 5 lb per calendar month. Enter a target date, target weight, or both; when both are given, the planned pace is spread across the chosen dates and cannot exceed the limit. Partial months are prorated between successive monthly anniversaries, clamped to the last day of shorter months. Weight-only goals use the earliest whole date meeting the rate limit.
 

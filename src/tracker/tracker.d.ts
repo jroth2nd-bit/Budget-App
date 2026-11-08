@@ -63,5 +63,10 @@ export type TrackerState = {
 declare const tracker: {
   emptyState(): TrackerState;
   validateState(value: unknown): TrackerState;
+  bjjConfidence(skill: BjjSkill): number | null;
+  buildCompletion(statuses: ChampionBuild['statuses']): { complete: number; applicable: number; percentage: number };
+  rules: Record<string, Record<string, { threshold: number; base: number; increment: number }>>;
+  calculate(state: TrackerState): { counters: Record<string, Record<string, { known: boolean; count: number }>> };
+  nextChance(rule: { threshold: number; base: number; increment: number }, count: number): number;
 };
 export default tracker;
