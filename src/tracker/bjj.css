@@ -15,16 +15,18 @@
 .bjj-theme .status-dot { background: var(--belt-accent); box-shadow: 0 0 8px var(--belt-accent); }
 .bjj-theme .status-error .status-dot { background: #ff9a94; box-shadow: 0 0 8px #ff5b57; }
 .bjj-theme .site-nav a[aria-current=page] { color: var(--belt-accent); background: #222c34; }
-.bjj-progress-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.bjj-progress-panels { display: grid; grid-template-columns: minmax(250px, 1fr) minmax(0, 3fr); gap: 16px; }
 .bjj-progress-panels > section { min-width: 0; }
-.bjj-belt-panel { display: flex; flex-wrap: wrap; align-content: start; align-items: end; gap: 16px; }
-.bjj-belt-panel > div:first-child { flex: 1 1 200px; }
-.bjj-belt-panel select { min-width: 115px; }
-.bjj-belt-display { display: flex; align-items: center; gap: 5px; background: var(--belt-accent); border: 1px solid var(--belt-border); width: 140px; height: 28px; padding: 3px 8px; justify-content: flex-end; }
+.bjj-belt-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 8px; }
+.bjj-belt-heading, .bjj-belt-display { grid-column: 1 / -1; }
+.bjj-belt-panel select { min-width: 0; }
+.bjj-belt-panel .footnote { margin-top: 4px; }
+.bjj-belt-display { display: flex; align-items: stretch; background: var(--belt-accent); border: 1px solid var(--belt-border); width: 100%; height: 28px; padding-right: 8px; justify-content: flex-end; }
 .bjj-theme[data-belt="black"] .bjj-belt-display { background: #17191d; }
-.bjj-belt-display span { width: 7px; height: 20px; background: #fff; border: 1px solid #53606a; }
-.bjj-priorities-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 12px; }
-.bjj-priorities-list li { min-width: 0; border-top: 1px solid #344550; padding-top: 10px; overflow-wrap: anywhere; }
+.bjj-rank-bar { display: flex; align-items: stretch; justify-content: center; gap: 6px; width: 72px; padding: 2px 4px; background: #101113; }
+.bjj-stripe { width: 7px; background: #fff; }
+.bjj-priorities-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.bjj-priority-card { min-width: 0; overflow-wrap: anywhere; }
 .bjj-priority-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .bjj-priority-focus { color: var(--belt-accent); font-size: 12px; }
 .bjj-priority-info { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0 0; font-size: 12px; }
@@ -32,7 +34,10 @@
 .bjj-priority-info dt { color: #a9bdc3; }
 .bjj-priority-info dt::after { content: ":"; }
 .bjj-priority-info dd { margin: 0; }
-.bjj-priorities-panel .footnote { margin-top: 10px; }
+.bjj-priorities-empty .footnote { margin-top: 10px; }
+@media (min-width: 1200px) {
+  #bjj-priorities, .bjj-priorities-list, .bjj-priorities-empty { height: 100%; }
+}
 .bjj-skills-panel { margin-top: 16px; }
 .bjj-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .bjj-filters label { flex: 1 1 150px; margin: 0; }
@@ -128,6 +133,9 @@ select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
   .bjj-details-content { grid-template-columns: minmax(0, 1fr); }
   .bjj-details-content .build-delete { justify-self: start; }
 }
-@media (max-width: 767px) {
+@media (max-width: 1199px) {
   .bjj-progress-panels { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 767px) {
+  .bjj-priorities-list { grid-template-columns: minmax(0, 1fr); }
 }

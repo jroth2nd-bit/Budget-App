@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import tracker from '../src/tracker/tracker.js';
 
-for (const width of [320, 768, 1440]) {
+for (const width of [320, 768, 1440, 1850]) {
   test(`BJJ learning priorities match the dashboard and update at ${width}px`, async ({ page }) => {
     const state = tracker.emptyState();
     const skill = {
@@ -31,6 +31,7 @@ for (const width of [320, 768, 1440]) {
     const bjj = page.locator('.trackerView');
     const priorities = bjj.locator('#bjj-priorities');
     await expect(priorities.locator('li strong')).toHaveText(dashboardNames);
+    await expect(priorities.locator('li.compact-panel')).toHaveCount(3);
     const first = priorities.locator('li').first();
     await expect(first.locator('.bjj-priority-focus')).toHaveText('Focus');
     for (const [label, value] of [['Type', 'Pass'], ['Starting position', 'Half guard'], ['Confidence', '85%'], ['Practice', 'Consistently'], ['Live rolls', 'Sometimes']]) {
@@ -40,6 +41,20 @@ for (const width of [320, 768, 1440]) {
     await expect(priorities.locator('li').nth(1)).toContainText('Not enough data');
     await expect(priorities.locator('li').nth(1)).toContainText('Unset');
     await expect(bjj.locator('#bjj-belt')).toHaveValue('Blue');
+    const beltGeometry = await bjj.locator('.bjj-belt-panel').evaluate(panel => {
+      const style = getComputedStyle(panel);
+      const panelRect = panel.getBoundingClientRect();
+      const belt = panel.querySelector('#bjj-belt-display')!.getBoundingClientRect();
+      const bar = panel.querySelector('.bjj-rank-bar')!.getBoundingClientRect();
+      return {
+        leftGap: belt.left - panelRect.left - parseFloat(style.borderLeftWidth) - parseFloat(style.paddingLeft),
+        rightGap: panelRect.right - belt.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight),
+        barRightGap: belt.right - bar.right,
+      };
+    });
+    expect(Math.abs(beltGeometry.leftGap)).toBeLessThan(1);
+    expect(Math.abs(beltGeometry.rightGap)).toBeLessThan(1);
+    expect(beltGeometry.barRightGap).toBeLessThan(12);
     const cards = width <= 1350;
     const list = bjj.locator(cards ? '#bjj-cards' : '#bjj-list');
     if (cards) await list.locator('.bjj-card').filter({ has: page.getByText('Focus without confidence', { exact: true }) }).locator(':scope > summary').click();
@@ -56,21 +71,89 @@ for (const width of [320, 768, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     const panelLayout = await bjj.locator('.bjj-progress-panels').evaluate(element => {
       const [belt, priorities] = Array.from(element.children, child => child.getBoundingClientRect());
-      return { beltRight: belt.right, prioritiesLeft: priorities.left, beltBottom: belt.bottom, prioritiesTop: priorities.top };
+      const cards = Array.from(element.querySelectorAll('.bjj-priority-card'), card => {
+        const rect = card.getBoundingClientRect();
+        return { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom, height: rect.height };
+      });
+      return { beltRight: belt.right, beltBottom: belt.bottom, beltTop: belt.top, beltHeight: belt.height, prioritiesLeft: priorities.left, prioritiesTop: priorities.top, height: element.getBoundingClientRect().height, cards };
     });
-    if (width < 768) expect(panelLayout.prioritiesTop).toBeGreaterThanOrEqual(panelLayout.beltBottom);
-    else expect(panelLayout.prioritiesLeft).toBeGreaterThanOrEqual(panelLayout.beltRight);
+    if (width < 1200) expect(panelLayout.prioritiesTop).toBeGreaterThanOrEqual(panelLayout.beltBottom);
+    else {
+      expect(panelLayout.prioritiesLeft).toBeGreaterThanOrEqual(panelLayout.beltRight);
+      expect(panelLayout.height).toBeLessThan(260);
+      for (const card of panelLayout.cards) {
+        expect(Math.abs(card.top - panelLayout.beltTop)).toBeLessThan(1);
+        expect(Math.abs(card.height - panelLayout.beltHeight)).toBeLessThan(1);
+      }
+    }
+    if (width >= 768) {
+      for (let i = 1; i < panelLayout.cards.length; i++) {
+        expect(panelLayout.cards[i].top).toBe(panelLayout.cards[0].top);
+        expect(panelLayout.cards[i].left).toBeGreaterThanOrEqual(panelLayout.cards[i - 1].right);
+        expect(Math.abs(panelLayout.cards[i].height - panelLayout.cards[0].height)).toBeLessThan(1);
+      }
+    } else {
+      expect(panelLayout.cards[1].top).toBeGreaterThanOrEqual(panelLayout.cards[0].bottom);
+    }
   });
 }
 
 test('BJJ learning priorities show an empty state without changing the belt', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('http://127.0.0.1:5188');
   await page.locator('.overview-bjj').click();
   const bjj = page.locator('.trackerView');
-  await expect(bjj.locator('#bjj-priorities')).toHaveText('No learning priorities yet.');
+  await expect(bjj.locator('#bjj-priorities')).toContainText('No learning priorities yet.');
   await expect(bjj.locator('#bjj-belt')).toHaveValue('Blue');
   await bjj.locator('#bjj-belt').selectOption('Purple');
   await expect(bjj.locator('#bjj-belt-display')).toHaveAttribute('aria-label', /Purple belt/);
+  await bjj.locator('#bjj-stripes').selectOption('4');
+  await expect(bjj.locator('#bjj-belt-display')).toHaveAttribute('aria-label', 'Purple belt, 4 white stripes');
+  const beltHeight = (await bjj.locator('.bjj-belt-panel').boundingBox())!.height;
+  const emptyHeight = (await bjj.locator('.bjj-priorities-empty').boundingBox())!.height;
+  expect(Math.abs(beltHeight - emptyHeight)).toBeLessThan(1);
+  expect(beltHeight).toBeLessThan(220);
+});
+
+test('belt rank bar shows the selected number of stripes for every belt color', async ({ page }) => {
+  await page.goto('http://127.0.0.1:5188');
+  await page.locator('.overview-bjj').click();
+  const bjj = page.locator('.trackerView');
+  const belt = bjj.locator('#bjj-belt-display');
+  const bar = belt.locator('.bjj-rank-bar');
+  for (const [color, background] of [
+    ['White', 'rgb(231, 238, 240)'], ['Blue', 'rgb(120, 197, 255)'],
+    ['Purple', 'rgb(211, 166, 255)'], ['Brown', 'rgb(231, 180, 135)'],
+    ['Black', 'rgb(23, 25, 29)'],
+  ]) {
+    await bjj.locator('#bjj-belt').selectOption(color);
+    await expect(belt).toHaveCSS('background-color', background);
+    await expect(bar).toHaveCSS('background-color', 'rgb(16, 17, 19)');
+    await expect(bar).toHaveCSS('width', '72px');
+    for (let count = 0; count <= 4; count++) {
+      await bjj.locator('#bjj-stripes').selectOption(String(count));
+      await expect(belt).toHaveAttribute('aria-label', `${color} belt, ${count} white ${count === 1 ? 'stripe' : 'stripes'}`);
+      await expect(bar.locator('.bjj-stripe')).toHaveCount(count);
+      if (count) {
+        await expect(bar.locator('.bjj-stripe').first()).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+        const contained = await bar.evaluate(element => {
+          const barRect = element.getBoundingClientRect();
+          return Array.from(element.children).every(stripe => {
+            const rect = stripe.getBoundingClientRect();
+            return rect.left >= barRect.left && rect.right <= barRect.right && rect.top >= barRect.top && rect.bottom <= barRect.bottom;
+          });
+        });
+        expect(contained).toBe(true);
+        if (count === 4) {
+          const spacing = await bar.evaluate(element => {
+            const stripes = Array.from(element.children, stripe => stripe.getBoundingClientRect());
+            return stripes.slice(1).map((stripe, index) => stripe.left - stripes[index].right);
+          });
+          for (const gap of spacing) expect(gap).toBeGreaterThanOrEqual(6);
+        }
+      }
+    }
+  }
 });
 
 for (const width of [320, 1440]) {
