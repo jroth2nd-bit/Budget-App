@@ -10,7 +10,7 @@ test('version 15 libraries migrate empty and book data round trips with validati
   old.version = 15;
   delete old.books;
   const migrated = tracker.validateState(old);
-  assert.equal(migrated.version, 18);
+  assert.equal(migrated.version, 19);
   assert.deepEqual(migrated.books, []);
   migrated.books = [book('1', { rating: 'Did Not Finish', read: false, series: 'Series #1' })];
   assert.deepEqual(tracker.validateState(JSON.parse(JSON.stringify(migrated))).books, migrated.books);

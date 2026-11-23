@@ -1,3 +1,6 @@
+import { mountBjjJournal } from "./bjjJournal.js";
+import { isBjjPositionOnly } from "./bjjJournalData.js";
+
 export function mount(root, trackerStorage, T, onBeltChange) {
   const document = { body: root.querySelector('.tracker-surface'), getElementById: id => root.getElementById(id), querySelector: selector => root.querySelector(selector), querySelectorAll: selector => root.querySelectorAll(selector), createElement: tag => window.document.createElement(tag), get activeElement() { return root.activeElement; } };
 
@@ -33,6 +36,7 @@ const expanded = new Set();
 const expandedDetails = new Set();
 let typeFilterChoices = [];
 let positionFilterChoices = [];
+let journal;
 
 function node(tag, className, text) {
   const result = document.createElement(tag);
@@ -283,7 +287,7 @@ function deleteControl(skill) {
   button.setAttribute("aria-label", `Delete ${skill.name}`);
   button.addEventListener("click", () => {
     if (window.confirm(`Delete the skill "${skill.name}"?`)) {
-      if (save({ ...state.bjj, skills: state.bjj.skills.filter(item => item.id !== skill.id) })) { expanded.delete(skill.id); expandedDetails.delete(skill.id); }
+      if (save({ ...state.bjj, skills: state.bjj.skills.filter(item => item.id !== skill.id), trackedSkillIds: state.bjj.trackedSkillIds.filter(id => id !== skill.id) })) { expanded.delete(skill.id); expandedDetails.delete(skill.id); }
     }
   });
   return button;
@@ -297,7 +301,18 @@ function detailsContent(skill) {
     wrapper.append(node("label", "", column.label.toUpperCase()), control(skill, key));
     content.append(wrapper);
   }
-  content.append(deleteControl(skill));
+  const flag = node("label", "bjj-track-flag");
+  const input = node("input");
+  input.type = "checkbox";
+  input.checked = state.bjj.trackedSkillIds.includes(skill.id);
+  input.disabled = isBjjPositionOnly(skill) && !input.checked;
+  input.setAttribute("aria-label", `Track in notes: ${skill.name}`);
+  input.addEventListener("change", () => {
+    const trackedSkillIds = input.checked ? [...state.bjj.trackedSkillIds, skill.id] : state.bjj.trackedSkillIds.filter(id => id !== skill.id);
+    if (!save({ ...state.bjj, trackedSkillIds })) input.checked = !input.checked;
+  });
+  flag.append(input, node("span", "", input.disabled ? "Position only (not tracked)" : "Track in notes"));
+  content.append(flag, deleteControl(skill));
   return content;
 }
 
@@ -439,7 +454,7 @@ function render() {
       row.append(cell);
     }
     const detailsCell = node("td");
-    const detailsButton = node("button", `bjj-details-toggle${hasDetails ? "" : " bjj-details-empty"}`, expandedDetails.has(skill.id) ? "Hide details" : "Details");
+    const detailsButton = node("button", `bjj-details-toggle${hasDetails ? "" : " bjj-details-empty"}`, `${expandedDetails.has(skill.id) ? "Hide details" : "Details"}${state.bjj.trackedSkillIds.includes(skill.id) ? " · Tracked" : ""}`);
     detailsButton.type = "button";
     detailsButton.setAttribute("aria-label", `Details for ${skill.name}`);
     detailsButton.setAttribute("aria-expanded", String(expandedDetails.has(skill.id)));
@@ -465,7 +480,7 @@ function render() {
     card.open = expanded.has(skill.id);
     card.addEventListener("toggle", () => { if (card.open) expanded.add(skill.id); else expanded.delete(skill.id); });
     const summary = node("summary");
-    summary.append(node("strong", "", skill.name), node("span", "", skill.mastered ? "Mastered" : skill.type));
+    summary.append(node("strong", "", skill.name), node("span", "", `${skill.mastered ? "Mastered" : skill.type}${state.bjj.trackedSkillIds.includes(skill.id) ? " · Tracked" : ""}`));
     const body = node("div", "bjj-card-body");
     for (const column of visibleColumns) {
       const wrapper = node("div");
@@ -483,6 +498,7 @@ function render() {
     card.append(summary, body);
     cards.append(card);
   }
+  journal.render();
 }
 
 function initControls() {
@@ -612,11 +628,13 @@ try {
   notify(`Could not load saved data: ${error.message}. Your data has not been overwritten; import a backup in Administration.`, true);
 }
 initControls();
+journal = mountBjjJournal(document, node, T, () => state.bjj, save);
 render();
 if (failed) {
   $("bjj-add").disabled = true;
   $("bjj-belt").disabled = true;
   $("bjj-stripes").disabled = true;
+  for (const id of ["bjj-class-add", "bjj-roll-add", "bjj-review-open"]) $(id).disabled = true;
 }
 
 }

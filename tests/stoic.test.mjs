@@ -31,7 +31,7 @@ test("legacy trackers migrate and version 18 round-trips Stoic history", () => {
   old.version = 16;
   delete old.stoic;
   const migrated = tracker.validateState(old);
-  assert.equal(migrated.version, 18);
+  assert.equal(migrated.version, 19);
   assert.deepEqual(migrated.stoic, { entries: [], activeModuleId: "temperance", generated: [] });
 
   migrated.stoic.entries.push(completeEntry("2026-04-02", "wisdom"));

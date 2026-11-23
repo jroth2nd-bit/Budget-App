@@ -52,12 +52,16 @@ export type BjjSkill = {
   workOnNext: boolean;
 };
 
+export type BjjMoveReference = { skillId: string; name: string };
+export type BjjClassNote = { id: string; date: string; notes: string; moves: BjjMoveReference[] };
+export type BjjRollNote = { id: string; date: string; partner: string; notes: string; strategy: string; moves: (BjjMoveReference & { result: 'attempted' | 'landed' })[] };
+
 export type TrackerState = {
   version: number;
   entries: MercyHistoryEntry[];
   clanBoss: DemonLordRecord[];
   champions: ChampionBuild[];
-  bjj: { belt: string; stripes: number; skills: BjjSkill[] };
+  bjj: { belt: string; stripes: number; skills: BjjSkill[]; trackedSkillIds: string[]; classNotes: BjjClassNote[]; rollNotes: BjjRollNote[] };
   weight: WeightData;
   books: Book[];
   stoic: StoicData;
