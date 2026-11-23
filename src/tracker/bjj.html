@@ -29,7 +29,8 @@
       </div>
       <section class="compact-panel bjj-move-history" aria-labelledby="bjj-history-title">
         <div class="build-toolbar"><div><p class="eyebrow">YOUR TECHNIQUES</p><h2 id="bjj-history-title">Move history</h2></div><button class="button button-quiet" id="bjj-review-open" type="button">Review move list</button></div>
-        <p class="footnote">Tracked techniques appear here and in your notes. Oldest activity and never-recorded moves appear first.</p>
+        <p class="footnote">All skills except Position types appear here and in your notes. Never-recorded and older moves appear first; Black Lotus moves receive a small priority boost. Counts are recorded sessions, not repetitions.</p>
+        <label for="bjj-history-search">FIND A MOVE</label><input id="bjj-history-search" type="search" placeholder="Search skill library">
         <div id="bjj-move-history"></div>
       </section>
       <section class="compact-panel bjj-skills-panel" aria-labelledby="skills-title">
@@ -49,14 +50,14 @@
       <div id="bjj-journal-partner-wrap"><label for="bjj-journal-partner">PARTNER</label><input id="bjj-journal-partner" maxlength="100"><p id="bjj-previous-strategy" class="footnote"></p></div>
       <div><label for="bjj-journal-notes">NOTES</label><textarea id="bjj-journal-notes" rows="4" maxlength="8000"></textarea></div>
       <div id="bjj-journal-strategy-wrap"><label for="bjj-journal-strategy">STRATEGY FOR NEXT TIME</label><textarea id="bjj-journal-strategy" rows="3" maxlength="4000"></textarea></div>
-      <fieldset class="bjj-journal-moves"><legend id="bjj-journal-moves-label">Moves</legend><div id="bjj-journal-moves"></div></fieldset>
+      <fieldset class="bjj-journal-moves"><legend id="bjj-journal-moves-label">Moves</legend><label for="bjj-journal-search">FIND A MOVE</label><input id="bjj-journal-search" type="search" placeholder="Search skill library"><div id="bjj-journal-preserved" class="footnote"></div><div id="bjj-journal-moves"></div></fieldset>
       <p id="bjj-journal-error" class="clan-form-error" role="alert"></p>
       <div class="clan-dialog-actions"><button class="button button-primary" type="submit">Save note</button></div>
     </form>
   </dialog>
   <dialog id="bjj-review-dialog" aria-labelledby="bjj-review-title">
     <div class="build-dialog-header"><h2 id="bjj-review-title">Review move list</h2><button class="button button-quiet" id="bjj-review-close" type="button">Close</button></div>
-    <p class="section-copy">Choose one listed technique, then choose an existing skill or create a new one. Nothing changes until you apply a choice. New skills start as Other with no starting positions; you can edit them in the library.</p>
+    <p class="section-copy">Review each listed Black Lotus lesson plan technique, then choose an existing skill to tag or create a new one. Nothing changes until you apply a choice. New skills start as Other with no starting positions; you can edit them in the library.</p>
     <form id="bjj-review-form" class="bjj-journal-form">
       <div><label for="bjj-review-move">LISTED TECHNIQUE</label><select id="bjj-review-move" required></select></div>
       <p id="bjj-review-group" class="footnote"></p>

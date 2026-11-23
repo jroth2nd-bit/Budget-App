@@ -1,4 +1,4 @@
-import { bjjMoveHistory, isBjjPositionOnly } from "./bjjJournalData.js";
+import { bjjMoveHistory, compareBjjMoveActivity, isBjjPositionOnly } from "./bjjJournalData.js";
 import { bjjMoveList } from "./bjjMoveList.js";
 
 export function mountBjjJournal(document, node, T, getBjj, save) {
@@ -6,6 +6,8 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
   let editingKind = "class";
   let editingId = null;
   let choices = [];
+  let preservedMoves = [];
+  const expandedPartners = new Set();
 
   function today() {
     const date = new Date();
@@ -18,9 +20,46 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
       .map(item => item.entry);
   }
 
-  function trackedSkills() {
-    const bjj = getBjj();
-    return bjj.skills.filter(skill => bjj.trackedSkillIds.includes(skill.id) && !isBjjPositionOnly(skill));
+  function moveSkills() {
+    return getBjj().skills.filter(skill => !isBjjPositionOnly(skill));
+  }
+
+  function partnerKey(partner) {
+    return partner.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  }
+
+  function entryCard(entry, kind) {
+    const roll = kind === "roll";
+    const row = node("div", "bjj-journal-row");
+    const card = node("details", "bjj-journal-entry");
+    const summary = node("summary", "", entry.date);
+    const content = node("div", "bjj-journal-entry-content");
+    if (entry.notes.trim()) content.append(node("p", "bjj-journal-text", entry.notes));
+    if (roll && entry.strategy.trim()) {
+      content.append(node("strong", "", "Strategy for next time"), node("p", "bjj-journal-text", entry.strategy));
+    }
+    if (entry.moves.length) {
+      content.append(node("p", "footnote", entry.moves.map(move => roll ? `${move.name} (${move.result})` : move.name).join(" · ")));
+    }
+    const actions = node("div", "bjj-journal-actions");
+    const edit = node("button", "button button-quiet", "Edit");
+    edit.type = "button";
+    edit.setAttribute("aria-label", `Edit ${kind} note ${entry.date}${roll ? ` for ${entry.partner}` : ""}`);
+    edit.addEventListener("click", () => openEntry(kind, entry.id));
+    const remove = node("button", "button button-quiet", "Delete");
+    remove.type = "button";
+    remove.setAttribute("aria-label", `Delete ${kind} note ${entry.date}${roll ? ` for ${entry.partner}` : ""}`);
+    remove.addEventListener("click", () => {
+      if (!window.confirm(`Delete this ${kind} note from ${entry.date}?`)) return;
+      const key = roll ? "rollNotes" : "classNotes";
+      const current = getBjj();
+      save({ ...current, [key]: current[key].filter(item => item.id !== entry.id) });
+    });
+    actions.append(edit);
+    content.append(actions);
+    card.append(summary, content);
+    row.append(card, remove);
+    return row;
   }
 
   function renderEntries(kind) {
@@ -34,58 +73,66 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
       return;
     }
     const list = node("div", "bjj-journal-list");
-    for (const entry of entries) {
-      const card = node("details", "bjj-journal-entry");
-      const summary = node("summary", "", roll ? `${entry.date} · ${entry.partner}` : entry.date);
-      const content = node("div", "bjj-journal-entry-content");
-      if (entry.notes.trim()) content.append(node("p", "bjj-journal-text", entry.notes));
-      if (roll && entry.strategy.trim()) {
-        content.append(node("strong", "", "Strategy for next time"), node("p", "bjj-journal-text", entry.strategy));
+    if (!roll) {
+      for (const entry of entries) list.append(entryCard(entry, kind));
+    } else {
+      const partners = new Map();
+      for (const entry of entries) {
+        const key = partnerKey(entry.partner);
+        if (!partners.has(key)) partners.set(key, { name: entry.partner, entries: [] });
+        partners.get(key).entries.push(entry);
       }
-      if (entry.moves.length) {
-        content.append(node("p", "footnote", entry.moves.map(move => roll ? `${move.name} (${move.result})` : move.name).join(" · ")));
+      for (const [key, partner] of [...partners.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+        const group = node("details", "bjj-partner-group");
+        group.open = expandedPartners.has(key);
+        group.addEventListener("toggle", () => {
+          if (!group.isConnected) return;
+          if (group.open) expandedPartners.add(key); else expandedPartners.delete(key);
+        });
+        group.append(node("summary", "", `${partner.name} · ${partner.entries.length} ${partner.entries.length === 1 ? "roll" : "rolls"}`));
+        const content = node("div", "bjj-partner-content");
+        const add = node("button", "button button-quiet", "Add roll note");
+        add.type = "button";
+        add.setAttribute("aria-label", `Add roll note for ${partner.name}`);
+        add.addEventListener("click", () => openEntry("roll", null, partner.name));
+        content.append(add);
+        for (const entry of partner.entries) content.append(entryCard(entry, kind));
+        group.append(content);
+        list.append(group);
       }
-      const actions = node("div", "bjj-journal-actions");
-      const edit = node("button", "button button-quiet", "Edit");
-      edit.type = "button";
-      edit.setAttribute("aria-label", `Edit ${kind} note ${entry.date}${roll ? ` for ${entry.partner}` : ""}`);
-      edit.addEventListener("click", () => openEntry(kind, entry.id));
-      const remove = node("button", "button button-quiet", "Delete");
-      remove.type = "button";
-      remove.setAttribute("aria-label", `Delete ${kind} note ${entry.date}${roll ? ` for ${entry.partner}` : ""}`);
-      remove.addEventListener("click", () => {
-        if (!window.confirm(`Delete this ${kind} note from ${entry.date}?`)) return;
-        const key = roll ? "rollNotes" : "classNotes";
-        const current = getBjj();
-        save({ ...current, [key]: current[key].filter(item => item.id !== entry.id) });
-      });
-      actions.append(edit, remove);
-      content.append(actions);
-      card.append(summary, content);
-      list.append(card);
     }
     container.append(list);
+  }
+
+  function filterHistory() {
+    const search = $("bjj-history-search").value.trim().toLocaleLowerCase();
+    for (const item of $("bjj-move-history").querySelectorAll(".bjj-history-item")) item.hidden = !item.dataset.name.includes(search);
   }
 
   function renderHistory() {
     const bjj = getBjj();
     const container = $("bjj-move-history");
     container.replaceChildren();
-    const skills = trackedSkills().map(skill => ({ skill, history: bjjMoveHistory(bjj, skill.id) }));
-    skills.sort((a, b) => (a.history.lastActivity ?? "").localeCompare(b.history.lastActivity ?? "") || a.skill.name.localeCompare(b.skill.name));
+    const blackLotus = new Set(bjj.blackLotusSkillIds);
+    const skills = moveSkills().map(skill => ({ skill, history: bjjMoveHistory(bjj, skill.id) }));
+    skills.sort((a, b) => compareBjjMoveActivity(a.history.lastActivity, blackLotus.has(a.skill.id), b.history.lastActivity, blackLotus.has(b.skill.id)) || a.skill.name.localeCompare(b.skill.name));
     if (!skills.length) {
-      container.append(node("p", "footnote", "No tracked techniques yet. Flag a skill in its details or review the move list."));
+      container.append(node("p", "footnote", "No non-Position skills in the library yet."));
       return;
     }
     const list = node("div", "bjj-history-list");
     for (const { skill, history } of skills) {
       const card = node("div", "bjj-history-item");
+      card.dataset.name = skill.name.toLocaleLowerCase();
       card.append(node("strong", "", skill.name));
+      if (bjj.blackLotusSkillIds.includes(skill.id)) card.append(node("span", "bjj-lesson-tag", "Black Lotus lesson plan"));
       if (skill.positions.length) card.append(node("span", "footnote", skill.positions.join(", ")));
       card.append(node("p", "footnote", `Practiced: ${history.practiced ?? "Never"} · Tried: ${history.attempted ?? "Never"} · Landed: ${history.landed ?? "Never"}`));
+      card.append(node("p", "footnote", `Class sessions: ${history.practiceCount} · Roll sessions: ${history.attemptCount} · Landed: ${history.landedCount}`));
       list.append(card);
     }
     container.append(list);
+    filterHistory();
   }
 
   function render() {
@@ -96,13 +143,13 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
 
   function previousStrategy() {
     if (editingKind !== "roll") return;
-    const partner = $("bjj-journal-partner").value.trim().toLocaleLowerCase();
+    const partner = partnerKey($("bjj-journal-partner").value);
     const date = $("bjj-journal-date").value;
-    const previous = sortedEntries(getBjj().rollNotes).find(entry => entry.id !== editingId && entry.date <= date && entry.partner.toLocaleLowerCase() === partner && entry.strategy.trim());
+    const previous = sortedEntries(getBjj().rollNotes).find(entry => entry.id !== editingId && entry.date <= date && partnerKey(entry.partner) === partner && entry.strategy.trim());
     $("bjj-previous-strategy").textContent = previous ? `Previous strategy (${previous.date}): ${previous.strategy}` : "";
   }
 
-  function openEntry(kind, id = null) {
+  function openEntry(kind, id = null, partner = "") {
     editingKind = kind;
     editingId = id;
     const roll = kind === "roll";
@@ -119,26 +166,30 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
     $("bjj-journal-partner-wrap").hidden = !roll;
     $("bjj-journal-strategy-wrap").hidden = !roll;
     $("bjj-journal-partner").required = roll;
-    $("bjj-journal-partner").value = entry?.partner ?? "";
+    $("bjj-journal-partner").value = entry?.partner ?? partner;
     $("bjj-journal-notes").value = entry?.notes ?? "";
     $("bjj-journal-strategy").value = entry?.strategy ?? "";
     $("bjj-journal-error").textContent = "";
+    $("bjj-journal-search").value = "";
     $("bjj-journal-moves-label").textContent = roll ? "Moves in this roll" : "Moves practiced in class";
     const moves = entry?.moves ?? [];
-    choices = trackedSkills().map(skill => ({ skillId: skill.id, name: skill.name }));
-    for (const move of moves) {
-      if (!choices.some(choice => choice.skillId === move.skillId)) choices.push({ skillId: move.skillId, name: move.name });
-    }
+    choices = moveSkills().map(skill => ({ skillId: skill.id, name: skill.name }));
+    preservedMoves = moves.filter(move => !choices.some(choice => choice.skillId === move.skillId));
+    $("bjj-journal-preserved").textContent = preservedMoves.length ? `Previously recorded moves no longer available in the library or now marked Position will be preserved: ${preservedMoves.map(move => move.name).join(", ")}.` : "";
     for (const choice of choices) choice.history = bjjMoveHistory(bjj, choice.skillId);
-    choices.sort((a, b) => (a.history.lastActivity ?? "").localeCompare(b.history.lastActivity ?? "") || a.name.localeCompare(b.name) || a.skillId.localeCompare(b.skillId));
+    const blackLotus = new Set(bjj.blackLotusSkillIds);
+    choices.sort((a, b) => compareBjjMoveActivity(a.history.lastActivity, blackLotus.has(a.skillId), b.history.lastActivity, blackLotus.has(b.skillId)) || a.name.localeCompare(b.name) || a.skillId.localeCompare(b.skillId));
     const container = $("bjj-journal-moves");
     container.replaceChildren();
-    if (!choices.length) container.append(node("p", "footnote", "No tracked techniques yet. You can still save this note."));
+    if (!choices.length) container.append(node("p", "footnote", "No non-Position skills in the library yet. You can still save this note."));
     for (const choice of choices) {
       const existing = moves.find(move => move.skillId === choice.skillId);
       const label = node("label", "bjj-journal-move");
+      label.dataset.name = choice.name.toLocaleLowerCase();
       const name = node("span", "bjj-journal-move-info");
-      name.append(node("strong", "", choice.name), node("span", "footnote", `Practiced: ${choice.history.practiced ?? "Never"} · Tried: ${choice.history.attempted ?? "Never"} · Landed: ${choice.history.landed ?? "Never"}`));
+      name.append(node("strong", "", choice.name));
+      if (bjj.blackLotusSkillIds.includes(choice.skillId)) name.append(node("span", "bjj-lesson-tag", "Black Lotus lesson plan"));
+      name.append(node("span", "footnote", `Practiced: ${choice.history.practiced ?? "Never"} · Tried: ${choice.history.attempted ?? "Never"} · Landed: ${choice.history.landed ?? "Never"}`));
       const input = node(roll ? "select" : "input");
       input.setAttribute("aria-label", roll ? `${choice.name} in this roll` : `Practiced ${choice.name}`);
       if (roll) {
@@ -165,13 +216,18 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
   $("bjj-journal-close").addEventListener("click", () => $("bjj-journal-dialog").close());
   $("bjj-journal-partner").addEventListener("input", previousStrategy);
   $("bjj-journal-date").addEventListener("change", previousStrategy);
+  $("bjj-history-search").addEventListener("input", filterHistory);
+  $("bjj-journal-search").addEventListener("input", () => {
+    const search = $("bjj-journal-search").value.trim().toLocaleLowerCase();
+    for (const item of $("bjj-journal-moves").querySelectorAll(".bjj-journal-move")) item.hidden = !item.dataset.name.includes(search);
+  });
   $("bjj-journal-form").addEventListener("submit", event => {
     event.preventDefault();
     const roll = editingKind === "roll";
-    const moves = choices.flatMap(choice => {
+    const moves = [...preservedMoves, ...choices.flatMap(choice => {
       if (roll) return choice.input.value ? [{ skillId: choice.skillId, name: choice.name, result: choice.input.value }] : [];
       return choice.input.checked ? [{ skillId: choice.skillId, name: choice.name }] : [];
-    });
+    })];
     const entry = { id: editingId ?? crypto.randomUUID(), date: $("bjj-journal-date").value, notes: $("bjj-journal-notes").value, moves };
     if (roll) {
       entry.partner = $("bjj-journal-partner").value;
@@ -204,8 +260,8 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
     skills.sort((a, b) => Number(b.name.toLocaleLowerCase() === selected[0].toLocaleLowerCase()) - Number(a.name.toLocaleLowerCase() === selected[0].toLocaleLowerCase()) || a.name.localeCompare(b.name));
     for (const skill of skills) {
       const positions = skill.positions.length ? ` · ${skill.positions.join(", ")}` : "";
-      const tracked = getBjj().trackedSkillIds.includes(skill.id) ? " · already tracked" : "";
-      const option = node("option", "", `${skill.name}${positions}${tracked}`);
+      const tagged = getBjj().blackLotusSkillIds.includes(skill.id) ? " · Black Lotus" : "";
+      const option = node("option", "", `${skill.name}${positions}${tagged}`);
       option.value = `skill:${skill.id}`;
       action.append(option);
     }
@@ -251,15 +307,15 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
         $("bjj-review-error").textContent = "The selected skill is no longer available. Reload the page.";
         return;
       }
-      if (bjj.trackedSkillIds.includes(skill.id)) {
-        $("bjj-review-status").textContent = `${skill.name} is already tracked.`;
+      if (bjj.blackLotusSkillIds.includes(skill.id)) {
+        $("bjj-review-status").textContent = `${skill.name} is already tagged Black Lotus.`;
         return;
       }
     }
     const skills = action === "new" ? [...bjj.skills, skill] : bjj.skills;
-    if (save({ ...bjj, skills, trackedSkillIds: [...bjj.trackedSkillIds, skill.id] }, "bjj-review-error")) {
+    if (save({ ...bjj, skills, blackLotusSkillIds: [...bjj.blackLotusSkillIds, skill.id] }, "bjj-review-error")) {
       reviewActions();
-      $("bjj-review-status").textContent = `${skill.name} is now tracked.`;
+      $("bjj-review-status").textContent = `${skill.name} is tagged Black Lotus.`;
     }
   });
 

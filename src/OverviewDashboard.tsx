@@ -61,7 +61,7 @@ export const overviewCards: Card[] = [
   {
     id: 'bjj-skills', title: 'BJJ Tracker', icon: <SkillsIcon />, accent: 'bjj',
     summary: data => trackerSummary(data, state => {
-      const skills = tracker.bjjLearningPriorities(state.bjj.skills);
+      const skills = tracker.bjjLearningPriorities(state.bjj.skills, state.bjj.blackLotusSkillIds);
       return skills.length ? <><span className="overviewLabel">Learning priorities</span><ul>{skills.map(({ skill, confidence }) => <li key={skill.id}><span>{skill.name}</span><small>{skill.workOnNext ? 'Focus' : `${confidence}% confidence`}</small></li>)}</ul></> : <p>No learning priorities yet.</p>;
     }),
   },
