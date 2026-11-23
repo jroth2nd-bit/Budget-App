@@ -28,9 +28,13 @@
 .bookTable th { text-align: left; color: var(--accent); font-size: 12px; }
 .bookTable td, .bookTable th { padding: 8px 4px; border-bottom: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
 .bookTable tbody tr:last-child > * { border-bottom: 0; }
-.bookTable th:first-child, .bookTable th:nth-child(2) { width: 13%; }
-.bookTable th:nth-child(6) { width: 7%; }
-.bookTable th:last-child { width: 11%; }
+.bookTable th:nth-child(1) { width: 27%; }
+.bookTable th:nth-child(2) { width: 17%; }
+.bookTable th:nth-child(3) { width: 13%; }
+.bookTable th:nth-child(4) { width: 14%; }
+.bookTable th:nth-child(5) { width: 7%; }
+.bookTable th:nth-child(6) { width: 12%; }
+.bookTable th:nth-child(7) { width: 10%; }
 .bookTable .bookCellValue { display: block; width: 100%; min-height: 34px; padding: 4px; border: 1px solid transparent; background: transparent; color: var(--text); font-size: 13px; font-weight: normal; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
 .bookTable .bookCellValue:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--active-border); }
 .bookTable .bookCellEmpty { color: var(--muted); }
@@ -39,6 +43,8 @@
 .bookSummaryToggle { display: block; min-height: 34px; padding: 6px 4px; background: transparent; border: 0; color: var(--accent); text-align: left; }
 .bookSummaryToggle:hover { text-decoration: underline; }
 .bookSummaryRow td { padding: 8px; }
+.bookDetailField + .bookDetailField { margin-top: 8px; }
+.bookDetailLabel { display: block; color: var(--muted); font-size: 12px; }
 .bookError { color: var(--neg); font-weight: 600; }
 @media (max-width: 1050px) {
   .bookTable, .bookTable tbody { display: block; }

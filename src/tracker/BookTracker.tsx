@@ -184,10 +184,10 @@ const BookTracker = forwardRef<BookTrackerHandle, { storage: TrackerStorage; onA
           <label>Fiction Type<select value={typeFilter} onChange={event => setTypeFilter(event.target.value)}><option>All</option><option>Fiction</option><option>Non-Fiction</option></select></label>
           <label>Series<select value={seriesFilter} onChange={event => setSeriesFilter(event.target.value)}><option value="All">All Series</option>{series.map(item => <option key={item}>{item}</option>)}</select></label>
         </div>
-        {!filtered.length ? <p>No books match your filters.</p> : <><p className="bookTableHint">Select a value to edit it. Text saves when you leave the field; press Escape to cancel.</p><div className="bookTableWrap"><table className="bookTable"><thead><tr>{['Title', 'Author', 'Series', 'Genre', 'Fiction / Non-Fiction', 'Read', 'Rating', 'Summary'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>
+        {!filtered.length ? <p>No books match your filters.</p> : <><p className="bookTableHint">Select a value to edit it. Text saves when you leave the field; press Escape to cancel.</p><div className="bookTableWrap"><table className="bookTable"><thead><tr>{['Title', 'Author', 'Genre', 'Fiction / Non-Fiction', 'Read', 'Rating', 'Summary'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>
           {filtered.map(book => <Fragment key={book.id}><tr>
-            {(['title', 'author', 'series'] as const).map(field => <td key={field} data-label={field}><BookCell label={`${field} for ${book.title}`} value={book[field]} maxLength={300} onSave={value => {
-              if ((field === 'title' || field === 'author') && !value.trim()) { setError(`${field} is required.`); return false; }
+            {(['title', 'author'] as const).map(field => <td key={field} data-label={field}><BookCell label={`${field} for ${book.title}`} value={book[field]} maxLength={300} onSave={value => {
+              if (!value.trim()) { setError(`${field} is required.`); return false; }
               return update(book, { [field]: value });
             }} /></td>)}
             <td data-label="Genre"><BookCell label={`Genre for ${book.title}`} value={book.genre} options={genres.map(value => ({ value, label: value }))} onSave={value => update(book, { genre: value as Genre })} /></td>
@@ -199,7 +199,10 @@ const BookTracker = forwardRef<BookTrackerHandle, { storage: TrackerStorage; onA
               if (next.has(book.id)) next.delete(book.id); else next.add(book.id);
               return next;
             })}>{book.summary ? 'View summary' : 'Add summary'}</button></td>
-          </tr>{expandedSummaries.has(book.id) && <tr className="bookSummaryRow"><td colSpan={8} data-label="Summary"><BookCell label={`Summary for ${book.title}`} value={book.summary} emptyLabel="Select to add a summary" multiline maxLength={4000} onSave={value => update(book, { summary: value })} /></td></tr>}</Fragment>)}
+          </tr>{expandedSummaries.has(book.id) && <tr className="bookSummaryRow"><td colSpan={7} data-label="Summary">
+            <div className="bookDetailField"><span className="bookDetailLabel">Series</span><BookCell label={`series for ${book.title}`} value={book.series} emptyLabel="Select to add a series" maxLength={300} onSave={value => update(book, { series: value })} /></div>
+            <div className="bookDetailField"><span className="bookDetailLabel">Summary</span><BookCell label={`Summary for ${book.title}`} value={book.summary} emptyLabel="Select to add a summary" multiline maxLength={4000} onSave={value => update(book, { summary: value })} /></div>
+          </td></tr>}</Fragment>)}
         </tbody></table></div></>}
       </section>
     </>}
