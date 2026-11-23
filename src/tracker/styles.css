@@ -106,6 +106,23 @@ footer { border-top: 1px solid #25392c; margin-top: 20px; padding: 14px 0; displ
 .clan-history-row p { margin: 4px 0 0; color: #adc5bf; font-size: 11px; line-height: 1.5; }
 .clan-history-actions, .clan-dialog-actions { display: flex; gap: 6px; }
 .clan-history-actions .button { padding: 7px 9px; }
+.clan-chart { margin-top: 16px; padding: 14px; background: #0c1919; border: 1px solid #285456; border-radius: 5px; }
+.clan-chart-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 10px; }
+.clan-chart-heading h3 { margin: 0; font-size: 19px; color: #d7f4ef; }
+.clan-chart-heading label { width: min(200px, 100%); margin: 0; }
+.clan-chart-heading select { margin-top: 5px; border-color: #39777a; }
+.clan-chart-empty { margin-top: 16px; }
+.clan-chart-scroll { max-width: 100%; overflow-x: auto; margin-top: 16px; }
+.clan-chart-graph { display: flex; min-width: max-content; }
+.clan-chart-axis { display: flex; flex-direction: column; justify-content: space-between; align-items: end; width: 40px; height: 160px; padding-right: 6px; color: #a4c3bf; font-size: 10px; }
+.clan-chart-days { display: flex; flex: 1; align-items: stretch; }
+.clan-chart-day { flex: 1 0 74px; width: 74px; padding: 0 5px; background: transparent; border: 0; color: #b6d6d1; font-size: 10px; }
+.clan-chart-day:hover .clan-chart-bar { background: #b2ffff; }
+.clan-chart-plot { display: flex; align-items: end; justify-content: center; height: 160px; border-bottom: 1px solid #648a86; background: linear-gradient(to top, transparent 49.5%, #285456 50%, transparent 50.5%); }
+.clan-chart-bar { width: 28px; min-height: 2px; background: #67e9ed; border-radius: 3px 3px 0 0; }
+.clan-chart-unknown { color: #ffe189; font-size: 18px; font-weight: 700; }
+.clan-chart-date { display: block; padding-top: 7px; white-space: nowrap; }
+.clan-chart-detail { min-height: 17px; margin: 10px 0 0; color: #c5e0dc; font-size: 11px; }
 #clan-dialog { width: min(940px, calc(100% - 32px)); max-height: 90vh; overflow: auto; background: #111b15; color: #edf5ef; border: 1px solid #4eaeb0; border-radius: 7px; padding: 20px; box-shadow: 0 0 24px #4bd9e54a; }
 #clan-dialog::backdrop { background: #000b; }
 .clan-dialog-header { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 10px; }

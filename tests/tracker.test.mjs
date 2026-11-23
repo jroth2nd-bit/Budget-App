@@ -320,6 +320,26 @@ test("Epic book summary counts known totals and uses only fully known days for a
   assert.equal(unknown.averages.epicBooks, null);
 });
 
+test("Demon Lord reward chart uses summary filters and preserves unknown Epic counts", () => {
+  const records = [
+    { date: "2026-03-10", difficulties: { ultra: clanRow(2, 1, 0, 0, 0, null), nightmare: clanRow(2, 2, 0, 0, 0, 3) } },
+    { date: "2026-03-04", difficulties: { ultra: clanRow(2, 0, 0, 0, 0, 0) } },
+    { date: "2026-03-03", difficulties: { ultra: clanRow(2, 9) } },
+    { date: "2026-03-11", difficulties: { ultra: clanRow(2, 7) } }
+  ];
+  assert.deepEqual(T.clanRewardSeries(records, "2026-03-10", 7), [
+    { date: "2026-03-04", value: 0 }, { date: "2026-03-10", value: 3 }
+  ]);
+  assert.deepEqual(T.clanRewardSeries(records, "2026-03-10", 7, "all", "epicBooks"), [
+    { date: "2026-03-04", value: 0 }, { date: "2026-03-10", value: null }
+  ]);
+  assert.deepEqual(T.clanRewardSeries(records, "2026-03-10", 7, "nightmare", "epicBooks"), [
+    { date: "2026-03-10", value: 3 }
+  ]);
+  assert.equal(T.clanRewardSeries(records, "2026-03-10", 0).length, 3);
+  assert.throws(() => T.clanRewardSeries(records, "2026-03-10", 7, "all", "unknown"), /Invalid/);
+});
+
 test("champion completion uses six equal fields and only blessing level six", () => {
   const statuses = { blessing: 0, books: "complete", masteries: "needed", gear: "progress", glyphs: "complete", relic: "needed" };
   assert.deepEqual(T.buildCompletion(statuses), { complete: 2, applicable: 6, percentage: 2 / 6 * 100 });
