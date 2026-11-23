@@ -228,7 +228,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(editor).toBeHidden();
     await expect(list.getByLabel('Edit starting positions for Legacy skill')).toContainText('Custom <guard>');
     let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
-    expect(saved.version).toBe(19);
+    expect(saved.version).toBe(20);
     expect(saved.current.shards.Void.Legendary).toBe(21);
     expect(saved.bjj.skills[0].positions).toEqual(['Closed guard', 'Mount', 'Custom <guard>', 'Butterfly guard']);
     await bjj.locator('.bjj-filter-details summary').click();
@@ -1054,7 +1054,7 @@ test('backup migration, invalid and cancelled imports preserve both datasets', a
   const reloadedMercy = await openTracker(page, 'Mercy Tracker');
   await expect(reloadedMercy.locator('#count-Ancient-Legendary')).toHaveValue('99');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
-  expect(saved.version).toBe(19);
+  expect(saved.version).toBe(20);
   expect(saved.starting.Ancient.Legendary).toBe(99);
   expect(saved.bjj.skills).toEqual([]);
 });
@@ -1238,6 +1238,7 @@ test('BJJ journal notes sync and survive full backup export', async ({ page }) =
   const state = tracker.emptyState();
   state.bjj.skills = [{ id: 'armbar', name: 'Armbar', type: 'Submission', positions: ['Closed guard'], description: '', link: '', practice: 'learning', live: 'not_yet', preference: 'low', mastered: false, workOnNext: false }];
   state.bjj.trackedSkillIds = ['armbar'];
+  state.bjj.blackLotusSkillIds = ['armbar'];
   const cloud: MockCloud = { row: { revision: 'original', data: state }, budgetWrites: [] };
   await mockCloud(page, cloud);
   await page.goto(cloudUrl);
@@ -1253,7 +1254,8 @@ test('BJJ journal notes sync and survive full backup export', async ({ page }) =
   await expect(page.locator('.trackerSync')).toHaveText('Tracker: account sync ready');
   await page.reload();
   const restored = await openTracker(page, 'BJJ Tracker');
-  await restored.locator('#bjj-roll-list summary').click();
+  await restored.locator('#bjj-roll-list .bjj-partner-group > summary').click();
+  await restored.locator('#bjj-roll-list .bjj-journal-entry > summary').click();
   await expect(restored.locator('#bjj-roll-list')).toContainText('Review grip control.');
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Admin' }).click();
   await expect(page.locator('.syncBadge')).toHaveText('Synced');
@@ -1261,6 +1263,7 @@ test('BJJ journal notes sync and survive full backup export', async ({ page }) =
   await page.getByRole('button', { name: 'Export Everything' }).click();
   const backup = JSON.parse(await readFile(await (await download).path(), 'utf8'));
   expect(backup.tracker.bjj.rollNotes[0]).toMatchObject({ partner: 'Partner', strategy: 'Review grip control.', moves: [{ skillId: 'armbar', name: 'Armbar', result: 'attempted' }] });
+  expect(backup.tracker.bjj.blackLotusSkillIds).toEqual(['armbar']);
 });
 
 test('overview loads account tracker summaries and reports tracker sync errors', async ({ page }) => {
@@ -1396,7 +1399,7 @@ test('account sync migrates old BJJ skills and persists positions without changi
   const dialog = bjj.locator('#bjj-positions-dialog');
   await dialog.getByLabel('Mount', { exact: true }).check();
   await dialog.getByRole('button', { name: 'Save positions' }).click();
-  await expect.poll(() => cloud.row?.data.version).toBe(19);
+  await expect.poll(() => cloud.row?.data.version).toBe(20);
   expect(cloud.row!.data.bjj.skills[0].positions).toEqual(['Mount']);
   expect(cloud.budgetWrites.every(write => !!write && typeof write === 'object' && 'data' in write && !!write.data && typeof write.data === 'object' && !('tracker' in write.data))).toBe(true);
 });
@@ -1582,7 +1585,7 @@ test('cloud backup import validates and confirms before replacing tracker data',
   await (await importDialog).accept();
   await expect.poll(() => cloud.row!.data.starting.Void.Legendary).toBe(77);
   await expect(page.getByText('Tracker backup imported.')).toBeVisible();
-  expect(cloud.row!.data.version).toBe(19);
+  expect(cloud.row!.data.version).toBe(20);
 });
 
 test('full restore keeps budget unchanged if tracker cloud write conflicts', async ({ page }) => {

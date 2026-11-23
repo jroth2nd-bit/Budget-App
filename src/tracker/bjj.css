@@ -123,18 +123,27 @@ select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
 .bjj-journal-panel, .bjj-move-history { min-width: 0; }
 .bjj-move-history { margin-top: 16px; }
 .bjj-journal-list { display: grid; gap: 8px; margin-top: 12px; }
+.bjj-partner-group { border: 1px solid var(--belt-border); border-radius: 5px; background: #101b20; }
+.bjj-partner-group > summary { cursor: pointer; padding: 10px; overflow-wrap: anywhere; }
+.bjj-partner-content { display: grid; gap: 8px; padding: 0 10px 10px; }
+.bjj-partner-content > button { justify-self: start; }
+.bjj-journal-row { position: relative; min-width: 0; }
+.bjj-journal-row > button { position: absolute; top: 4px; right: 4px; }
 .bjj-journal-entry { border: 1px solid var(--belt-border); border-radius: 5px; background: #101b20; }
-.bjj-journal-entry > summary { cursor: pointer; padding: 10px; overflow-wrap: anywhere; }
+.bjj-journal-entry > summary { cursor: pointer; padding: 10px 90px 10px 10px; min-height: 44px; overflow-wrap: anywhere; }
 .bjj-journal-entry-content { padding: 0 10px 10px; font-size: 12px; }
 .bjj-journal-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
 .bjj-journal-actions { display: flex; gap: 8px; margin-top: 10px; }
 .bjj-history-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 8px; margin-top: 12px; }
 .bjj-history-item { min-width: 0; padding: 10px; border: 1px solid var(--belt-border); border-radius: 5px; background: #101b20; overflow-wrap: anywhere; font-size: 12px; }
 .bjj-history-item > span { display: block; }
+.bjj-lesson-tag { color: var(--belt-accent); font-size: 11px; }
+.bjj-history-item[hidden], .bjj-journal-move[hidden] { display: none; }
 .bjj-journal-form { display: grid; gap: 12px; margin-top: 14px; }
 .bjj-journal-form > [hidden] { display: none; }
 .bjj-journal-form .clan-form-error:empty { display: none; }
 .bjj-journal-moves { min-width: 0; border: 1px solid var(--belt-border); border-radius: 4px; padding: 10px; }
+.bjj-journal-moves > input { margin-bottom: 10px; }
 #bjj-journal-moves { display: grid; gap: 7px; max-height: 260px; overflow-y: auto; }
 .bjj-journal-move { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; color: #d7eddd; font-size: 12px; letter-spacing: normal; overflow-wrap: anywhere; }
 .bjj-journal-move-info { min-width: 0; }

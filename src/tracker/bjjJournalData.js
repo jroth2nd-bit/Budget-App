@@ -30,10 +30,13 @@ function validateEntries(entries, roll) {
   });
 }
 
-export function validateBjjJournal(bjj, skillIds) {
+export function validateBjjJournal(bjj, skillIds, legacy = false) {
   if (!Array.isArray(bjj.trackedSkillIds) || bjj.trackedSkillIds.some(id => !validId(id) || !skillIds.has(id)) || new Set(bjj.trackedSkillIds).size !== bjj.trackedSkillIds.length) throw new Error("Invalid tracked BJJ skills.");
+  const blackLotusSkillIds = legacy ? [] : bjj.blackLotusSkillIds;
+  if (!Array.isArray(blackLotusSkillIds) || blackLotusSkillIds.some(id => !validId(id) || !skillIds.has(id)) || new Set(blackLotusSkillIds).size !== blackLotusSkillIds.length) throw new Error("Invalid Black Lotus skills.");
   return {
     trackedSkillIds: [...bjj.trackedSkillIds],
+    blackLotusSkillIds: [...blackLotusSkillIds],
     classNotes: validateEntries(bjj.classNotes, false),
     rollNotes: validateEntries(bjj.rollNotes, true)
   };
@@ -41,19 +44,31 @@ export function validateBjjJournal(bjj, skillIds) {
 
 export function bjjMoveHistory(bjj, skillId) {
   let practiced = null, attempted = null, landed = null;
+  let practiceCount = 0, attemptCount = 0, landedCount = 0;
   for (const entry of bjj.classNotes) {
-    if (entry.moves.some(move => move.skillId === skillId) && (!practiced || entry.date > practiced)) practiced = entry.date;
+    if (!entry.moves.some(move => move.skillId === skillId)) continue;
+    practiceCount++;
+    if (!practiced || entry.date > practiced) practiced = entry.date;
   }
   for (const entry of bjj.rollNotes) {
     const move = entry.moves.find(item => item.skillId === skillId);
     if (!move) continue;
+    attemptCount++;
     if (!attempted || entry.date > attempted) attempted = entry.date;
-    if (move.result === "landed" && (!landed || entry.date > landed)) landed = entry.date;
+    if (move.result === "landed") {
+      landedCount++;
+      if (!landed || entry.date > landed) landed = entry.date;
+    }
   }
-  return { practiced, attempted, landed, lastActivity: [practiced, attempted].filter(Boolean).sort().at(-1) ?? null };
+  return { practiced, attempted, landed, practiceCount, attemptCount, landedCount, lastActivity: [practiced, attempted].filter(Boolean).sort().at(-1) ?? null };
 }
 
 export function isBjjPositionOnly(skill) {
-  const name = skill.name.trim().toLocaleLowerCase().replace(/\s+/g, " ");
-  return ["guard", "closed guard", "open guard", "half guard", "butterfly guard", "side control", "north/south", "north-south", "mount", "high mount", "back mount", "back control", "knee on belly", "turtle", "standing", "stand-up"].includes(name);
+  return skill.type.trim().toLocaleLowerCase() === "position";
+}
+
+export function compareBjjMoveActivity(first, firstBlackLotus, second, secondBlackLotus) {
+  if (!first || !second) return first === second ? 0 : first ? 1 : -1;
+  const adjusted = (date, tagged) => Date.parse(`${date}T00:00:00Z`) - (tagged ? 7 * 86400000 : 0);
+  return adjusted(first, firstBlackLotus) - adjusted(second, secondBlackLotus) || Number(secondBlackLotus) - Number(firstBlackLotus);
 }

@@ -61,7 +61,7 @@ export type TrackerState = {
   entries: MercyHistoryEntry[];
   clanBoss: DemonLordRecord[];
   champions: ChampionBuild[];
-  bjj: { belt: string; stripes: number; skills: BjjSkill[]; trackedSkillIds: string[]; classNotes: BjjClassNote[]; rollNotes: BjjRollNote[] };
+  bjj: { belt: string; stripes: number; skills: BjjSkill[]; trackedSkillIds: string[]; blackLotusSkillIds: string[]; classNotes: BjjClassNote[]; rollNotes: BjjRollNote[] };
   weight: WeightData;
   books: Book[];
   stoic: StoicData;
@@ -72,7 +72,7 @@ declare const tracker: {
   emptyState(): TrackerState;
   validateState(value: unknown): TrackerState;
   bjjConfidence(skill: BjjSkill): number | null;
-  bjjLearningPriorities(skills: BjjSkill[]): { skill: BjjSkill; confidence: number | null }[];
+  bjjLearningPriorities(skills: BjjSkill[], blackLotusSkillIds?: string[]): { skill: BjjSkill; confidence: number | null }[];
   buildCompletion(statuses: ChampionBuild['statuses']): { complete: number; applicable: number; percentage: number };
   clanRewardSeries(records: DemonLordRecord[], today: string, days: number, difficulty?: string, reward?: string): { date: string; value: number | null }[];
   rules: Record<string, Record<string, { threshold: number; base: number; increment: number }>>;

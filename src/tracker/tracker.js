@@ -45,11 +45,11 @@ const MercyTracker = (function () {
     }
     const emptyBattle = () => ({ points: 0, battles: 0, energy: 0, minutes: 0, seconds: 0 });
     const summonPlans = Object.fromEntries(Object.entries(summonTypes).map(([kind, types]) => [kind, Object.fromEntries(types.map(type => [type, { pulls: 0, points: 0 }]))]));
-    return { version: 19, starting, entries: [], current: { shards: {}, souls: {} }, soulInventory: { mortalStones: 0, mortalCoins: 0, immortalStones: 0, immortalCoins: 0, eternalStones: 0, eternalCoins: 0 }, battlePlans: { event: emptyBattle(), tournament: emptyBattle() }, summonPlans, clanBoss: [], champions: [], bjj: { belt: "Blue", stripes: 1, skills: [], trackedSkillIds: [], classNotes: [], rollNotes: [] }, weight: { plans: [], weighIns: [] }, books: [], stoic: { entries: [], activeModuleId: "temperance", generated: [] } };
+    return { version: 20, starting, entries: [], current: { shards: {}, souls: {} }, soulInventory: { mortalStones: 0, mortalCoins: 0, immortalStones: 0, immortalCoins: 0, eternalStones: 0, eternalCoins: 0 }, battlePlans: { event: emptyBattle(), tournament: emptyBattle() }, summonPlans, clanBoss: [], champions: [], bjj: { belt: "Blue", stripes: 1, skills: [], trackedSkillIds: [], blackLotusSkillIds: [], classNotes: [], rollNotes: [] }, weight: { plans: [], weighIns: [] }, books: [], stoic: { entries: [], activeModuleId: "temperance", generated: [] } };
   }
 
   function validateState(data) {
-    if (!data || typeof data !== "object" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].includes(data.version) || !data.starting || !Array.isArray(data.entries)) throw new Error("Not a valid tracker backup (version 1 through 19 required).");
+    if (!data || typeof data !== "object" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(data.version) || !data.starting || !Array.isArray(data.entries)) throw new Error("Not a valid tracker backup (version 1 through 20 required).");
     const clean = emptyState();
     for (const [source, rarities] of Object.entries(rules)) {
       if (source === "Remnant" && data.version < 4) continue;
@@ -149,7 +149,7 @@ const MercyTracker = (function () {
         skillIds.add(valid.id);
         return valid;
       }) };
-      if (data.version >= 19) Object.assign(clean.bjj, validateBjjJournal(data.bjj, skillIds));
+      if (data.version >= 19) Object.assign(clean.bjj, validateBjjJournal(data.bjj, skillIds, data.version < 20));
     }
     if (data.version >= 15) clean.weight = validateWeightData(data.weight);
     if (data.version >= 16) clean.books = validateBooks(data.books);
@@ -187,10 +187,12 @@ const MercyTracker = (function () {
     return Math.round((scores[skill.practice] * 40 + scores[skill.live] * 60) / 100);
   }
 
-  function bjjLearningPriorities(skills) {
+  function bjjLearningPriorities(skills, blackLotusSkillIds = []) {
+    const blackLotus = new Set(blackLotusSkillIds);
+    const score = row => row.confidence === null ? -1 : row.confidence + (blackLotus.has(row.skill.id) ? 5 : 0);
     return skills.map(skill => ({ skill, confidence: bjjConfidence(skill) }))
       .filter(row => row.skill.workOnNext || (row.confidence !== null && row.confidence < 100))
-      .sort((a, b) => Number(b.skill.workOnNext) - Number(a.skill.workOnNext) || (b.confidence ?? -1) - (a.confidence ?? -1) || a.skill.name.localeCompare(b.skill.name))
+      .sort((a, b) => Number(b.skill.workOnNext) - Number(a.skill.workOnNext) || score(b) - score(a) || Number(blackLotus.has(b.skill.id)) - Number(blackLotus.has(a.skill.id)) || a.skill.name.localeCompare(b.skill.name))
       .slice(0, 3);
   }
 

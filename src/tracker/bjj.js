@@ -287,7 +287,7 @@ function deleteControl(skill) {
   button.setAttribute("aria-label", `Delete ${skill.name}`);
   button.addEventListener("click", () => {
     if (window.confirm(`Delete the skill "${skill.name}"?`)) {
-      if (save({ ...state.bjj, skills: state.bjj.skills.filter(item => item.id !== skill.id), trackedSkillIds: state.bjj.trackedSkillIds.filter(id => id !== skill.id) })) { expanded.delete(skill.id); expandedDetails.delete(skill.id); }
+      if (save({ ...state.bjj, skills: state.bjj.skills.filter(item => item.id !== skill.id), trackedSkillIds: state.bjj.trackedSkillIds.filter(id => id !== skill.id), blackLotusSkillIds: state.bjj.blackLotusSkillIds.filter(id => id !== skill.id) })) { expanded.delete(skill.id); expandedDetails.delete(skill.id); }
     }
   });
   return button;
@@ -304,14 +304,14 @@ function detailsContent(skill) {
   const flag = node("label", "bjj-track-flag");
   const input = node("input");
   input.type = "checkbox";
-  input.checked = state.bjj.trackedSkillIds.includes(skill.id);
+  input.checked = state.bjj.blackLotusSkillIds.includes(skill.id);
   input.disabled = isBjjPositionOnly(skill) && !input.checked;
-  input.setAttribute("aria-label", `Track in notes: ${skill.name}`);
+  input.setAttribute("aria-label", `Black Lotus lesson plan: ${skill.name}`);
   input.addEventListener("change", () => {
-    const trackedSkillIds = input.checked ? [...state.bjj.trackedSkillIds, skill.id] : state.bjj.trackedSkillIds.filter(id => id !== skill.id);
-    if (!save({ ...state.bjj, trackedSkillIds })) input.checked = !input.checked;
+    const blackLotusSkillIds = input.checked ? [...state.bjj.blackLotusSkillIds, skill.id] : state.bjj.blackLotusSkillIds.filter(id => id !== skill.id);
+    if (!save({ ...state.bjj, blackLotusSkillIds })) input.checked = !input.checked;
   });
-  flag.append(input, node("span", "", input.disabled ? "Position only (not tracked)" : "Track in notes"));
+  flag.append(input, node("span", "", input.disabled ? "Position type (not a move)" : "Black Lotus lesson plan"));
   content.append(flag, deleteControl(skill));
   return content;
 }
@@ -369,7 +369,7 @@ function render() {
   belt.setAttribute("aria-label", `${state.bjj.belt} belt, ${state.bjj.stripes} white ${state.bjj.stripes === 1 ? "stripe" : "stripes"}`);
   const nextBelt = T.bjjBelts[T.bjjBelts.indexOf(state.bjj.belt) + 1];
   $("bjj-next").textContent = state.bjj.stripes < 4 ? `Next: ${state.bjj.stripes + 1} ${state.bjj.stripes === 0 ? "stripe" : "stripes"}` : nextBelt ? `Next: ${nextBelt} belt` : "Four stripes recorded; no next belt in this tracker.";
-  const priorities = T.bjjLearningPriorities(state.bjj.skills);
+  const priorities = T.bjjLearningPriorities(state.bjj.skills, state.bjj.blackLotusSkillIds);
   const priorityContent = $("bjj-priorities");
   priorityContent.replaceChildren();
   if (!priorities.length) {
@@ -384,6 +384,7 @@ function render() {
       const heading = node("div", "bjj-priority-heading");
       heading.append(node("strong", "", skill.name));
       if (skill.workOnNext) heading.append(node("span", "bjj-priority-focus", "Focus"));
+      if (state.bjj.blackLotusSkillIds.includes(skill.id)) heading.append(node("span", "bjj-lesson-tag", "Black Lotus lesson plan"));
       const info = node("dl", "bjj-priority-info");
       for (const [label, value] of [
         ["Type", skill.type],
@@ -454,7 +455,7 @@ function render() {
       row.append(cell);
     }
     const detailsCell = node("td");
-    const detailsButton = node("button", `bjj-details-toggle${hasDetails ? "" : " bjj-details-empty"}`, `${expandedDetails.has(skill.id) ? "Hide details" : "Details"}${state.bjj.trackedSkillIds.includes(skill.id) ? " · Tracked" : ""}`);
+    const detailsButton = node("button", `bjj-details-toggle${hasDetails ? "" : " bjj-details-empty"}`, `${expandedDetails.has(skill.id) ? "Hide details" : "Details"}${state.bjj.blackLotusSkillIds.includes(skill.id) ? " · Black Lotus" : ""}`);
     detailsButton.type = "button";
     detailsButton.setAttribute("aria-label", `Details for ${skill.name}`);
     detailsButton.setAttribute("aria-expanded", String(expandedDetails.has(skill.id)));
@@ -480,7 +481,7 @@ function render() {
     card.open = expanded.has(skill.id);
     card.addEventListener("toggle", () => { if (card.open) expanded.add(skill.id); else expanded.delete(skill.id); });
     const summary = node("summary");
-    summary.append(node("strong", "", skill.name), node("span", "", `${skill.mastered ? "Mastered" : skill.type}${state.bjj.trackedSkillIds.includes(skill.id) ? " · Tracked" : ""}`));
+    summary.append(node("strong", "", skill.name), node("span", "", `${skill.mastered ? "Mastered" : skill.type}${state.bjj.blackLotusSkillIds.includes(skill.id) ? " · Black Lotus" : ""}`));
     const body = node("div", "bjj-card-body");
     for (const column of visibleColumns) {
       const wrapper = node("div");

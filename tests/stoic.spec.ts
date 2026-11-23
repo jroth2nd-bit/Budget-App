@@ -28,7 +28,7 @@ test('Daily Stoic saves all answers for the chosen module and updates its dashbo
   await page.getByRole('button', { name: 'Save Entry' }).click();
 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
-  expect(saved.version).toBe(19);
+  expect(saved.version).toBe(20);
   expect(saved.stoic.entries).toHaveLength(1);
   expect(saved.stoic.entries[0]).toMatchObject({ date: localDate(), moduleId: 'wisdom' });
 
