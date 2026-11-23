@@ -36,6 +36,9 @@ export const WeightIcon = () => (
 export const BookIcon = () => (
   <svg {...base}><path d="M4 5a3 3 0 0 1 3-2h10a3 3 0 0 1 3 3v15H7a3 3 0 0 1-3-3V5Zm0 13a3 3 0 0 1 3-3h13M8 7h8" /></svg>
 );
+export const StoicIcon = () => (
+  <svg {...base}><circle cx="12" cy="12" r="8.5" /><path d="M8 13c1.2-2.6 2.5-3.9 4-3.9s2.8 1.3 4 3.9M9 16h6M12 3.5v2" /></svg>
+);
 export const MoreIcon = () => (
   <svg {...base}><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></svg>
 );

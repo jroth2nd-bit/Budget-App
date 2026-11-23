@@ -1,5 +1,6 @@
 import type { WeightData } from './weight.js';
 import type { Book } from './books.js';
+import type { StoicData } from './stoic.js';
 
 export type MercyHistoryEntry = {
   id: string;
@@ -59,6 +60,7 @@ export type TrackerState = {
   bjj: { belt: string; stripes: number; skills: BjjSkill[] };
   weight: WeightData;
   books: Book[];
+  stoic: StoicData;
   [key: string]: unknown;
 };
 

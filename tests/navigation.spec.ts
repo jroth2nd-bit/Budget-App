@@ -51,6 +51,7 @@ for (const width of [640, 1440]) {
         ['Champion Builds Tracker', 'Champion Builds Tracker'],
         ['BJJ Tracker', 'BJJ Tracker'],
         ['Weight Tracker', 'Weight Tracker'],
+        ['Daily Stoic', 'Daily Stoic'],
         ['Admin', 'Administration'],
       ]) {
         await nav.getByRole('button', { name: label, exact: true }).click();
