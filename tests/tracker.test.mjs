@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import T from "../src/tracker/tracker.js";
+import { bjjMoveHistory, isBjjPositionOnly } from "../src/tracker/bjjJournalData.js";
 
 function entry(id, source, rarity, quantity = 1) {
   return { id, createdAt: "2026-01-01T00:00:00.000Z", kind: "shard", source, rarity, quantity };
@@ -81,7 +82,7 @@ test("battle plans migrate older backups and remain independent in new backups",
   old.current.shards.Ancient = { Legendary: 123 };
   old.soulInventory.mortalStones = 204;
   const migrated = T.validateState(old);
-  assert.equal(migrated.version, 18);
+  assert.equal(migrated.version, 19);
   assert.equal(migrated.battlePlans.event.battles, 0);
   assert.equal(migrated.current.shards.Ancient.Legendary, 123);
   assert.equal(migrated.soulInventory.mortalStones, 204);
@@ -101,7 +102,7 @@ test("legacy backups migrate without losing history or calculated counters", () 
   legacy.starting.Ancient.Legendary = 200;
   legacy.entries = [entry("old", "Ancient", "Rare", 2), { id: "soul", createdAt: "2026-01-01T00:00:00Z", kind: "soul", source: "Mortal", rarity: "Rare", rank: 1, quantity: 3 }];
   const migrated = T.validateState(legacy);
-  assert.equal(migrated.version, 18);
+  assert.equal(migrated.version, 19);
   assert.equal(migrated.entries.length, 2);
   assert.equal(T.calculate(migrated).counters.Ancient.Legendary.count, 202);
   assert.equal(T.calculate(migrated).souls.Mortal, 3);
@@ -240,7 +241,7 @@ test("version 6 backups migrate without losing existing data and version 7 round
   old.current.shards.Void = { Legendary: 123 };
   old.summonPlans.shard.Ancient = { pulls: 10, points: 20 };
   const state = T.validateState(old);
-  assert.equal(state.version, 18);
+  assert.equal(state.version, 19);
   assert.deepEqual(state.clanBoss, []);
   assert.equal(state.current.shards.Void.Legendary, 123);
   assert.deepEqual(state.summonPlans.shard.Ancient, { pulls: 10, points: 20 });
@@ -357,7 +358,7 @@ test("champion builds migrate version 7, validate and round trip alongside exist
   old.clanBoss = [{ date: "2026-03-01", difficulties: { ultra: clanRow(2, 1) } }];
   old.current.shards.Void = { Legendary: 123 };
   const state = T.validateState(old);
-  assert.equal(state.version, 18);
+  assert.equal(state.version, 19);
   assert.deepEqual(state.champions, []);
   assert.equal(state.clanBoss[0].difficulties.ultra.books, 1);
   assert.equal(state.current.shards.Void.Legendary, 123);
@@ -411,7 +412,7 @@ test("BJJ data migrates old backups, validates skills and preserves other tracke
   old.current.shards.Void = { Legendary: 123 };
   old.clanBoss = [{ date: "2026-03-01", difficulties: { ultra: clanRow(2, 1, 0, 0, 0, 2) } }];
   const state = T.validateState(old);
-  assert.deepEqual(state.bjj, { belt: "Blue", stripes: 1, skills: [] });
+  assert.deepEqual(state.bjj, { belt: "Blue", stripes: 1, skills: [], trackedSkillIds: [], classNotes: [], rollNotes: [] });
   assert.equal(state.current.shards.Void.Legendary, 123);
   assert.equal(state.clanBoss[0].difficulties.ultra.epicBooks, 2);
   const skill = { id: "1", name: "Armbar", type: "Custom type", positions: [], description: "Details", link: "https://youtu.be/abc", video: "liked", practice: "consistently", live: "consistently", preference: "high", mastered: false, workOnNext: true };
@@ -435,6 +436,50 @@ test("BJJ data migrates old backups, validates skills and preserves other tracke
   assert.throws(() => T.validateBjjSkill({ ...skill, workOnNext: "yes" }), /Focus/);
 });
 
+test("BJJ journal migrates existing skills and validates notes without losing historical moves", () => {
+  const old = T.emptyState();
+  old.version = 18;
+  delete old.bjj.trackedSkillIds;
+  delete old.bjj.classNotes;
+  delete old.bjj.rollNotes;
+  const skill = { id: "armbar", name: "Armbar", type: "Submission", positions: ["Closed guard"], description: "", link: "", practice: "learning", live: "not_yet", preference: "low", mastered: false, workOnNext: true };
+  old.bjj.skills.push(skill);
+  const state = T.validateState(old);
+  assert.equal(state.version, 19);
+  assert.deepEqual(state.bjj.skills, [skill]);
+  assert.deepEqual(state.bjj.trackedSkillIds, []);
+  assert.deepEqual(state.bjj.classNotes, []);
+  assert.deepEqual(state.bjj.rollNotes, []);
+  state.bjj.trackedSkillIds = ["armbar"];
+  state.bjj.classNotes = [{ id: "class", date: "2026-03-01", notes: "Practice", moves: [{ skillId: "armbar", name: "Armbar" }] }];
+  state.bjj.rollNotes = [{ id: "roll", date: "2026-03-02", partner: "Partner", notes: "Notes", strategy: "Next time", moves: [{ skillId: "armbar", name: "Armbar", result: "landed" }] }];
+  assert.deepEqual(T.validateState(JSON.parse(JSON.stringify(state))), state);
+  assert.throws(() => T.validateState({ ...state, bjj: { ...state.bjj, trackedSkillIds: ["missing"] } }), /tracked BJJ/);
+  assert.throws(() => T.validateState({ ...state, bjj: { ...state.bjj, classNotes: [state.bjj.classNotes[0], state.bjj.classNotes[0]] } }), /duplicate BJJ note/);
+  assert.throws(() => T.validateState({ ...state, bjj: { ...state.bjj, rollNotes: [{ ...state.bjj.rollNotes[0], date: "2026-02-29" }] } }), /BJJ note/);
+  assert.throws(() => T.validateState({ ...state, bjj: { ...state.bjj, rollNotes: [{ ...state.bjj.rollNotes[0], moves: [{ ...state.bjj.rollNotes[0].moves[0], result: "other" }] }] } }), /result/);
+  state.bjj.skills = [];
+  state.bjj.trackedSkillIds = [];
+  assert.equal(T.validateState(state).bjj.rollNotes[0].moves[0].name, "Armbar");
+});
+
+test("BJJ move history distinguishes practice, attempts and landings by latest date", () => {
+  const bjj = {
+    classNotes: [
+      { date: "2026-03-01", moves: [{ skillId: "a" }] },
+      { date: "2026-03-05", moves: [{ skillId: "a" }] }
+    ],
+    rollNotes: [
+      { date: "2026-03-02", moves: [{ skillId: "a", result: "landed" }] },
+      { date: "2026-03-04", moves: [{ skillId: "a", result: "attempted" }] }
+    ]
+  };
+  assert.deepEqual(bjjMoveHistory(bjj, "a"), { practiced: "2026-03-05", attempted: "2026-03-04", landed: "2026-03-02", lastActivity: "2026-03-05" });
+  assert.deepEqual(bjjMoveHistory(bjj, "other"), { practiced: null, attempted: null, landed: null, lastActivity: null });
+  assert.equal(isBjjPositionOnly({ name: "Guard" }), true);
+  assert.equal(isBjjPositionOnly({ name: "Armbar from guard" }), false);
+});
+
 test("version 11 BJJ progression migrates without guessing unset values", () => {
   const old = T.emptyState();
   old.version = 11;
@@ -442,7 +487,7 @@ test("version 11 BJJ progression migrates without guessing unset values", () => 
   old.bjj.skills = [skill, { ...skill, id: "two", practice: "no", live: "unset" }];
   old.current.shards.Void = { Legendary: 123 };
   const state = T.validateState(old);
-  assert.equal(state.version, 18);
+  assert.equal(state.version, 19);
   assert.deepEqual(state.bjj.skills.map(({ practice, live }) => [practice, live]), [["consistently", "sometimes"], ["not_yet", "unset"]]);
   assert.equal(state.bjj.skills[0].mastered, true);
   assert.equal(state.bjj.skills[0].preference, "unset");
@@ -490,7 +535,7 @@ test("version 12 skills migrate without positions and version 13 defaults work-o
   old.bjj.skills = [{ id: "1", name: "Armbar", type: "Submission", description: "", link: "", video: "unset", practice: "learning", live: "sometimes", preference: "low", mastered: false }];
   old.current.shards.Void = { Legendary: 123 };
   const migrated = T.validateState(old);
-  assert.equal(migrated.version, 18);
+  assert.equal(migrated.version, 19);
   assert.deepEqual(migrated.bjj.skills[0].positions, []);
   assert.equal(migrated.bjj.skills[0].workOnNext, false);
   assert.equal(migrated.current.shards.Void.Legendary, 123);

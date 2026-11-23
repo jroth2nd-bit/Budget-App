@@ -69,10 +69,12 @@ select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
 .bjj-edit-text:hover { text-decoration: underline; }
 .bjj-details-toggle { color: var(--belt-accent); background: transparent; border: 0; padding: 5px; font-size: 13px; text-align: left; }
 .bjj-details-toggle:hover { text-decoration: underline; }
-.bjj-details-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: start; gap: 12px; }
+.bjj-details-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto; align-items: start; gap: 12px; }
 .bjj-details-content > div { min-width: 0; }
 .bjj-details-content label { margin: 0 0 4px; }
 .bjj-details-content input { width: 100%; }
+.bjj-details-content .bjj-track-flag { display: flex; align-items: center; gap: 6px; margin: 0; max-width: 150px; color: #d7eddd; letter-spacing: normal; font-size: 11px; }
+.bjj-details-content .bjj-track-flag input { width: auto; min-height: 18px; accent-color: var(--belt-accent); }
 .bjj-details-content .bjj-edit-text { width: 100%; }
 .bjj-details-row td { padding: 12px; background: #101b20; }
 .bjj-card-details { grid-column: 1 / -1; min-width: 0; }
@@ -99,8 +101,8 @@ select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
 .bjj-table .bjj-type-picker > summary, .bjj-table .bjj-type-options button { padding: 4px; font-size: 13px; }
 .bjj-cards { display: none; }
 .bjj-card-sort { display: none; }
-#bjj-add-dialog, #bjj-text-dialog, #bjj-type-dialog, #bjj-positions-dialog { width: min(620px, calc(100% - 32px)); max-height: 90vh; overflow: auto; background: #111b20; color: #edf5ef; border: 1px solid var(--belt-border); border-radius: 7px; padding: 20px; box-shadow: 0 0 24px var(--belt-glow); }
-#bjj-add-dialog::backdrop, #bjj-text-dialog::backdrop, #bjj-type-dialog::backdrop, #bjj-positions-dialog::backdrop { background: #000b; }
+#bjj-add-dialog, #bjj-text-dialog, #bjj-type-dialog, #bjj-positions-dialog, #bjj-journal-dialog, #bjj-review-dialog { width: min(620px, calc(100% - 32px)); max-height: 90vh; overflow: auto; background: #111b20; color: #edf5ef; border: 1px solid var(--belt-border); border-radius: 7px; padding: 20px; box-shadow: 0 0 24px var(--belt-glow); }
+#bjj-add-dialog::backdrop, #bjj-text-dialog::backdrop, #bjj-type-dialog::backdrop, #bjj-positions-dialog::backdrop, #bjj-journal-dialog::backdrop, #bjj-review-dialog::backdrop { background: #000b; }
 #bjj-add-form { display: grid; gap: 16px; }
 #bjj-add-form > [hidden] { display: none; }
 #bjj-add-form .bjj-add-field, #bjj-add-form .bjj-add-fields > div { display: grid; gap: 6px; min-width: 0; }
@@ -117,6 +119,29 @@ select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
 .bjj-position-choices label, #bjj-add-form .bjj-position-choices label { display: flex; align-items: center; gap: 7px; margin: 0; text-transform: none; letter-spacing: normal; }
 .bjj-position-choices input { width: auto; flex: none; }
 .bjj-position-fields textarea { width: 100%; }
+.bjj-journal-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.bjj-journal-panel, .bjj-move-history { min-width: 0; }
+.bjj-move-history { margin-top: 16px; }
+.bjj-journal-list { display: grid; gap: 8px; margin-top: 12px; }
+.bjj-journal-entry { border: 1px solid var(--belt-border); border-radius: 5px; background: #101b20; }
+.bjj-journal-entry > summary { cursor: pointer; padding: 10px; overflow-wrap: anywhere; }
+.bjj-journal-entry-content { padding: 0 10px 10px; font-size: 12px; }
+.bjj-journal-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
+.bjj-journal-actions { display: flex; gap: 8px; margin-top: 10px; }
+.bjj-history-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 8px; margin-top: 12px; }
+.bjj-history-item { min-width: 0; padding: 10px; border: 1px solid var(--belt-border); border-radius: 5px; background: #101b20; overflow-wrap: anywhere; font-size: 12px; }
+.bjj-history-item > span { display: block; }
+.bjj-journal-form { display: grid; gap: 12px; margin-top: 14px; }
+.bjj-journal-form > [hidden] { display: none; }
+.bjj-journal-form .clan-form-error:empty { display: none; }
+.bjj-journal-moves { min-width: 0; border: 1px solid var(--belt-border); border-radius: 4px; padding: 10px; }
+#bjj-journal-moves { display: grid; gap: 7px; max-height: 260px; overflow-y: auto; }
+.bjj-journal-move { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; color: #d7eddd; font-size: 12px; letter-spacing: normal; overflow-wrap: anywhere; }
+.bjj-journal-move-info { min-width: 0; }
+.bjj-journal-move-info strong, .bjj-journal-move-info .footnote { display: block; }
+.bjj-journal-move-info .footnote { margin-top: 3px; }
+.bjj-journal-move input { width: auto; flex: none; accent-color: var(--belt-accent); }
+.bjj-journal-move select { width: 130px; flex: none; }
 @media (max-width: 1350px) {
   .bjj-secondary-sort { display: none; }
   .bjj-table-wrap { display: none; }
@@ -138,4 +163,5 @@ select.bjj-inline-control:not(:focus) { appearance: none; cursor: pointer; }
 }
 @media (max-width: 767px) {
   .bjj-priorities-list { grid-template-columns: minmax(0, 1fr); }
+  .bjj-journal-panels { grid-template-columns: minmax(0, 1fr); }
 }
