@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
-import { BookIcon, BuildsIcon, IncomeHistoryIcon, MercyIcon, SkillsIcon, TransactionsIcon, WeightIcon } from './NavIcons';
+import { BookIcon, BuildsIcon, IncomeHistoryIcon, MercyIcon, SkillsIcon, StoicIcon, TransactionsIcon, WeightIcon } from './NavIcons';
 import { dateKey, getPaycheckPeriod } from './recurrence';
 import type { Income, IncomeHistoryData } from './types';
 import type { TrackerSummary } from './TrackerHost';
 import type { TrackerPage } from './tracker/TrackerView';
 import tracker from './tracker/tracker.js';
 import { dateNumber, trackStatus } from './tracker/weight.js';
+import { currentStoicStreak, stoicCompletion } from './tracker/stoic.js';
 import './overview.css';
 
 export type OverviewPage = 'transactions' | 'income-history' | TrackerPage;
@@ -79,6 +80,18 @@ export const overviewCards: Card[] = [
       const latest = entries[0];
       const planEntry = entries.find(entry => entry.planId === plan?.id);
       return <><span className="overviewLabel">{plan ? `${plan.type === 'bulk' ? 'Bulk' : 'Cut'} · planned goal` : 'No active plan'}</span><strong>{plan ? `${Math.max(0, dateNumber(plan.plannedEndDate) - dateNumber(data.today))} days remaining` : 'Start a plan'}</strong><small>{latest ? `Latest weight: ${latest.weight.toFixed(1)} lb · ${latest.date}` : 'No weigh-ins yet'}</small><small>{planEntry ? trackStatus(planEntry.difference) : plan ? 'Awaiting plan weigh-in' : 'Track status unavailable'}</small></>;
+    }),
+  },
+  {
+    id: 'daily-stoic', title: 'Daily Stoic', icon: <StoicIcon />, accent: 'stoic',
+    summary: data => trackerSummary(data, state => {
+      const today = state.stoic.entries.find(entry => entry.date === data.today);
+      const completion = stoicCompletion(today);
+      const status = completion.dayDone
+        ? 'Completed Today'
+        : `Morning: ${completion.morningDone ? 'Done' : 'Pending'} | Evening: ${completion.eveningDone ? 'Done' : 'Pending'}`;
+      const streak = currentStoicStreak(state.stoic.entries, data.today);
+      return <><span className="overviewLabel">Today</span><strong>{status}</strong><small>🔥 {streak}-day streak</small></>;
     }),
   },
 ];

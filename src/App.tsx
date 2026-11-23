@@ -20,7 +20,7 @@ import OverviewDashboard, { overviewCards } from './OverviewDashboard';
 import type { WeightActionState } from './tracker/WeightTracker';
 import type { BeltTheme } from './tracker/bjj.js';
 
-type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills' | 'weight-tracker' | 'book-tracker';
+type TrackerPage = 'mercy-ledger' | 'champion-builds' | 'bjj-skills' | 'weight-tracker' | 'book-tracker' | 'daily-stoic';
 type Page = 'dashboard' | 'transactions' | 'income-history' | 'admin' | TrackerPage
 
 const PAGE_HEADERS: Record<Page, { title: string; eyebrow: string }> = {
@@ -33,10 +33,11 @@ const PAGE_HEADERS: Record<Page, { title: string; eyebrow: string }> = {
   'bjj-skills': { title: 'BJJ Tracker', eyebrow: 'BRAZILIAN JIU-JITSU' },
   'weight-tracker': { title: 'Weight Tracker', eyebrow: 'YOUR PROGRESS' },
   'book-tracker': { title: 'Book Tracker', eyebrow: 'YOUR LIBRARY' },
+  'daily-stoic': { title: 'Daily Stoic', eyebrow: 'DAILY PRACTICE' },
 };
 
 function isTrackerPage(page: Page): page is TrackerPage {
-  return page === 'mercy-ledger' || page === 'champion-builds' || page === 'bjj-skills' || page === 'weight-tracker' || page === 'book-tracker';
+  return page === 'mercy-ledger' || page === 'champion-builds' || page === 'bjj-skills' || page === 'weight-tracker' || page === 'book-tracker' || page === 'daily-stoic';
 }
 
 const ICON_OPTIONS = ['💼','💰','💸','🏠','🛒','🍔','🚗','🎓','🎁','🩺','📈','💡','🧾','📦','🪙']
@@ -323,7 +324,7 @@ function BudgetApp({ userId, onSignOut }: { userId?: string; onSignOut?: () => v
       : null;
 
   return (
-    <div className="appRoot" data-nav-expanded={navExpanded} data-theme={page === 'champion-builds' ? 'champions' : page === 'bjj-skills' ? `bjj-${beltTheme}` : page === 'weight-tracker' ? 'weight' : page === 'book-tracker' ? 'books' : page === 'income-history' ? 'salary' : page === 'mercy-ledger' ? 'mercy' : page === 'admin' ? 'admin' : page === 'dashboard' ? 'dashboard' : 'budget'}>
+    <div className="appRoot" data-nav-expanded={navExpanded} data-theme={page === 'champion-builds' ? 'champions' : page === 'bjj-skills' ? `bjj-${beltTheme}` : page === 'weight-tracker' ? 'weight' : page === 'book-tracker' ? 'books' : page === 'daily-stoic' ? 'stoic' : page === 'income-history' ? 'salary' : page === 'mercy-ledger' ? 'mercy' : page === 'admin' ? 'admin' : page === 'dashboard' ? 'dashboard' : 'budget'}>
       <nav className="sideNav" aria-label="Main navigation">
         <div className="brand"><button type="button" className="brandToggle" onClick={() => setNavExpanded(value => !value)} aria-label={navExpanded ? 'Collapse navigation' : 'Expand navigation'} aria-expanded={navExpanded} title={navExpanded ? 'Collapse navigation' : 'Expand navigation'}><span className="brandMark" aria-hidden="true">M</span></button><span className="brandName">Milestone</span></div>
         {renderNavItems(navItems)}

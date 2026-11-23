@@ -6,6 +6,7 @@ import type { BeltTheme } from './tracker/bjj.js';
 import tracker from './tracker/tracker.js';
 import WeightTracker from './tracker/WeightTracker';
 import BookTracker from './tracker/BookTracker';
+import StoicTracker from './tracker/StoicTracker';
 import type { BookTrackerHandle } from './tracker/BookTracker';
 import type { WeightActionState, WeightTrackerHandle } from './tracker/WeightTracker';
 import type { TrackerState } from './tracker/tracker.js';
@@ -279,7 +280,9 @@ const TrackerHost = forwardRef<TrackerBackupHandle, { page: TrackerPage | null; 
         <p className="trackerSync" role="status">{userId ? (phase === 'saving' ? 'Tracker: saving to account…' : 'Tracker: account sync ready') : 'Tracker: local only'}</p>
         {bridge.current && (page === 'weight-tracker'
           ? <WeightTracker ref={weightRef} storage={bridge.current} onActionState={onWeightActionState} />
-          : page === 'book-tracker'
+          : page === 'daily-stoic'
+            ? <StoicTracker storage={bridge.current} />
+            : page === 'book-tracker'
             ? <BookTracker ref={bookRef} storage={bridge.current} onActionReady={onActionReady} />
             : <TrackerView ref={viewRef} key={page} page={page} storage={bridge.current} onActionReady={onActionReady} onBeltChange={onBeltChange} />)}
       </>}
