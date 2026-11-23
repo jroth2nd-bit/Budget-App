@@ -266,6 +266,26 @@ function renderClan() {
     const details = rows.map(([key, row]) => `${T.clanDifficulties[key]} (${row.chests} ${row.chests === 1 ? "chest" : "chests"}): ${row.books} legendary books, ${row.epicBooks === null ? "unknown" : row.epicBooks} epic books, ${row.sacred} sacred, ${row.void} void, ${row.ancient} ancient`).join(" · ");
     return `<div class="clan-history-row"><div><strong>${record.date}${partial ? " · Incomplete" : ""}</strong><p>${details}</p></div><div class="clan-history-actions"><button type="button" class="button button-quiet" data-clan-edit="${record.date}">Edit</button><button type="button" class="button button-quiet" data-clan-delete="${record.date}">Delete</button></div></div>`;
   }).join("") : '<p class="section-copy">No reward days recorded yet.</p>';
+  renderClanChart();
+}
+
+function renderClanChart() {
+  const reward = $("clan-chart-reward").value;
+  const series = T.clanRewardSeries(state.clanBoss, clanToday(), Number($("clan-period").value), $("clan-difficulty").value, reward);
+  if (!series.length) {
+    $("clan-chart-content").innerHTML = '<p class="section-copy clan-chart-empty">No recorded rewards for the selected period and difficulty.</p>';
+    return;
+  }
+  const max = series.reduce((highest, point) => Math.max(highest, point.value ?? 0), 1);
+  const label = T.clanRewards[reward];
+  const bars = series.map(({ date, value }) => {
+    const detail = value === null ? `${date}: ${label} unknown` : `${date}: ${value.toLocaleString()} ${label}`;
+    const bar = value === null
+      ? '<span class="clan-chart-unknown" aria-hidden="true">?</span>'
+      : `<span class="clan-chart-bar" style="height:${value / max * 100}%" aria-hidden="true"></span>`;
+    return `<button type="button" class="clan-chart-day" data-chart-detail="${detail}" aria-label="${detail}" title="${detail}"><span class="clan-chart-plot">${bar}</span><span class="clan-chart-date" aria-hidden="true">${date}</span></button>`;
+  }).join("");
+  $("clan-chart-content").innerHTML = `<div class="clan-chart-scroll" role="region" aria-label="Rewards by recorded date" tabindex="0"><div class="clan-chart-graph"><div class="clan-chart-axis" aria-hidden="true"><span>${max.toLocaleString()}</span><span>0</span></div><div class="clan-chart-days">${bars}</div></div></div><p class="clan-chart-detail" id="clan-chart-detail" aria-live="polite">Select a date to see its reward count.</p>`;
 }
 
 function populateClanForm() {
@@ -299,6 +319,11 @@ $("clan-close").addEventListener("click", () => $("clan-dialog").close());
 $("clan-cancel").addEventListener("click", () => $("clan-dialog").close());
 $("clan-date").addEventListener("change", populateClanForm);
 for (const id of ["clan-period", "clan-difficulty"]) $(id).addEventListener("change", renderClan);
+$("clan-chart-reward").addEventListener("change", renderClanChart);
+$("clan-chart-content").addEventListener("click", event => {
+  const day = event.target.closest("[data-chart-detail]");
+  if (day) $("clan-chart-detail").textContent = day.dataset.chartDetail;
+});
 $("clan-rows").addEventListener("change", event => {
   if (!event.target.matches("[data-clan-include]")) return;
   for (const input of event.target.closest("tr").querySelectorAll("[data-clan-field]")) input.disabled = !event.target.checked;

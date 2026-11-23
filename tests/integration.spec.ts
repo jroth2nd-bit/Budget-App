@@ -14,6 +14,64 @@ async function openTracker(page: Page, name: string, mobile = false) {
   return page.locator('.trackerView');
 }
 
+for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+  test(`Clan Boss reward chart filters and remains below recorded days at ${viewport.width}px`, async ({ page }) => {
+    const dateDaysAgo = (days: number) => {
+      const date = new Date();
+      date.setDate(date.getDate() - days);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+    const today = dateDaysAgo(0);
+    const yesterday = dateDaysAgo(1);
+    const old = dateDaysAgo(45);
+    const row = (books: number, epicBooks: number | null) => ({ chests: 2, books, epicBooks, sacred: 0, void: 0, ancient: 0 });
+    const state = tracker.emptyState();
+    state.clanBoss = [
+      { date: today, difficulties: { ultra: row(1, null), nightmare: row(2, 3) } },
+      { date: yesterday, difficulties: { ultra: row(0, 0) } },
+      { date: old, difficulties: { ultra: row(9, 0) } },
+    ];
+    await page.addInitScript(seed => localStorage.setItem('mercy-ledger-v1', JSON.stringify(seed)), state);
+    await page.setViewportSize(viewport);
+    await page.goto(localUrl);
+    const mercy = await openTracker(page, 'Mercy Tracker', viewport.width < 640);
+    const chart = mercy.getByRole('region', { name: 'Rewards by day', exact: true });
+    const history = mercy.locator('.clan-history');
+    await expect(history).not.toHaveAttribute('open');
+    await expect(chart.getByRole('button', { name: `${today}: 3 Legendary books` })).toBeVisible();
+    await expect(chart.getByRole('button', { name: `${old}: 9 Legendary books` })).toHaveCount(0);
+    const collapsedTop = await chart.evaluate(element => element.getBoundingClientRect().top + window.scrollY);
+    await history.locator('summary').click();
+    await expect(history).toHaveAttribute('open');
+    expect(await chart.evaluate(element => element.getBoundingClientRect().top + window.scrollY)).toBeGreaterThan(collapsedTop);
+    await chart.getByRole('button', { name: `${today}: 3 Legendary books` }).click();
+    await expect(chart.locator('#clan-chart-detail')).toHaveText(`${today}: 3 Legendary books`);
+    await chart.getByRole('combobox').selectOption('epicBooks');
+    await expect(chart.getByRole('button', { name: `${today}: Epic books unknown` })).toBeVisible();
+    await expect(chart.getByRole('button', { name: `${yesterday}: 0 Epic books` })).toBeVisible();
+    await mercy.getByLabel('DIFFICULTY').selectOption('nightmare');
+    await expect(chart.getByRole('button', { name: `${today}: 3 Epic books` })).toBeVisible();
+    await expect(chart.getByRole('button', { name: `${yesterday}: 0 Epic books` })).toHaveCount(0);
+    await mercy.getByLabel('DIFFICULTY').selectOption('hard');
+    await expect(chart).toContainText('No recorded rewards for the selected period and difficulty.');
+    await mercy.getByLabel('DIFFICULTY').selectOption('all');
+    await mercy.getByLabel('PERIOD').selectOption('30');
+    await expect(chart.getByRole('button', { name: `${old}: 0 Epic books` })).toHaveCount(0);
+    await mercy.getByLabel('PERIOD').selectOption('0');
+    await expect(chart.getByRole('button', { name: `${old}: 0 Epic books` })).toBeVisible();
+    await expect(history).toHaveAttribute('open');
+    await history.locator(`[data-clan-edit="${today}"]`).click();
+    await mercy.getByLabel('Ultra-Nightmare Epic books').fill('4');
+    await mercy.locator('#clan-form button[type=submit]').click();
+    await expect(chart.getByRole('button', { name: `${today}: 7 Epic books` })).toBeVisible();
+    await expect(history).toHaveAttribute('open');
+    await history.locator('summary').click();
+    await expect(history).not.toHaveAttribute('open');
+    await expect(chart).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+  });
+}
+
 for (const viewport of [{ width: 320, height: 720 }, { width: 1440, height: 900 }]) {
   test(`independent soulstone conversions persist at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);

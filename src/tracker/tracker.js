@@ -252,18 +252,33 @@ const MercyTracker = (function () {
     return { date: record.date, difficulties };
   }
 
-  function clanSummary(records, today, days, difficulty = "all") {
+  function clanSelectedDays(records, today, days, difficulty) {
     if (!validCalendarDate(today) || ![7, 30, 0].includes(days) || (difficulty !== "all" && !Object.hasOwn(clanDifficulties, difficulty))) throw new Error("Invalid Demon Lord summary selection.");
     const end = Date.parse(`${today}T00:00:00Z`);
     const start = days ? end - (days - 1) * 86400000 : -Infinity;
+    return records.flatMap(record => {
+      const timestamp = Date.parse(`${record.date}T00:00:00Z`);
+      if (timestamp < start || timestamp > end) return [];
+      const rows = difficulty === "all" ? Object.values(record.difficulties) : [record.difficulties[difficulty]].filter(Boolean);
+      return rows.length ? [{ date: record.date, rows }] : [];
+    });
+  }
+
+  function clanRewardSeries(records, today, days, difficulty = "all", reward = "books") {
+    if (!Object.hasOwn(clanRewards, reward)) throw new Error("Invalid Demon Lord reward selection.");
+    return clanSelectedDays(records, today, days, difficulty)
+      .map(({ date, rows }) => ({
+        date,
+        value: rows.some(row => row[reward] === null) ? null : rows.reduce((total, row) => total + row[reward], 0)
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  function clanSummary(records, today, days, difficulty = "all") {
     const totals = Object.fromEntries(Object.keys(clanRewards).map(key => [key, 0]));
     let recordedDays = 0, partialDays = 0, chests = 0;
     let epicRecordedDays = 0, epicAverageTotal = 0, epicKnownRows = 0;
-    for (const record of records) {
-      const timestamp = Date.parse(`${record.date}T00:00:00Z`);
-      if (timestamp < start || timestamp > end) continue;
-      const rows = difficulty === "all" ? Object.values(record.difficulties) : [record.difficulties[difficulty]].filter(Boolean);
-      if (!rows.length) continue;
+    for (const { rows } of clanSelectedDays(records, today, days, difficulty)) {
       recordedDays++;
       if (difficulty === "all" && (rows.length !== 4 || rows.some(row => row.chests !== 2))) partialDays++;
       if (difficulty !== "all" && rows[0].chests !== 2) partialDays++;
@@ -362,7 +377,7 @@ const MercyTracker = (function () {
     };
   }
 
-  return { rules, shardResults, soulResults, summonTypes, clanDifficulties, clanRewards, buildFields, buildStatuses, bjjBelts, bjjTypes, bjjPositions, emptyState, validateState, validateBjjSkill, bjjConfidence, bjjLearningPriorities, validateChampion, buildCompletion, validateClanRecord, clanSummary, calculate, nextChance, mercyActive, battleProjection, summonRowPoints, summonProjection, soulCoinProjection };
+  return { rules, shardResults, soulResults, summonTypes, clanDifficulties, clanRewards, buildFields, buildStatuses, bjjBelts, bjjTypes, bjjPositions, emptyState, validateState, validateBjjSkill, bjjConfidence, bjjLearningPriorities, validateChampion, buildCompletion, validateClanRecord, clanSummary, clanRewardSeries, calculate, nextChance, mercyActive, battleProjection, summonRowPoints, summonProjection, soulCoinProjection };
 })();
 
 export default MercyTracker;

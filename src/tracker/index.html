@@ -73,6 +73,14 @@
         <div id="clan-summary" aria-live="polite"></div>
         <p class="footnote">Averages are per recorded day, projected to 7 and 30 days—not drop rates or guarantees. Missing days are excluded; incomplete recorded days are flagged. Epic book averages exclude days with unknown Epic book counts. Dates are local calendar dates.</p>
         <details class="clan-history"><summary>Recorded days</summary><div id="clan-history"></div></details>
+        <section class="clan-chart" aria-labelledby="clan-chart-title">
+          <div class="clan-chart-heading">
+            <h3 id="clan-chart-title">Rewards by day</h3>
+            <label for="clan-chart-reward">REWARD <select id="clan-chart-reward"><option value="books">Legendary books</option><option value="epicBooks">Epic books</option><option value="sacred">Sacred shards</option><option value="void">Void shards</option><option value="ancient">Ancient shards</option></select></label>
+          </div>
+          <div id="clan-chart-content"></div>
+          <p class="footnote">Only recorded days and difficulties are shown. A question mark means an Epic book count is unknown for at least one selected difficulty.</p>
+        </section>
       </section>
     </div>
   </div>

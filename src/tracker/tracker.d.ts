@@ -70,6 +70,7 @@ declare const tracker: {
   bjjConfidence(skill: BjjSkill): number | null;
   bjjLearningPriorities(skills: BjjSkill[]): { skill: BjjSkill; confidence: number | null }[];
   buildCompletion(statuses: ChampionBuild['statuses']): { complete: number; applicable: number; percentage: number };
+  clanRewardSeries(records: DemonLordRecord[], today: string, days: number, difficulty?: string, reward?: string): { date: string; value: number | null }[];
   rules: Record<string, Record<string, { threshold: number; base: number; increment: number }>>;
   calculate(state: TrackerState): { counters: Record<string, Record<string, { known: boolean; count: number }>> };
   nextChance(rule: { threshold: number; base: number; increment: number }, count: number): number;
