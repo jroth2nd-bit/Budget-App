@@ -1,5 +1,5 @@
 import { mountBjjJournal } from "./bjjJournal.js";
-import { isBjjPositionOnly } from "./bjjJournalData.js";
+import { bjjMoveHistory, compareBjjMoveActivity, isBjjPositionOnly } from "./bjjJournalData.js";
 
 export function mount(root, trackerStorage, T, onBeltChange) {
   const document = { body: root.querySelector('.tracker-surface'), getElementById: id => root.getElementById(id), querySelector: selector => root.querySelector(selector), querySelectorAll: selector => root.querySelectorAll(selector), createElement: tag => window.document.createElement(tag), get activeElement() { return root.activeElement; } };
@@ -295,6 +295,23 @@ function deleteControl(skill) {
 
 function detailsContent(skill) {
   const content = node("div", "bjj-details-content");
+  if (!isBjjPositionOnly(skill)) {
+    const history = bjjMoveHistory(state.bjj, skill.id);
+    const section = node("div", "bjj-skill-history");
+    section.append(node("strong", "", "Move history"));
+    const stats = node("dl", "bjj-history-stats");
+    for (const [label, date, count] of [
+      ["Practiced", history.practiced, `Class sessions: ${history.practiceCount}`],
+      ["Tried", history.attempted, `Roll sessions: ${history.attemptCount}`],
+      ["Landed", history.landed, `Landings: ${history.landedCount}`]
+    ]) {
+      const stat = node("div", "bjj-history-stat");
+      stat.append(node("dt", "", label), node("dd", "bjj-history-date", date ?? "Never"), node("dd", "bjj-history-count", count));
+      stats.append(stat);
+    }
+    section.append(stats);
+    content.append(section);
+  }
   for (const key of ["description", "link"]) {
     const column = columns.find(item => item.key === key);
     const wrapper = node("div", `bjj-details-${key}`);
@@ -411,6 +428,12 @@ function render() {
     return key === "type" || options[key] ? String(value) === filter : value.toLocaleLowerCase().includes(filter);
   }));
   visible.sort((a, b) => {
+    if (sort === "needsPractice") {
+      if (isBjjPositionOnly(a) !== isBjjPositionOnly(b)) return isBjjPositionOnly(a) ? 1 : -1;
+      const first = bjjMoveHistory(state.bjj, a.id), second = bjjMoveHistory(state.bjj, b.id);
+      const order = compareBjjMoveActivity(first.lastActivity, state.bjj.blackLotusSkillIds.includes(a.id), second.lastActivity, state.bjj.blackLotusSkillIds.includes(b.id));
+      return (direction === "ascending" ? order : -order) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
+    }
     if (sort === "confidence") {
       const first = T.bjjConfidence(a), second = T.bjjConfidence(b);
       if (first === null || second === null) {
@@ -431,7 +454,8 @@ function render() {
     if (heading) heading.setAttribute("aria-sort", active ? direction : "none");
     else {
       button.setAttribute("aria-pressed", String(active));
-      button.setAttribute("aria-label", `${columns.find(column => column.key === button.dataset.bjjSort).label}${active ? `, sorted ${direction}` : ""}`);
+      const label = button.dataset.bjjSort === "needsPractice" ? "Needs practice" : columns.find(column => column.key === button.dataset.bjjSort).label;
+      button.setAttribute("aria-label", `${label}${active ? `, sorted ${direction}` : ""}`);
     }
     button.querySelector("span").textContent = active ? (direction === "ascending" ? " ↑" : " ↓") : "";
   }
@@ -530,6 +554,9 @@ function initControls() {
     label.append(input);
     $("bjj-filters").append(label);
   }
+  const practiceSort = { key: "needsPractice", label: "Needs practice" };
+  $("bjj-secondary-sort").append(sortButton(practiceSort, ""));
+  $("bjj-card-sort").append(sortButton(practiceSort, ""));
   const actions = node("th", "", "Details");
   actions.scope = "col";
   row.append(actions);

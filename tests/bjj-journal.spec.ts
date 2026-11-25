@@ -29,57 +29,90 @@ async function openBjj(page: Page, width: number, prepare?: (state: ReturnType<t
   return page.locator('.trackerView');
 }
 
+async function selectMove(dialog: ReturnType<Page['locator']>, name: string) {
+  await dialog.locator('#bjj-journal-search').fill(name);
+  await dialog.locator('#bjj-journal-suggestions').getByRole('button', { name, exact: false }).click();
+}
+
+async function openSkillDetails(bjj: ReturnType<Page['locator']>, mobile: boolean, name: string) {
+  const list = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
+  if (mobile) {
+    const card = list.locator('.bjj-card').filter({ hasText: name });
+    await card.locator(':scope > summary').click();
+    await card.locator('.bjj-card-details > summary').click();
+  } else await list.getByRole('button', { name: `Details for ${name}` }).click();
+  return list;
+}
+
 for (const width of [320, 1440]) {
   test(`BJJ class and roll notes track move history and partner strategies at ${width}px`, async ({ page }) => {
     const bjj = await openBjj(page, width);
     const mobile = width <= 1350;
-    const list = bjj.locator(mobile ? '#bjj-cards' : '#bjj-list');
-    if (mobile) {
-      const card = list.locator('.bjj-card').filter({ has: page.getByText('Armbar', { exact: true }) });
-      await card.locator(':scope > summary').click();
-      await card.locator('.bjj-card-details > summary').click();
-    } else await list.getByRole('button', { name: 'Details for Armbar' }).click();
+    const list = await openSkillDetails(bjj, mobile, 'Armbar');
     await list.getByLabel('Black Lotus lesson plan: Armbar').check();
-    await expect(bjj.locator('#bjj-move-history')).toContainText('Practiced: Never · Tried: Never · Landed: Never');
-    await expect(bjj.locator('#bjj-move-history')).toContainText('Triangle');
-    await expect(bjj.locator('#bjj-move-history')).not.toContainText('Guard');
-    await bjj.locator('#bjj-history-search').fill('triangle');
-    await expect(bjj.locator('.bjj-history-item').filter({ hasText: 'Armbar' })).toBeHidden();
-    await bjj.locator('#bjj-history-search').clear();
+    const history = list.locator('.bjj-skill-history:visible');
+    await expect(history.locator('.bjj-history-stat dt')).toHaveText(['Practiced', 'Tried', 'Landed']);
+    await expect(history.locator('.bjj-history-date')).toHaveText(['Never', 'Never', 'Never']);
+    const layout = await history.locator('.bjj-history-stat').evaluateAll(elements => elements.map(element => {
+      const rect = element.getBoundingClientRect();
+      const date = element.querySelector('.bjj-history-date')!;
+      return { x: rect.x, y: rect.y, width: rect.width, fontSize: parseFloat(getComputedStyle(date).fontSize) };
+    }));
+    expect(layout.every(item => item.fontSize >= 16)).toBe(true);
+    if (mobile) {
+      expect(layout[0].y).toBeLessThan(layout[1].y);
+      expect(layout[1].y).toBeLessThan(layout[2].y);
+    } else {
+      expect(layout[0].x).toBeLessThan(layout[1].x);
+      expect(layout[1].x).toBeLessThan(layout[2].x);
+      expect(Math.abs(layout[0].width - layout[2].width)).toBeLessThan(1);
+    }
 
     await bjj.getByRole('button', { name: 'Add class note' }).click();
     const dialog = bjj.getByRole('dialog', { name: 'Add class note' });
     await dialog.getByLabel('DATE', { exact: true }).fill(localDate(-1));
     await dialog.getByLabel('NOTES', { exact: true }).fill('Worked on guard attacks.');
-    await expect(dialog.getByLabel('Practiced Triangle')).toBeVisible();
-    await expect(dialog.getByLabel('Practiced Guard')).toHaveCount(0);
+    await expect(dialog.locator('#bjj-journal-suggestions button')).toHaveCount(0);
     await dialog.locator('#bjj-journal-search').fill('triangle');
-    await expect(dialog.getByLabel('Practiced Armbar')).toBeHidden();
+    await expect(dialog.locator('#bjj-journal-suggestions')).toContainText('Triangle');
+    await expect(dialog.locator('#bjj-journal-suggestions')).not.toContainText('Armbar');
+    await dialog.locator('#bjj-journal-search').fill('guard');
+    await expect(dialog.locator('#bjj-journal-suggestions')).not.toContainText('Guard');
+    await dialog.locator('#bjj-journal-search').fill('armbar');
+    await dialog.locator('#bjj-journal-search').press('Enter');
+    await expect(dialog.getByRole('button', { name: 'Remove Armbar' })).toBeVisible();
+    await dialog.locator('#bjj-journal-search').fill('armbar');
+    await expect(dialog.locator('#bjj-journal-suggestions button')).toHaveCount(0);
     await dialog.locator('#bjj-journal-search').clear();
-    await dialog.getByLabel('Practiced Armbar').check();
     await dialog.getByRole('button', { name: 'Save note' }).click();
     await expect(dialog).toBeHidden();
-    await expect(bjj.locator('#bjj-move-history')).toContainText(`Practiced: ${localDate(-1)} · Tried: Never · Landed: Never`);
+    await expect(history.locator('.bjj-history-date')).toHaveText([localDate(-1), 'Never', 'Never']);
 
     await bjj.getByRole('button', { name: 'Add roll note', exact: true }).click();
     const roll = bjj.getByRole('dialog', { name: 'Add roll note' });
-    await expect(roll.locator('.bjj-journal-move').filter({ hasText: 'Armbar' })).toContainText(`Practiced: ${localDate(-1)} · Tried: Never · Landed: Never`);
     await roll.getByLabel('PARTNER', { exact: true }).fill('Training partner');
     await roll.getByLabel('NOTES', { exact: true }).fill('Kept a strong frame.');
     await roll.getByLabel('STRATEGY FOR NEXT TIME').fill('Break grips first.');
+    await selectMove(roll, 'Armbar');
+    await expect(roll.getByLabel('Armbar in this roll')).toHaveValue('attempted');
     await roll.getByLabel('Armbar in this roll').selectOption('landed');
     await roll.getByRole('button', { name: 'Save note' }).click();
-    await expect(bjj.locator('#bjj-move-history')).toContainText(`Practiced: ${localDate(-1)} · Tried: ${localDate()} · Landed: ${localDate()}`);
+    await expect(history.locator('.bjj-history-date')).toHaveText([localDate(-1), localDate(), localDate()]);
     await bjj.locator('#bjj-roll-list > .bjj-journal-list > details > summary').click();
+    await bjj.locator('#bjj-roll-list .bjj-journal-entry > summary').click();
+    await bjj.getByRole('button', { name: `Edit roll note ${localDate()} for Training partner` }).click();
+    const editRoll = bjj.getByRole('dialog', { name: 'Edit roll note' });
+    await expect(editRoll.getByLabel('Armbar in this roll')).toHaveValue('landed');
+    await editRoll.getByRole('button', { name: 'Cancel' }).click();
     await bjj.getByRole('button', { name: 'Add roll note for Training partner' }).click();
     await expect(roll.getByLabel('PARTNER', { exact: true })).toHaveValue('Training partner');
     await roll.getByLabel('PARTNER', { exact: true }).fill('training partner');
     await expect(roll.locator('#bjj-previous-strategy')).toContainText('Break grips first.');
-    await roll.getByLabel('Armbar in this roll').selectOption('attempted');
+    await selectMove(roll, 'Armbar');
     await roll.getByLabel('STRATEGY FOR NEXT TIME').fill('Use a different grip.');
     await roll.getByRole('button', { name: 'Save note' }).click();
     await expect(bjj.locator('#bjj-roll-list .bjj-partner-group')).toHaveCount(1);
-    await expect(bjj.locator('#bjj-move-history').locator('.bjj-history-item').filter({ hasText: 'Armbar' })).toContainText('Class sessions: 1 · Roll sessions: 2 · Landed: 1');
+    await expect(history.locator('.bjj-history-count')).toHaveText(['Class sessions: 1', 'Roll sessions: 2', 'Landings: 1']);
     await bjj.getByRole('button', { name: 'Add roll note', exact: true }).click();
     await roll.getByLabel('PARTNER', { exact: true }).fill('Training partner');
     await expect(roll.locator('#bjj-previous-strategy')).toContainText('Use a different grip.');
@@ -87,15 +120,16 @@ for (const width of [320, 1440]) {
 
     await page.reload();
     await page.locator('.overview-bjj').click();
+    await openSkillDetails(bjj, mobile, 'Armbar');
     await expect(bjj.locator('#bjj-roll-list .bjj-journal-entry')).toHaveCount(2);
     await expect(bjj.locator('#bjj-class-list .bjj-journal-entry')).toHaveCount(1);
     await bjj.locator('#bjj-class-list summary').click();
     await bjj.getByRole('button', { name: `Edit class note ${localDate(-1)}` }).click();
     const edit = bjj.getByRole('dialog', { name: 'Edit class note' });
     await edit.getByLabel('NOTES', { exact: true }).fill('Updated class notes.');
-    await edit.getByLabel('Practiced Armbar').uncheck();
+    await edit.getByRole('button', { name: 'Remove Armbar' }).click();
     await edit.getByRole('button', { name: 'Save note' }).click();
-    await expect(bjj.locator('#bjj-move-history')).toContainText(`Practiced: Never · Tried: ${localDate()} · Landed: ${localDate()}`);
+    await expect(history.locator('.bjj-history-date')).toHaveText(['Never', localDate(), localDate()]);
     await bjj.locator('#bjj-class-list summary').click();
     await expect(bjj.locator('#bjj-class-list')).toContainText('Updated class notes.');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
@@ -139,7 +173,7 @@ test('deleting a tagged skill preserves historical moves when editing notes', as
   await bjj.getByRole('button', { name: 'Add class note' }).click();
   const note = bjj.getByRole('dialog', { name: 'Add class note' });
   await note.getByLabel('NOTES', { exact: true }).fill('Review the setup.');
-  await note.getByLabel('Practiced Armbar').check();
+  await selectMove(note, 'Armbar');
   await note.getByRole('button', { name: 'Save note' }).click();
   page.once('dialog', dialog => dialog.accept());
   await list.getByRole('button', { name: 'Delete Armbar' }).click();
@@ -147,7 +181,7 @@ test('deleting a tagged skill preserves historical moves when editing notes', as
   await expect(bjj.locator('#bjj-class-list')).toContainText('Armbar');
   await bjj.getByRole('button', { name: `Edit class note ${localDate()}` }).click();
   const edit = bjj.getByRole('dialog', { name: 'Edit class note' });
-  await expect(edit.getByLabel('Practiced Armbar')).toHaveCount(0);
+  await expect(edit.getByRole('button', { name: 'Remove Armbar' })).toHaveCount(0);
   await expect(edit.locator('#bjj-journal-preserved')).toContainText('Armbar');
   await edit.getByRole('button', { name: 'Save note' }).click();
   const state = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy-ledger-v1')!));
@@ -160,12 +194,12 @@ test('changing a recorded skill to Position preserves its roll history on edit',
   await bjj.getByRole('button', { name: 'Add roll note', exact: true }).click();
   const note = bjj.getByRole('dialog', { name: 'Add roll note' });
   await note.getByLabel('PARTNER', { exact: true }).fill('Jacob');
+  await selectMove(note, 'Triangle');
   await note.getByLabel('Triangle in this roll').selectOption('landed');
   await note.getByRole('button', { name: 'Save note' }).click();
   const picker = bjj.locator('#bjj-list details.bjj-type-picker').filter({ has: page.getByLabel('Type for Triangle: Submission') });
   await picker.locator('summary').click();
   await picker.getByRole('button', { name: 'Position', exact: true }).click();
-  await expect(bjj.locator('#bjj-move-history')).not.toContainText('Triangle');
   await bjj.locator('#bjj-roll-list .bjj-partner-group > summary').click();
   await bjj.locator('#bjj-roll-list .bjj-journal-entry > summary').click();
   await bjj.getByRole('button', { name: `Edit roll note ${localDate()} for Jacob` }).click();
@@ -182,7 +216,7 @@ for (const width of [320, 1440]) {
     const bjj = await openBjj(page, width);
     await bjj.getByRole('button', { name: 'Add class note' }).click();
     const classNote = bjj.getByRole('dialog', { name: 'Add class note' });
-    await classNote.getByLabel('Practiced Armbar').check();
+    await selectMove(classNote, 'Armbar');
     await classNote.getByRole('button', { name: 'Save note' }).click();
     const deleteClass = bjj.getByRole('button', { name: `Delete class note ${localDate()}` });
     await expect(deleteClass).toBeVisible();
@@ -192,11 +226,13 @@ for (const width of [320, 1440]) {
     page.once('dialog', dialog => dialog.accept());
     await deleteClass.click();
     await expect(bjj.locator('#bjj-class-list')).toContainText('No class notes yet.');
-    await expect(bjj.locator('#bjj-move-history').locator('.bjj-history-item').filter({ hasText: 'Armbar' })).toContainText('Class sessions: 0');
+    const list = await openSkillDetails(bjj, width <= 1350, 'Armbar');
+    await expect(list.locator('.bjj-skill-history:visible')).toContainText('Class sessions: 0');
 
     await bjj.getByRole('button', { name: 'Add roll note', exact: true }).click();
     const roll = bjj.getByRole('dialog', { name: 'Add roll note' });
     await roll.getByLabel('PARTNER', { exact: true }).fill('Jacob');
+    await selectMove(roll, 'Armbar');
     await roll.getByLabel('Armbar in this roll').selectOption('landed');
     await roll.getByRole('button', { name: 'Save note' }).click();
     await bjj.locator('#bjj-roll-list .bjj-partner-group > summary').click();
@@ -205,7 +241,8 @@ for (const width of [320, 1440]) {
     page.once('dialog', dialog => dialog.accept());
     await deleteRoll.click();
     await expect(bjj.locator('#bjj-roll-list')).toContainText('No roll notes yet.');
-    await expect(bjj.locator('#bjj-move-history').locator('.bjj-history-item').filter({ hasText: 'Armbar' })).toContainText('Roll sessions: 0 · Landed: 0');
+    await expect(list.locator('.bjj-skill-history:visible')).toContainText('Roll sessions: 0');
+    await expect(list.locator('.bjj-skill-history:visible')).toContainText('Landings: 0');
     await page.reload();
     await page.locator('.overview-bjj').click();
     await expect(bjj.locator('#bjj-class-list')).toContainText('No class notes yet.');
@@ -229,9 +266,11 @@ test('Black Lotus boost affects move history and learning priorities', async ({ 
   });
   await expect(bjj.locator('#bjj-priorities .bjj-priority-card strong')).toHaveText(['Armbar', 'Triangle', 'Guard']);
   await expect(bjj.locator('#bjj-priorities .bjj-priority-card').first()).toContainText('75%');
-  await expect(bjj.locator('#bjj-move-history .bjj-history-item strong')).toHaveText(['Armbar', 'Triangle']);
+  await bjj.locator('.bjj-filter-details > summary').click();
+  await bjj.locator('#bjj-secondary-sort').getByRole('button', { name: 'Needs practice' }).click();
+  await expect.poll(() => bjj.locator('#bjj-list tr:not(.bjj-details-row) input[aria-label^="Skill for"]').evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value))).toEqual(['Armbar', 'Triangle', 'Guard']);
   await bjj.getByRole('button', { name: 'Add class note' }).click();
-  await expect(bjj.locator('#bjj-journal-moves .bjj-journal-move strong')).toHaveText(['Armbar', 'Triangle']);
+  await expect(bjj.locator('#bjj-journal-suggestions button')).toHaveCount(0);
   await bjj.getByRole('button', { name: 'Cancel' }).click();
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Dashboard' }).click();
   await expect(page.locator('.overview-bjj li span')).toHaveText(['Armbar', 'Triangle', 'Guard']);

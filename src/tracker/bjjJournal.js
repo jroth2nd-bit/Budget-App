@@ -6,6 +6,7 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
   let editingKind = "class";
   let editingId = null;
   let choices = [];
+  let selectedMoves = new Map();
   let preservedMoves = [];
   const expandedPartners = new Set();
 
@@ -104,41 +105,69 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
     container.append(list);
   }
 
-  function filterHistory() {
-    const search = $("bjj-history-search").value.trim().toLocaleLowerCase();
-    for (const item of $("bjj-move-history").querySelectorAll(".bjj-history-item")) item.hidden = !item.dataset.name.includes(search);
-  }
-
-  function renderHistory() {
-    const bjj = getBjj();
-    const container = $("bjj-move-history");
-    container.replaceChildren();
-    const blackLotus = new Set(bjj.blackLotusSkillIds);
-    const skills = moveSkills().map(skill => ({ skill, history: bjjMoveHistory(bjj, skill.id) }));
-    skills.sort((a, b) => compareBjjMoveActivity(a.history.lastActivity, blackLotus.has(a.skill.id), b.history.lastActivity, blackLotus.has(b.skill.id)) || a.skill.name.localeCompare(b.skill.name));
-    if (!skills.length) {
-      container.append(node("p", "footnote", "No non-Position skills in the library yet."));
-      return;
-    }
-    const list = node("div", "bjj-history-list");
-    for (const { skill, history } of skills) {
-      const card = node("div", "bjj-history-item");
-      card.dataset.name = skill.name.toLocaleLowerCase();
-      card.append(node("strong", "", skill.name));
-      if (bjj.blackLotusSkillIds.includes(skill.id)) card.append(node("span", "bjj-lesson-tag", "Black Lotus lesson plan"));
-      if (skill.positions.length) card.append(node("span", "footnote", skill.positions.join(", ")));
-      card.append(node("p", "footnote", `Practiced: ${history.practiced ?? "Never"} · Tried: ${history.attempted ?? "Never"} · Landed: ${history.landed ?? "Never"}`));
-      card.append(node("p", "footnote", `Class sessions: ${history.practiceCount} · Roll sessions: ${history.attemptCount} · Landed: ${history.landedCount}`));
-      list.append(card);
-    }
-    container.append(list);
-    filterHistory();
-  }
-
   function render() {
     renderEntries("class");
     renderEntries("roll");
-    renderHistory();
+  }
+
+  function renderTags() {
+    const container = $("bjj-journal-moves");
+    container.replaceChildren();
+    for (const move of selectedMoves.values()) {
+      const tag = node("div", "bjj-journal-tag");
+      tag.append(node("span", "", move.name));
+      if (editingKind === "roll") {
+        const select = node("select");
+        select.setAttribute("aria-label", `${move.name} in this roll`);
+        for (const [value, text] of [["attempted", "Tried"], ["landed", "Landed"]]) {
+          const option = node("option", "", text);
+          option.value = value;
+          select.append(option);
+        }
+        select.value = move.result;
+        select.addEventListener("change", () => { move.result = select.value; });
+        tag.append(select);
+      }
+      const remove = node("button", "", "×");
+      remove.type = "button";
+      remove.setAttribute("aria-label", `Remove ${move.name}`);
+      remove.addEventListener("click", () => {
+        selectedMoves.delete(move.skillId);
+        renderTags();
+        renderSuggestions();
+        $("bjj-journal-search").focus();
+      });
+      tag.append(remove);
+      container.append(tag);
+    }
+  }
+
+  function renderSuggestions() {
+    const search = $("bjj-journal-search").value.trim().toLocaleLowerCase();
+    const container = $("bjj-journal-suggestions");
+    container.replaceChildren();
+    if (!search) return;
+    const matches = choices.filter(choice => !selectedMoves.has(choice.skillId) && choice.name.toLocaleLowerCase().includes(search));
+    if (!matches.length) {
+      container.append(node("p", "footnote", "No matching available moves."));
+      return;
+    }
+    for (const choice of matches.slice(0, 10)) {
+      const button = node("button", "", choice.name);
+      button.type = "button";
+      if (getBjj().blackLotusSkillIds.includes(choice.skillId)) button.append(node("span", "bjj-lesson-tag", "Black Lotus"));
+      button.addEventListener("click", () => {
+        selectedMoves.set(choice.skillId, editingKind === "roll"
+          ? { skillId: choice.skillId, name: choice.name, result: "attempted" }
+          : { skillId: choice.skillId, name: choice.name });
+        $("bjj-journal-search").value = "";
+        renderTags();
+        renderSuggestions();
+        $("bjj-journal-search").focus();
+      });
+      container.append(button);
+    }
+    if (matches.length > 10) container.append(node("p", "footnote", "Keep typing to narrow the results."));
   }
 
   function previousStrategy() {
@@ -175,38 +204,13 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
     const moves = entry?.moves ?? [];
     choices = moveSkills().map(skill => ({ skillId: skill.id, name: skill.name }));
     preservedMoves = moves.filter(move => !choices.some(choice => choice.skillId === move.skillId));
+    selectedMoves = new Map(moves.filter(move => choices.some(choice => choice.skillId === move.skillId)).map(move => [move.skillId, { ...move }]));
     $("bjj-journal-preserved").textContent = preservedMoves.length ? `Previously recorded moves no longer available in the library or now marked Position will be preserved: ${preservedMoves.map(move => move.name).join(", ")}.` : "";
     for (const choice of choices) choice.history = bjjMoveHistory(bjj, choice.skillId);
     const blackLotus = new Set(bjj.blackLotusSkillIds);
     choices.sort((a, b) => compareBjjMoveActivity(a.history.lastActivity, blackLotus.has(a.skillId), b.history.lastActivity, blackLotus.has(b.skillId)) || a.name.localeCompare(b.name) || a.skillId.localeCompare(b.skillId));
-    const container = $("bjj-journal-moves");
-    container.replaceChildren();
-    if (!choices.length) container.append(node("p", "footnote", "No non-Position skills in the library yet. You can still save this note."));
-    for (const choice of choices) {
-      const existing = moves.find(move => move.skillId === choice.skillId);
-      const label = node("label", "bjj-journal-move");
-      label.dataset.name = choice.name.toLocaleLowerCase();
-      const name = node("span", "bjj-journal-move-info");
-      name.append(node("strong", "", choice.name));
-      if (bjj.blackLotusSkillIds.includes(choice.skillId)) name.append(node("span", "bjj-lesson-tag", "Black Lotus lesson plan"));
-      name.append(node("span", "footnote", `Practiced: ${choice.history.practiced ?? "Never"} · Tried: ${choice.history.attempted ?? "Never"} · Landed: ${choice.history.landed ?? "Never"}`));
-      const input = node(roll ? "select" : "input");
-      input.setAttribute("aria-label", roll ? `${choice.name} in this roll` : `Practiced ${choice.name}`);
-      if (roll) {
-        for (const [value, text] of [["", "Not recorded"], ["attempted", "Tried"], ["landed", "Landed"]]) {
-          const option = node("option", "", text);
-          option.value = value;
-          input.append(option);
-        }
-        input.value = existing?.result ?? "";
-      } else {
-        input.type = "checkbox";
-        input.checked = !!existing;
-      }
-      choice.input = input;
-      label.append(name, input);
-      container.append(label);
-    }
+    renderTags();
+    renderSuggestions();
     previousStrategy();
     $("bjj-journal-dialog").showModal();
   }
@@ -216,18 +220,25 @@ export function mountBjjJournal(document, node, T, getBjj, save) {
   $("bjj-journal-close").addEventListener("click", () => $("bjj-journal-dialog").close());
   $("bjj-journal-partner").addEventListener("input", previousStrategy);
   $("bjj-journal-date").addEventListener("change", previousStrategy);
-  $("bjj-history-search").addEventListener("input", filterHistory);
-  $("bjj-journal-search").addEventListener("input", () => {
-    const search = $("bjj-journal-search").value.trim().toLocaleLowerCase();
-    for (const item of $("bjj-journal-moves").querySelectorAll(".bjj-journal-move")) item.hidden = !item.dataset.name.includes(search);
+  $("bjj-journal-search").addEventListener("input", renderSuggestions);
+  $("bjj-journal-search").addEventListener("keydown", event => {
+    if (event.key === "Enter" && $("bjj-journal-search").value.trim()) {
+      event.preventDefault();
+      $("bjj-journal-suggestions").querySelector("button")?.click();
+    } else if (event.key === "ArrowDown") {
+      const first = $("bjj-journal-suggestions").querySelector("button");
+      if (first) { event.preventDefault(); first.focus(); }
+    } else if (event.key === "Escape" && $("bjj-journal-suggestions").childElementCount) {
+      event.preventDefault();
+      event.stopPropagation();
+      $("bjj-journal-search").value = "";
+      renderSuggestions();
+    }
   });
   $("bjj-journal-form").addEventListener("submit", event => {
     event.preventDefault();
     const roll = editingKind === "roll";
-    const moves = [...preservedMoves, ...choices.flatMap(choice => {
-      if (roll) return choice.input.value ? [{ skillId: choice.skillId, name: choice.name, result: choice.input.value }] : [];
-      return choice.input.checked ? [{ skillId: choice.skillId, name: choice.name }] : [];
-    })];
+    const moves = [...preservedMoves, ...selectedMoves.values()];
     const entry = { id: editingId ?? crypto.randomUUID(), date: $("bjj-journal-date").value, notes: $("bjj-journal-notes").value, moves };
     if (roll) {
       entry.partner = $("bjj-journal-partner").value;

@@ -1248,7 +1248,8 @@ test('BJJ journal notes sync and survive full backup export', async ({ page }) =
   const dialog = bjj.getByRole('dialog', { name: 'Add roll note' });
   await dialog.getByLabel('PARTNER', { exact: true }).fill('Partner');
   await dialog.getByLabel('STRATEGY FOR NEXT TIME').fill('Review grip control.');
-  await dialog.getByLabel('Armbar in this roll').selectOption('attempted');
+  await dialog.locator('#bjj-journal-search').fill('Armbar');
+  await dialog.locator('#bjj-journal-suggestions').getByRole('button', { name: 'Armbar' }).click();
   await dialog.getByRole('button', { name: 'Save note' }).click();
   await expect.poll(() => cloud.row?.data.bjj.rollNotes.length).toBe(1);
   await expect(page.locator('.trackerSync')).toHaveText('Tracker: account sync ready');

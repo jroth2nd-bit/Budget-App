@@ -27,14 +27,9 @@
           <div id="bjj-roll-list"></div>
         </section>
       </div>
-      <section class="compact-panel bjj-move-history" aria-labelledby="bjj-history-title">
-        <div class="build-toolbar"><div><p class="eyebrow">YOUR TECHNIQUES</p><h2 id="bjj-history-title">Move history</h2></div><button class="button button-quiet" id="bjj-review-open" type="button">Review move list</button></div>
-        <p class="footnote">All skills except Position types appear here and in your notes. Never-recorded and older moves appear first; Black Lotus moves receive a small priority boost. Counts are recorded sessions, not repetitions.</p>
-        <label for="bjj-history-search">FIND A MOVE</label><input id="bjj-history-search" type="search" placeholder="Search skill library">
-        <div id="bjj-move-history"></div>
-      </section>
       <section class="compact-panel bjj-skills-panel" aria-labelledby="skills-title">
-        <div class="build-toolbar"><div><p class="eyebrow">YOUR TRAINING</p><h2 id="skills-title">Skill library</h2></div><button class="button button-quiet" id="bjj-clear" type="button">Clear filters</button></div>
+        <div class="build-toolbar"><div><p class="eyebrow">YOUR TRAINING</p><h2 id="skills-title">Skill library</h2></div><div><button class="button button-quiet" id="bjj-review-open" type="button">Review move list</button> <button class="button button-quiet" id="bjj-clear" type="button">Clear filters</button></div></div>
+        <p class="footnote">Open a move's details to see its recorded class and roll history. Needs practice sorts never-recorded and older moves first, with a small Black Lotus priority boost. Counts are sessions, not repetitions.</p>
         <details class="bjj-filter-details"><summary>Filter skills</summary><div id="bjj-filters" class="bjj-filters"></div><div id="bjj-secondary-sort" class="bjj-secondary-sort" role="group" aria-label="Sort additional details"><span>Sort by:</span></div></details>
         <p id="bjj-count" class="footnote" role="status"></p>
         <div id="bjj-card-sort" class="bjj-card-sort" role="group" aria-label="Sort skills"></div>
@@ -50,7 +45,7 @@
       <div id="bjj-journal-partner-wrap"><label for="bjj-journal-partner">PARTNER</label><input id="bjj-journal-partner" maxlength="100"><p id="bjj-previous-strategy" class="footnote"></p></div>
       <div><label for="bjj-journal-notes">NOTES</label><textarea id="bjj-journal-notes" rows="4" maxlength="8000"></textarea></div>
       <div id="bjj-journal-strategy-wrap"><label for="bjj-journal-strategy">STRATEGY FOR NEXT TIME</label><textarea id="bjj-journal-strategy" rows="3" maxlength="4000"></textarea></div>
-      <fieldset class="bjj-journal-moves"><legend id="bjj-journal-moves-label">Moves</legend><label for="bjj-journal-search">FIND A MOVE</label><input id="bjj-journal-search" type="search" placeholder="Search skill library"><div id="bjj-journal-preserved" class="footnote"></div><div id="bjj-journal-moves"></div></fieldset>
+      <fieldset class="bjj-journal-moves"><legend id="bjj-journal-moves-label">Moves</legend><label for="bjj-journal-search">FIND A MOVE</label><input id="bjj-journal-search" type="search" placeholder="Type a move name" autocomplete="off" aria-controls="bjj-journal-suggestions"><div id="bjj-journal-suggestions" class="bjj-journal-suggestions" aria-live="polite"></div><div id="bjj-journal-preserved" class="footnote"></div><div id="bjj-journal-moves" class="bjj-journal-tags"></div></fieldset>
       <p id="bjj-journal-error" class="clan-form-error" role="alert"></p>
       <div class="clan-dialog-actions"><button class="button button-primary" type="submit">Save note</button></div>
     </form>
