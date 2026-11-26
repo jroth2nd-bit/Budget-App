@@ -35,6 +35,13 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
     await page.setViewportSize(viewport);
     await page.goto(localUrl);
     const mercy = await openTracker(page, 'Mercy Tracker', viewport.width < 640);
+    const legendaryBooks = mercy.locator('#clan-summary .clan-metric').filter({ hasText: 'Legendary books' });
+    await expect(legendaryBooks.locator('.clan-metric-total')).toContainText('Total in selected period');
+    await expect(legendaryBooks.locator('.clan-metric-average')).toContainText('Average per day');
+    await expect(legendaryBooks.locator('.clan-metric-projections')).toContainText('7-day projection');
+    await expect(legendaryBooks.locator('.clan-metric-projections')).toContainText('30-day projection');
+    const metricColumns = await mercy.locator('.clan-metrics').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+    expect(metricColumns).toBe(viewport.width < 420 ? 1 : 5);
     const chart = mercy.getByRole('region', { name: 'Rewards by day', exact: true });
     const history = mercy.locator('.clan-history');
     await expect(history).not.toHaveAttribute('open');
@@ -738,7 +745,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1351, height: 800
     expect(await dialog.locator('.clan-table-wrap').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     await dialog.locator('button[type=submit]').click();
-    await expect(mercy.locator('#clan-summary .clan-metric').filter({ hasText: 'Epic books' }).locator('strong')).toHaveText('3');
+    await expect(mercy.locator('#clan-summary .clan-metric').filter({ hasText: 'Epic books' }).locator('.clan-metric-total strong')).toHaveText('3');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
   });
 }
@@ -1022,7 +1029,7 @@ test('backup migration, invalid and cancelled imports preserve both datasets', a
   await mercy.locator('#clan-new').click();
   await mercy.getByLabel('Ultra-Nightmare Epic books').fill('3');
   await mercy.locator('#clan-form button[type=submit]').click();
-  await expect(mercy.locator('#clan-summary .clan-metric').filter({ hasText: 'Epic books' }).locator('strong')).toHaveText('3');
+  await expect(mercy.locator('#clan-summary .clan-metric').filter({ hasText: 'Epic books' }).locator('.clan-metric-total strong')).toHaveText('3');
   await mercy.locator('#count-Ancient-Legendary').fill('55');
   await mercy.locator('#count-Ancient-Legendary').dispatchEvent('change');
   const before = await page.evaluate(() => localStorage.getItem('mercy-ledger-v1'));

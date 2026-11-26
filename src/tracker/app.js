@@ -253,12 +253,17 @@ function renderClan() {
   const metrics = Object.entries(T.clanRewards).map(([key, label]) => {
     const total = summary.totals[key];
     const average = summary.averages[key];
-    const coverage = key === "epicBooks" ? `<small>Known total · ${summary.epicRecordedDays} of ${summary.recordedDays} days have complete Epic book data</small>` : "";
+    const coverage = key === "epicBooks" ? `<small class="clan-metric-coverage">Known total · complete Epic data for ${summary.epicRecordedDays} of ${summary.recordedDays} recorded days</small>` : "";
     const display = key === "epicBooks" && !summary.epicKnownRows ? "—" : format(total);
-    return `<div class="clan-metric"><span>${label}</span><strong>${display}</strong><small>${average === null ? "No recorded days" : `${format(average.day)} / day · ${format(average.week)} / 7 days · ${format(average.month)} / 30 days`}</small>${coverage}</div>`;
+    const emptyAverage = key === "epicBooks" ? "No complete Epic book data" : "No recorded days";
+    const averageValue = average === null
+      ? `<p class="clan-metric-empty">${emptyAverage}</p>`
+      : `<div class="clan-metric-average"><span>Average per day</span><strong>${format(average.day)}</strong></div>`;
+    const projections = average === null ? "" : `<div class="clan-metric-projections"><div><span>7-day projection</span><strong>${format(average.week)}</strong></div><div><span>30-day projection</span><strong>${format(average.month)}</strong></div></div>`;
+    return `<article class="clan-metric"><h3>${label}</h3><div class="clan-metric-values"><div class="clan-metric-total"><span>Total in selected period</span><strong>${display}</strong></div>${averageValue}</div>${projections}${coverage}</article>`;
   }).join("");
   const incomplete = summary.partialDays ? ` · ${summary.partialDays} incomplete ${summary.partialDays === 1 ? "day" : "days"} included` : "";
-  $("clan-summary").innerHTML = `<p class="clan-count">${summary.recordedDays} recorded ${summary.recordedDays === 1 ? "day" : "days"} · ${summary.chests} chests${incomplete}</p><div class="clan-metrics">${metrics}</div>`;
+  $("clan-summary").innerHTML = `<p class="clan-count">${summary.recordedDays} recorded ${summary.recordedDays === 1 ? "day" : "days"} · ${summary.chests} chests included${incomplete}</p><div class="clan-metrics">${metrics}</div>`;
   const records = [...state.clanBoss].sort((a, b) => b.date.localeCompare(a.date));
   $("clan-history").innerHTML = records.length ? records.map(record => {
     const rows = Object.entries(record.difficulties);

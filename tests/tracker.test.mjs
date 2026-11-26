@@ -249,7 +249,7 @@ test("version 6 backups migrate without losing existing data and version 7 round
   assert.deepEqual(T.validateState(JSON.parse(JSON.stringify(state))), state);
 });
 
-test("Demon Lord summaries use inclusive calendar windows, exclude missing days and flag partial entries", () => {
+test("Demon Lord summaries average over calendar windows, include missing days and flag partial entries", () => {
   const all = { ultra: clanRow(2, 2, 1, 0, 3), nightmare: clanRow(), brutal: clanRow(), hard: clanRow() };
   const records = [
     { date: "2026-03-10", difficulties: all },
@@ -264,11 +264,12 @@ test("Demon Lord summaries use inclusive calendar windows, exclude missing days 
   assert.equal(week.recordedDays, 2);
   assert.equal(week.partialDays, 1);
   assert.equal(week.chests, 9);
-  assert.deepEqual(week.averages.books, { day: 1, week: 7, month: 30 });
+  assert.deepEqual(week.averages.books, { day: 2 / 7, week: 2, month: 60 / 7 });
   const month = T.clanSummary(records, "2026-03-10", 30);
   assert.equal(month.recordedDays, 4);
   assert.equal(month.totals.books, 11);
   assert.equal(month.partialDays, 3);
+  assert.deepEqual(month.averages.books, { day: 11 / 30, week: 11 / 30 * 7, month: 11 });
   const nightmare = T.clanSummary(records, "2026-03-10", 7, "nightmare");
   assert.equal(nightmare.recordedDays, 1);
   assert.equal(nightmare.partialDays, 0);
@@ -276,7 +277,10 @@ test("Demon Lord summaries use inclusive calendar windows, exclude missing days 
   const empty = T.clanSummary([], "2026-03-10", 0);
   assert.equal(empty.recordedDays, 0);
   assert.equal(empty.averages.books, null);
-  assert.equal(T.clanSummary(records, "2026-03-10", 0).recordedDays, 5);
+  assert.deepEqual(T.clanSummary([], "2026-03-10", 7).averages.books, { day: 0, week: 0, month: 0 });
+  const allTime = T.clanSummary(records, "2026-03-10", 0);
+  assert.equal(allTime.recordedDays, 5);
+  assert.deepEqual(allTime.averages.books, { day: 17 / 31, week: 17 / 31 * 7, month: 17 / 31 * 30 });
   assert.throws(() => T.clanSummary(records, "2026-03-10", 8), /Invalid/);
 });
 
@@ -301,7 +305,7 @@ test("Epic book counts migrate as unknown, validate and round trip without losin
   assert.equal(T.validateState(migrated).clanBoss[0].difficulties.ultra.epicBooks, 0);
 });
 
-test("Epic book summary counts known totals and uses only fully known days for averages", () => {
+test("Epic book summary excludes unknown recorded days and counts unrecorded calendar days", () => {
   const records = [
     { date: "2026-03-10", difficulties: { ultra: clanRow(2, 0, 0, 0, 0, 2), nightmare: clanRow(2, 0, 0, 0, 0, 1) } },
     { date: "2026-03-09", difficulties: { ultra: clanRow(2, 0, 0, 0, 0, 4), nightmare: clanRow(2, 0, 0, 0, 0, null) } },
@@ -312,13 +316,13 @@ test("Epic book summary counts known totals and uses only fully known days for a
   assert.equal(all.totals.epicBooks, 7);
   assert.equal(all.epicKnownRows, 4);
   assert.equal(all.epicRecordedDays, 2);
-  assert.deepEqual(all.averages.epicBooks, { day: 1.5, week: 10.5, month: 45 });
+  assert.deepEqual(all.averages.epicBooks, { day: 0.5, week: 3.5, month: 15 });
   const ultra = T.clanSummary(records, "2026-03-10", 7, "ultra");
   assert.equal(ultra.epicRecordedDays, 3);
-  assert.equal(ultra.averages.epicBooks.day, 2);
+  assert.equal(ultra.averages.epicBooks.day, 6 / 7);
   const unknown = T.clanSummary([{ date: "2026-03-10", difficulties: { ultra: clanRow(2, 0, 0, 0, 0, null) } }], "2026-03-10", 7);
   assert.equal(unknown.epicKnownRows, 0);
-  assert.equal(unknown.averages.epicBooks, null);
+  assert.deepEqual(unknown.averages.epicBooks, { day: 0, week: 0, month: 0 });
 });
 
 test("Demon Lord reward chart uses summary filters and preserves unknown Epic counts", () => {

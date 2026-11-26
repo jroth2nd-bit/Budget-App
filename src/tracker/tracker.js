@@ -282,7 +282,12 @@ const MercyTracker = (function () {
     const totals = Object.fromEntries(Object.keys(clanRewards).map(key => [key, 0]));
     let recordedDays = 0, partialDays = 0, chests = 0;
     let epicRecordedDays = 0, epicAverageTotal = 0, epicKnownRows = 0;
-    for (const { rows } of clanSelectedDays(records, today, days, difficulty)) {
+    const selectedDays = clanSelectedDays(records, today, days, difficulty);
+    const firstRecordedDate = selectedDays.reduce((earliest, { date }) => !earliest || date < earliest ? date : earliest, null);
+    const periodDays = days || (firstRecordedDate
+      ? (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${firstRecordedDate}T00:00:00Z`)) / 86400000 + 1
+      : 0);
+    for (const { rows } of selectedDays) {
       recordedDays++;
       if (difficulty === "all" && (rows.length !== 4 || rows.some(row => row.chests !== 2))) partialDays++;
       if (difficulty !== "all" && rows[0].chests !== 2) partialDays++;
@@ -297,7 +302,7 @@ const MercyTracker = (function () {
       }
     }
     const averages = Object.fromEntries(Object.entries(totals).map(([key, total]) => {
-      const count = key === "epicBooks" ? epicRecordedDays : recordedDays;
+      const count = key === "epicBooks" ? periodDays - (recordedDays - epicRecordedDays) : periodDays;
       const day = count ? (key === "epicBooks" ? epicAverageTotal : total) / count : null;
       return [key, day === null ? null : { day, week: day * 7, month: day * 30 }];
     }));
