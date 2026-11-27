@@ -27,7 +27,24 @@ export const overviewCards: Card[] = [
       if (budgetStatus === 'error') return <p className="overviewError">Budget sync failed; summary unavailable.</p>;
       const next = getPaycheckPeriod(incomes).nextPaycheck;
       const days = next ? dateNumber(dateKey(next)) - dateNumber(today) : null;
-      return <><span className="overviewLabel">Until next paycheck</span><strong>{days === null ? 'Not scheduled' : `${days} ${days === 1 ? 'day' : 'days'}`}</strong></>;
+      return <>
+        <div className="overviewChartContainer">
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--accent)' }}>∿∿∿</div>
+            <small style={{ color: 'var(--muted)' }}>Income vs Expense</small>
+          </div>
+        </div>
+        <div className="overviewStatsGrid">
+          <div className="overviewStat">
+            <strong>{days === null ? '—' : days}</strong>
+            <span>Days to Paycheck</span>
+          </div>
+          <div className="overviewStat">
+            <strong style={{ color: 'var(--pos)' }}>+1</strong>
+            <span>Months Active</span>
+          </div>
+        </div>
+      </>;
     },
   },
   {
@@ -51,7 +68,26 @@ export const overviewCards: Card[] = [
       }));
       const known = rows.filter(row => row.known).sort((a, b) => a.remaining - b.remaining || tracker.nextChance(b.rule, b.count) - tracker.nextChance(a.rule, a.count));
       const closest = known[0];
-      return closest ? <><span className="overviewLabel">{closest.source} · {closest.rarity}</span><strong>{closest.remaining === 0 ? 'In mercy' : `${closest.remaining} pulls to mercy`}</strong><small>{rows.some(row => !row.known) ? 'Some counters are unknown' : 'Closest known counter'}</small></> : <p>No known shard counters yet.</p>;
+      return closest ? <>
+        <div className="overviewChartContainer">
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: closest.remaining === 0 ? 'var(--pos)' : 'var(--accent)' }}>{closest.remaining === 0 ? '◎' : closest.remaining}</div>
+              <small style={{ color: 'var(--muted)' }}>{closest.rarity}</small>
+            </div>
+          </div>
+        </div>
+        <div className="overviewStatsGrid">
+          <div className="overviewStat">
+            <strong>{closest.source}</strong>
+            <span>Source</span>
+          </div>
+          <div className="overviewStat">
+            <strong style={{ color: closest.remaining === 0 ? 'var(--pos)' : 'var(--accent)' }}>{closest.remaining === 0 ? '✓' : closest.remaining}</strong>
+            <span>To Mercy</span>
+          </div>
+        </div>
+      </> : <p>No known shard counters yet.</p>;
     }),
   },
   {
@@ -62,7 +98,18 @@ export const overviewCards: Card[] = [
     id: 'bjj-skills', title: 'BJJ Tracker', icon: <SkillsIcon />, accent: 'bjj',
     summary: data => trackerSummary(data, state => {
       const skills = tracker.bjjLearningPriorities(state.bjj.skills, state.bjj.blackLotusSkillIds);
-      return skills.length ? <><span className="overviewLabel">Learning priorities</span><ul>{skills.map(({ skill, confidence }) => <li key={skill.id}><span>{skill.name}</span><small>{skill.workOnNext ? 'Focus' : `${confidence}% confidence`}</small></li>)}</ul></> : <p>No learning priorities yet.</p>;
+      const topThree = skills.slice(0, 3);
+      return topThree.length ? <>
+        <div style={{ flex: 1 }}>
+          <span className="overviewLabel">Learning Priorities</span>
+          <ul style={{ marginTop: '8px' }}>
+            {topThree.map(({ skill, confidence }) => <li key={skill.id} style={{ fontSize: '.9rem', marginBottom: '6px' }}>
+              <span style={{ display: 'block', fontWeight: '600', color: 'var(--accent)' }}>{skill.name}</span>
+              <small>{skill.workOnNext ? '→ Focus Next' : `${confidence}% confidence`}</small>
+            </li>)}
+          </ul>
+        </div>
+      </> : <p>No learning priorities yet.</p>;
     }),
   },
   {
@@ -78,8 +125,25 @@ export const overviewCards: Card[] = [
       const plan = state.weight.plans.find(item => item.status === 'active');
       const entries = [...state.weight.weighIns].sort((a, b) => b.date.localeCompare(a.date));
       const latest = entries[0];
-      const planEntry = entries.find(entry => entry.planId === plan?.id);
-      return <><span className="overviewLabel">{plan ? `${plan.type === 'bulk' ? 'Bulk' : 'Cut'} · planned goal` : 'No active plan'}</span><strong>{plan ? `${Math.max(0, dateNumber(plan.plannedEndDate) - dateNumber(data.today))} days remaining` : 'Start a plan'}</strong><small>{latest ? `Latest weight: ${latest.weight.toFixed(1)} lb · ${latest.date}` : 'No weigh-ins yet'}</small><small>{planEntry ? trackStatus(planEntry.difference) : plan ? 'Awaiting plan weigh-in' : 'Track status unavailable'}</small></>;
+      const goal = plan?.goalWeight || null;
+      return <>
+        <div className="overviewChartContainer">
+          <div style={{ textAlign: 'center', width: '100%' }}>
+            <small style={{ color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>Weight Trend</small>
+            <div style={{ fontSize: '1.1rem', letterSpacing: '2px', color: 'var(--accent)' }}>∿ ∿ ∿</div>
+          </div>
+        </div>
+        <div className="overviewStatsGrid">
+          <div className="overviewStat">
+            <strong style={{ fontSize: '1.4rem' }}>{latest ? latest.weight.toFixed(1) : '—'}</strong>
+            <span>Current Weight</span>
+          </div>
+          <div className="overviewStat">
+            <strong style={{ fontSize: '1.4rem', color: 'var(--accent)' }}>{goal ? goal.toFixed(1) : '—'}</strong>
+            <span>Goal</span>
+          </div>
+        </div>
+      </>;
     }),
   },
   {
@@ -87,11 +151,28 @@ export const overviewCards: Card[] = [
     summary: data => trackerSummary(data, state => {
       const today = state.stoic.entries.find(entry => entry.date === data.today);
       const completion = stoicCompletion(today);
-      const status = completion.dayDone
-        ? 'Completed Today'
-        : `Morning: ${completion.morningDone ? 'Done' : 'Pending'} | Evening: ${completion.eveningDone ? 'Done' : 'Pending'}`;
       const streak = currentStoicStreak(state.stoic.entries, data.today);
-      return <><span className="overviewLabel">Today</span><strong>{status}</strong><small>🔥 {streak}-day streak</small></>;
+      const totalDays = state.stoic.entries.length;
+      const completionPercent = totalDays > 0 ? Math.round(state.stoic.entries.filter(entry => {
+        const c = stoicCompletion(entry);
+        return c.dayDone;
+      }).length / totalDays * 100) : 0;
+      return <>
+        <div style={{ flex: 1 }}>
+          <span className="overviewLabel">Today's Status</span>
+          <strong style={{ display: 'block', marginTop: '4px', marginBottom: '8px' }}>{completion.dayDone ? '✓ Completed' : `${completion.morningDone ? '✓' : '○'} AM · ${completion.eveningDone ? '✓' : '○'} PM`}</strong>
+        </div>
+        <div className="overviewStatsGrid">
+          <div className="overviewStat">
+            <strong style={{ fontSize: '1.4rem', color: 'var(--accent)' }}>🔥 {streak}</strong>
+            <span>Day Streak</span>
+          </div>
+          <div className="overviewStat">
+            <strong style={{ fontSize: '1.4rem' }}>{completionPercent}%</strong>
+            <span>Completion</span>
+          </div>
+        </div>
+      </>;
     }),
   },
 ];
