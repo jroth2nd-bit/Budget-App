@@ -1,13 +1,9 @@
-.appRoot[data-theme="stoic"] {
-  --accent: var(--waypoint-stoic);
-  --accent-soft: rgba(167, 193, 169, .14);
-}
-
+/* Stoic Tracker - no theme override needed, uses global Sonar */
 .stoicPage { display: grid; gap: 14px; }
 .stoicPage .card { padding: 18px; }
 .stoicError { margin: 0; color: var(--neg); }
 .stoicTopRow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, .72fr); align-items: stretch; gap: 14px; }
-.stoicHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; border-top: 2px solid var(--waypoint-stoic); }
+.stoicHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; border-top: 2px solid var(--accent); }
 .stoicHeader > div { flex: 1 1 260px; min-width: 0; }
 .stoicHeader h2, .stoicEntry h2, .stoicHistory h2 { margin: 0; }
 .stoicHeader h2 { font-size: 1.2rem; }
@@ -28,17 +24,12 @@
 .stoicQuestion textarea { min-height: 76px; resize: vertical; }
 .stoicSaveRow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .stoicSaveRow [role="status"] { color: var(--muted); font-size: .9rem; }
-.stoicStreak { margin: 0; color: var(--waypoint-stoic); font-size: 1.05rem; font-weight: 700; white-space: nowrap; }
+.stoicStreak { margin: 0; color: var(--accent); font-size: 1.05rem; font-weight: 700; white-space: nowrap; }
 .stoicHistory { display: grid; gap: 12px; }
 .stoicHistoryHeading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
 .stoicHistoryHeading h2 { font-size: 1.1rem; }
 .stoicHistoryHint { margin: -6px 0 0; }
 .stoicHistoryList { display: grid; gap: 8px; max-height: 60vh; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
 .stoicHistoryItem { display: grid; width: 100%; gap: 3px; padding: 10px; text-align: left; }
-.stoicHistoryItem[aria-pressed="true"] { border-color: var(--waypoint-stoic); }
+.stoicHistoryItem[aria-pressed="true"] { border-color: var(--accent); }
 .stoicHistoryItem span, .stoicHistoryItem small { color: var(--muted); }
-
-@media (max-width: 760px) {
-  .stoicTopRow { grid-template-columns: minmax(0, 1fr); }
-  .stoicModuleSelect { width: 100%; max-width: none; }
-}

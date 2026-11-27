@@ -46,8 +46,6 @@
 .bookDetailField + .bookDetailField { margin-top: 8px; }
 .bookDetailLabel { display: block; color: var(--muted); font-size: 12px; }
 .bookError { color: var(--neg); font-weight: 600; }
-@media (max-width: 1050px) {
-  .bookTable, .bookTable tbody { display: block; }
   .bookTable thead { display: none; }
   .bookTable tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
   .bookTable tr:last-child { border-bottom: 0; }
