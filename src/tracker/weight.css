@@ -30,6 +30,17 @@
 .weightMetric { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px; background: var(--surface-2); }
 .weightMetric span, .weightMetric small { color: var(--muted); font-size: .78rem; }
 .weightMetric strong { font-size: 1.05rem; overflow-wrap: anywhere; }
+.weightMetric:nth-child(2), .weightMetric:nth-child(4) { 
+  background: var(--accent-soft); 
+  border: 2px solid var(--accent); 
+  padding: 14px 16px; 
+  grid-column: span 1;
+}
+.weightMetric:nth-child(2) strong, .weightMetric:nth-child(4) strong { 
+  font-size: 1.3rem; 
+  color: var(--accent); 
+  font-weight: 800;
+}
 @container (min-width: 720px) { .weightStats { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .weightPlanStatus { color: var(--muted); font: 600 .75rem system-ui, sans-serif; text-transform: uppercase; }
 .weightBadge { border-radius: 999px; padding: 5px 10px; font-size: .8rem; font-weight: 700; border: 1px solid currentColor; }
