@@ -1,40 +1,8 @@
 .overviewDashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 14px; }
-
-/* Large tiles: span 2 columns on desktop */
-@media (min-width: 1200px) {
-  .overviewDashboard {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  .overviewCard.overview-transactions,
-  .overviewCard.overview-weight,
-  .overviewCard.overview-mercy,
-  .overviewCard.overview-bjj,
-  .overviewCard.overview-stoic {
-    grid-column: span 2;
-    min-height: 220px;
-  }
-  .overviewCard.overview-income,
-  .overviewCard.overview-champions,
-  .overviewCard.overview-books {
-    grid-column: span 1;
-  }
-}
-
-@media (min-width: 768px) and (max-width: 1199px) {
-  .overviewDashboard {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .overviewCard.overview-transactions,
-  .overviewCard.overview-weight,
-  .overviewCard.overview-bjj {
-    grid-column: span 2;
-  }
-}
-
-.overviewCard.card { display: flex; flex-direction: column; gap: 18px; width: 100%; min-height: 165px; text-align: left; padding: 18px; border: 1px solid var(--border); border-top: 2px solid var(--accent); transition: border-color .15s, transform .15s; }
-.overviewCard:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-2px); }
+.overviewCard.card { --card-accent: var(--waypoint-budget); display: flex; flex-direction: column; gap: 18px; width: 100%; min-height: 165px; text-align: left; padding: 18px; border-top: 2px solid var(--card-accent); transition: border-color .15s, transform .15s; }
+.overviewCard:hover:not(:disabled) { border-color: var(--card-accent); transform: translateY(-2px); }
 .overviewCardHead { display: flex; align-items: center; gap: 10px; font-size: .95rem; font-weight: 700; }
-.overviewIcon { display: grid; place-items: center; color: var(--accent); }
+.overviewIcon { display: grid; place-items: center; color: var(--card-accent); }
 .overviewIcon svg { width: 22px; height: 22px; }
 .overviewArrow { margin-left: auto; color: var(--muted); font-size: 1.15rem; }
 .overviewContent { display: flex; flex-direction: column; gap: 5px; min-width: 0; color: var(--text); }
@@ -45,32 +13,14 @@
 .overviewContent ul { display: grid; gap: 5px; list-style: none; margin: 0; padding: 0; }
 .overviewContent li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 8px; overflow-wrap: anywhere; }
 .overviewContent li small { white-space: nowrap; }
-
-/* Large tile content styles */
-.overviewCard.overview-transactions .overviewContent,
-.overviewCard.overview-weight .overviewContent,
-.overviewCard.overview-mercy .overviewContent,
-.overviewCard.overview-bjj .overviewContent,
-.overviewCard.overview-stoic .overviewContent {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.overviewCard.overview-transactions .overviewContent strong,
-.overviewCard.overview-weight .overviewContent strong,
-.overviewCard.overview-mercy .overviewContent strong,
-.overviewCard.overview-bjj .overviewContent strong,
-.overviewCard.overview-stoic .overviewContent strong {
-  font-size: 1.5rem;
-}
-
-/* Chart container for large tiles */
-.overviewChartContainer { flex: 1 1 200px; min-height: 120px; display: grid; place-items: center; }
-
-/* Stats grid for large tiles */
-.overviewStatsGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; flex: 1 1 auto; }
-.overviewStat { display: flex; flex-direction: column; gap: 4px; }
-.overviewStat strong { font-size: 1.25rem; color: var(--accent); }
-.overviewStat span { color: var(--muted); font-size: .75rem; text-transform: uppercase; }
+.overviewCard.overview-salary { --card-accent: var(--waypoint-salary); }
+.overviewCard.overview-mercy { --card-accent: var(--waypoint-mercy); }
+.overviewCard.overview-champions { --card-accent: var(--waypoint-champions); }
+.overviewCard.overview-bjj { --card-accent: var(--waypoint-bjj-blue); }
+.overviewCard.overview-bjj[data-belt="white"] { --card-accent: var(--waypoint-bjj-white); }
+.overviewCard.overview-bjj[data-belt="purple"] { --card-accent: var(--waypoint-bjj-purple); }
+.overviewCard.overview-bjj[data-belt="brown"] { --card-accent: var(--waypoint-bjj-brown); }
+.overviewCard.overview-bjj[data-belt="black"] { --card-accent: var(--waypoint-bjj-black); }
+.overviewCard.overview-weight { --card-accent: var(--waypoint-weight); }
+.overviewCard.overview-books { --card-accent: var(--waypoint-books); }
+.overviewCard.overview-stoic { --card-accent: var(--waypoint-stoic); }

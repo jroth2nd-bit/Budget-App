@@ -1,16 +1,25 @@
-/* Weight Tracker - no theme override needed, uses global Sonar */
+.appRoot[data-theme="weight"] {
+  --accent: var(--waypoint-weight);
+  --accent-soft: rgba(240, 173, 121, 0.13);
+  --accent-ink: #291609;
+  --active-border: #b97546;
+  --shell-glow: rgba(165, 88, 42, 0.2);
+  --brand-bg: #402619;
+  --brand-border: #b97546;
+}
+
 .weightPage { display: grid; gap: 18px; max-width: 1500px; margin: 0 auto; }
 .weightPage p { color: var(--muted); }
 .weightSectionHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
 .weightSectionHead p { margin: 0; }
 .weightHeaderActions { display: flex; flex-wrap: wrap; gap: 8px; }
-.weightPage .weightKicker { color: var(--accent); font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.weightPage .weightKicker { color: var(--accent); font-size: .72rem; font-weight: 700; letter-spacing: .12em; }
 .weightActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .weightForm h3, .weightOverview h3, .weightHistory h3 { margin-top: 0; }
 .weightFormGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 12px; margin: 14px 0; }
 .weightFormGrid label, .weightSectionHead label { display: grid; gap: 5px; color: var(--muted); font-size: .85rem; }
 .weightField { min-width: 0; }
-.weightSuggestion { display: grid; gap: 6px; margin-top: 6px; color: var(--accent); font-size: .8rem; }
+.weightSuggestion { display: grid; gap: 6px; margin-top: 6px; color: #f1c96a; font-size: .8rem; }
 .weightSuggestion button { justify-self: start; }
 .weightEntry .weightForm { width: 100%; }
 .weightNotes { grid-column: 1 / -1; }
@@ -35,9 +44,9 @@
 @container (min-width: 720px) { .weightStats { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .weightPlanStatus { color: var(--muted); font: 600 .75rem system-ui, sans-serif; text-transform: uppercase; }
 .weightBadge { border-radius: 999px; padding: 5px 10px; font-size: .8rem; font-weight: 700; border: 1px solid currentColor; }
-.weightBadge.on-track { color: #10b981; }
-.weightBadge.slightly-off { color: #f59e0b; }
-.weightBadge.off-track { color: #ef4444; }
+.weightBadge.on-track { color: #62d8a8; }
+.weightBadge.slightly-off { color: #f1c96a; }
+.weightBadge.off-track { color: #ff9999; }
 .weightHint { font-size: .8rem; color: var(--muted); }
 .weightCharts { display: grid; grid-template-columns: 1fr; gap: 16px; margin: 20px 0; }
 .weightChart { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
